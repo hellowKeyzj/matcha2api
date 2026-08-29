@@ -55,6 +55,7 @@ func newCreateLimitService(repo *createLimitAPIKeyRepoStub, cache *createLimitCa
 	return &APIKeyService{
 		apiKeyRepo: repo,
 		userRepo:   &userRepoStub{user: &User{ID: 7}},
+		groupRepo:  &defaultAccessGroupRepoStub{},
 		cache:      cache,
 		cfg:        cfg,
 	}
@@ -70,46 +71,48 @@ func TestAPIKeyServiceCreate_RateLimitsGeneratedKeys(t *testing.T) {
 	svc := newCreateLimitService(repo, cache, 0, 3)
 
 	for i := 0; i < 3; i++ {
-		_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+		_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 		require.NoError(t, err)
 	}
-	_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.ErrorIs(t, err, ErrAPIKeyCreateLimited)
 	require.Len(t, repo.created, 3)
 	require.Equal(t, apiKeyCreateCountWindow, cache.windows[0])
 }
 
-func TestAPIKeyServiceCreate_RateLimitsCustomKeys(t *testing.T) {
+func TestAPIKeyServiceCreate_SystemIgnoresCustomKeyAndRetainsRateLimit(t *testing.T) {
 	repo, cache := newCreateLimitStubs()
 	svc := newCreateLimitService(repo, cache, 0, 1)
 	custom := "sk-custom-key-0123456789"
 
-	_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k", CustomKey: &custom})
+	key, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k", CustomKey: &custom})
 	require.NoError(t, err)
-	_, err = svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k", CustomKey: &custom})
+	require.NotEqual(t, custom, key.Key)
+	_, err = svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k", CustomKey: &custom})
 	require.ErrorIs(t, err, ErrAPIKeyCreateLimited)
 	require.Len(t, repo.created, 1)
 }
 
-// 删除 Key 释放数量名额，但不返还创建次数，删建循环仍受每小时次数限制。
+// 管理员删除托管 Key 释放数量名额，但不返还系统发放次数。
 func TestAPIKeyServiceCreate_DeleteDoesNotRefundCreateCount(t *testing.T) {
 	repo, cache := newCreateLimitStubs()
 	repo.apiKey = &APIKey{ID: 1, UserID: 7, Key: "k"}
 	svc := newCreateLimitService(repo, cache, 1, 2)
 
-	_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.NoError(t, err)
 	repo.activeCount = 1
-	_, err = svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err = svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.ErrorIs(t, err, ErrAPIKeyCountExceeded)
 
-	require.NoError(t, svc.Delete(context.Background(), 1, 7))
+	require.NoError(t, repo.DeleteWithAudit(context.Background(), 1))
+	require.Equal(t, []int64{1}, repo.auditDeletedIDs)
 	repo.activeCount = 0
-	_, err = svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err = svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.NoError(t, err)
 
 	repo.activeCount = 0
-	_, err = svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err = svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.ErrorIs(t, err, ErrAPIKeyCreateLimited)
 	require.Len(t, repo.created, 2)
 }
@@ -119,7 +122,7 @@ func TestAPIKeyServiceCreate_ActiveLimitDoesNotConsumeCreateCount(t *testing.T) 
 	repo.activeCount = 5
 	svc := newCreateLimitService(repo, cache, 5, 10)
 
-	_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.ErrorIs(t, err, ErrAPIKeyCountExceeded)
 	require.Zero(t, cache.createCounts[7])
 }
@@ -130,7 +133,7 @@ func TestAPIKeyServiceCreate_ZeroLimitsDisableChecks(t *testing.T) {
 	svc := newCreateLimitService(repo, cache, 0, 0)
 
 	for i := 0; i < 5; i++ {
-		_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+		_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 		require.NoError(t, err)
 	}
 	require.Empty(t, cache.windows)
@@ -141,7 +144,7 @@ func TestAPIKeyServiceCreate_CountErrorFailsClosed(t *testing.T) {
 	repo.countErr = errors.New("db down")
 	svc := newCreateLimitService(repo, cache, 5, 0)
 
-	_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+	_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 	require.Error(t, err)
 	require.Empty(t, repo.created)
 }
@@ -152,7 +155,7 @@ func TestAPIKeyServiceCreate_RedisErrorFailsOpen(t *testing.T) {
 	svc := newCreateLimitService(repo, cache, 0, 1)
 
 	for i := 0; i < 3; i++ {
-		_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
+		_, err := svc.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{Name: "k"})
 		require.NoError(t, err)
 	}
 }

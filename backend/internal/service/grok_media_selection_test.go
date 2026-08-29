@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -107,4 +108,93 @@ func TestGrokVideoStickySelectionIgnoresHealthEscape(t *testing.T) {
 	require.False(t, escaped)
 	require.True(t, selection.Acquired)
 	selection.ReleaseFunc()
+}
+
+func TestSelectMediaVideoRequestAccountShardScope(t *testing.T) {
+	groupID, userID := int64(24), int64(10)
+	lookupErr := errors.New("shard scope lookup failed")
+	for _, platform := range []string{PlatformGrok, PlatformOpenAI} {
+		for _, tc := range []struct {
+			name       string
+			accountIDs map[int64]struct{}
+			scopeErr   error
+			full       bool
+			allowed    bool
+		}{
+			{name: "owner allowed", accountIDs: map[int64]struct{}{1: {}}, allowed: true},
+			{name: "owner full", accountIDs: map[int64]struct{}{1: {}}, full: true, allowed: true},
+			{name: "owner outside scope", accountIDs: map[int64]struct{}{2: {}}},
+			{name: "empty scope", accountIDs: map[int64]struct{}{}},
+			{name: "scope error", scopeErr: lookupErr},
+		} {
+			t.Run(platform+"/"+tc.name, func(t *testing.T) {
+				owner := Account{ID: 1, Platform: platform, Type: AccountTypeAPIKey,
+					Status: StatusActive, Schedulable: true, Concurrency: 50, GroupIDs: []int64{groupID}}
+				other := owner
+				other.ID = 2
+				shardRepo := &openAISchedulerShardRepoStub{
+					scope: &GroupShardAccountScope{Enabled: true, ShardID: 7, AccountIDs: tc.accountIDs},
+					err:   tc.scopeErr,
+				}
+				group := &Group{ID: groupID, Platform: platform, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+				ctx := openAIShardSchedulingTestContext(group, userID)
+				var acquired, released []int64
+				cache := &schedulerTestGatewayCache{}
+				cfg := &config.Config{}
+				cfg.Gateway.OpenAIScheduler.StickyEscapeEnabled = true
+				svc := &OpenAIGatewayService{
+					accountRepo: schedulerTestOpenAIAccountRepo{accounts: []Account{owner, other}},
+					cache:       cache, cfg: cfg, groupShardRepo: shardRepo,
+					concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{
+						acquireResults: map[int64]bool{1: !tc.full, 2: true},
+						acquiredIDs:    &acquired, releasedIDs: &released,
+					}),
+				}
+				require.NoError(t, svc.BindGrokMediaVideoRequestAccount(ctx, &groupID, "task", userID, 20, owner.ID))
+				sessionHash := GrokMediaVideoRequestSessionHash("task", userID, 20)
+
+				selection, decision, err := svc.SelectMediaVideoRequestAccount(ctx, &groupID, sessionHash, owner.ID, "", platform)
+				switch {
+				case tc.scopeErr != nil:
+					require.ErrorIs(t, err, tc.scopeErr)
+					require.Nil(t, selection)
+				case !tc.allowed:
+					require.ErrorIs(t, err, ErrNoAvailableAccounts)
+					require.Nil(t, selection)
+				default:
+					require.NoError(t, err)
+					require.NotNil(t, selection)
+					require.Equal(t, owner.ID, selection.Account.ID)
+					require.True(t, decision.StickySessionHit)
+					require.Equal(t, !tc.full, selection.Acquired)
+					require.Equal(t, []int64{owner.ID}, acquired)
+					if tc.full {
+						require.Nil(t, selection.ReleaseFunc)
+						require.NotNil(t, selection.WaitPlan)
+						require.Equal(t, owner.ID, selection.WaitPlan.AccountID)
+					} else {
+						require.NotNil(t, selection.ReleaseFunc)
+						selection.ReleaseFunc()
+						require.Equal(t, []int64{owner.ID}, released)
+					}
+				}
+				if !tc.allowed {
+					require.Empty(t, acquired)
+					require.False(t, decision.StickySessionHit)
+				}
+				if !tc.allowed || tc.full {
+					require.Empty(t, released)
+				}
+				require.Equal(t, 1, shardRepo.listScopeCalls)
+				require.Equal(t, groupID, shardRepo.lastGroupID)
+				require.Equal(t, userID, shardRepo.lastUserID)
+				require.Equal(t, platform, shardRepo.lastPlatform)
+				require.NotContains(t, acquired, other.ID)
+				bound, err := svc.ResolveGrokMediaVideoRequestAccount(ctx, &groupID, "task", userID, 20)
+				require.NoError(t, err)
+				require.Equal(t, owner.ID, bound)
+				require.Empty(t, cache.deletedSessions)
+			})
+		}
+	}
 }

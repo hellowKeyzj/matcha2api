@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -16,6 +17,7 @@ import (
 type updateFieldsAPIKeyRepoStub struct {
 	quotaBaseAPIKeyRepoStub
 	key          *APIKey
+	updateKeys   []APIKey
 	updateFields []APIKeyUpdateFields
 }
 
@@ -30,7 +32,11 @@ func (s *updateFieldsAPIKeyRepoStub) GetByID(context.Context, int64) (*APIKey, e
 	return &clone, nil
 }
 
-func (s *updateFieldsAPIKeyRepoStub) Update(_ context.Context, _ *APIKey, fields APIKeyUpdateFields) error {
+func (s *updateFieldsAPIKeyRepoStub) Update(_ context.Context, key *APIKey, fields APIKeyUpdateFields) error {
+	if key != nil {
+		clone := *key
+		s.updateKeys = append(s.updateKeys, clone)
+	}
 	s.updateFields = append(s.updateFields, fields)
 	return nil
 }
@@ -130,4 +136,33 @@ func TestUpdateQuotaUsed_ExhaustedMarkOnlyDeclaresStatus(t *testing.T) {
 
 	require.NoError(t, svc.UpdateQuotaUsed(context.Background(), 1, 5))
 	require.Equal(t, []APIKeyUpdateFields{{Status: true}}, repo.updateFields)
+}
+
+func TestAPIKeyRotate_OnlyDeclaresKeyAndPreservesBinding(t *testing.T) {
+	groupID := int64(42)
+	expiresAt := time.Now().Add(24 * time.Hour)
+	svc, repo := newUpdateFieldsAPIKeyService(&APIKey{
+		ID:        1,
+		UserID:    7,
+		Key:       "sk-old",
+		Name:      "default",
+		GroupID:   &groupID,
+		Status:    StatusActive,
+		Quota:     100,
+		ExpiresAt: &expiresAt,
+	})
+	cache := &apiKeyCacheStub{}
+	svc.cache = cache
+	svc.lastUsedTouchL1.Store(int64(1), time.Now())
+
+	rotated, err := svc.Rotate(context.Background(), 1, 7)
+	require.NoError(t, err)
+	require.NotEqual(t, "sk-old", rotated.Key)
+	require.Equal(t, groupID, *rotated.GroupID)
+	require.Equal(t, []APIKeyUpdateFields{{Key: true}}, repo.updateFields)
+	require.Len(t, repo.updateKeys, 1)
+	require.Equal(t, groupID, *repo.updateKeys[0].GroupID)
+	require.Equal(t, []string{svc.authCacheKey("sk-old"), svc.authCacheKey(rotated.Key)}, cache.deleteAuthKeys)
+	_, exists := svc.lastUsedTouchL1.Load(int64(1))
+	require.False(t, exists)
 }

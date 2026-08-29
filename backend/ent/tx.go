@@ -48,6 +48,12 @@ type Tx struct {
 	ErrorPassthroughRule *ErrorPassthroughRuleClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
+	// GroupShard is the client for interacting with the GroupShard builders.
+	GroupShard *GroupShardClient
+	// GroupShardAccount is the client for interacting with the GroupShardAccount builders.
+	GroupShardAccount *GroupShardAccountClient
+	// GroupShardUser is the client for interacting with the GroupShardUser builders.
+	GroupShardUser *GroupShardUserClient
 	// IdempotencyRecord is the client for interacting with the IdempotencyRecord builders.
 	IdempotencyRecord *IdempotencyRecordClient
 	// IdentityAdoptionDecision is the client for interacting with the IdentityAdoptionDecision builders.
@@ -240,6 +246,9 @@ func (tx *Tx) init() {
 	tx.CompositeModelRoute = NewCompositeModelRouteClient(tx.config)
 	tx.ErrorPassthroughRule = NewErrorPassthroughRuleClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)
+	tx.GroupShard = NewGroupShardClient(tx.config)
+	tx.GroupShardAccount = NewGroupShardAccountClient(tx.config)
+	tx.GroupShardUser = NewGroupShardUserClient(tx.config)
 	tx.IdempotencyRecord = NewIdempotencyRecordClient(tx.config)
 	tx.IdentityAdoptionDecision = NewIdentityAdoptionDecisionClient(tx.config)
 	tx.PaymentAuditLog = NewPaymentAuditLogClient(tx.config)

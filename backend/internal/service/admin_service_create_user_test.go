@@ -158,6 +158,7 @@ func TestAdminService_CreateUser_AssignsDefaultSubscriptions(t *testing.T) {
 func TestAdminService_CreateUser_SnapshotsDefaultPlatformQuotas(t *testing.T) {
 	users := &userRepoStub{nextID: 40}
 	quotas := &userPlatformQuotaRepoStub{}
+	access := &adminDefaultGatewayAccessStub{}
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{
 		SettingKeyDefaultPlatformQuotas: `{
 			"openai": {"daily": 100, "weekly": 700, "monthly": 3000},
@@ -171,7 +172,7 @@ func TestAdminService_CreateUser_SnapshotsDefaultPlatformQuotas(t *testing.T) {
 		SettingKeyAuthSourceDefaultEmailGrantOnSignup: "true",
 		SettingKeyAuthSourcePlatformQuotas("email"):   `{"openai":{"daily":3}}`,
 	}}, &config.Config{})
-	svc := NewAdminService(nil, users, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, settings, nil, nil, nil, nil, nil, nil, nil, nil, quotas)
+	svc := NewAdminService(nil, users, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, settings, nil, nil, nil, nil, nil, nil, nil, access, nil, quotas)
 
 	user, err := svc.CreateUser(context.Background(), &CreateUserInput{
 		Email:    "quota-defaults@example.test",
@@ -180,6 +181,7 @@ func TestAdminService_CreateUser_SnapshotsDefaultPlatformQuotas(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, int64(40), user.ID)
+	require.Equal(t, []int64{user.ID}, access.provisionIDs)
 	require.Len(t, quotas.bulkInsertCalls, 1, "admin-created users must receive the configured platform quotas")
 	records := make(map[string]UserPlatformQuotaRecord)
 	for _, record := range quotas.bulkInsertCalls[0] {
@@ -259,4 +261,82 @@ func TestAdminService_CreateUser_QuotaWriteFailureDoesNotFailCreation(t *testing
 	require.Equal(t, int64(43), user.ID)
 	require.Len(t, users.created, 1)
 	require.Len(t, quotas.bulkInsertCalls, 1)
+}
+
+type adminDefaultGatewayAccessStub struct {
+	requireCalls int
+	provisionIDs []int64
+	requireErr   error
+	provisionErr error
+}
+
+func (s *adminDefaultGatewayAccessStub) RequireDefaultShardGroup(context.Context) (*Group, error) {
+	s.requireCalls++
+	if s.requireErr != nil {
+		return nil, s.requireErr
+	}
+	return &Group{ID: 5, Status: StatusActive, ShardEnabled: true, ShardMaxUsersPerShard: 2}, nil
+}
+
+func (s *adminDefaultGatewayAccessStub) ProvisionDefaultGatewayAccess(_ context.Context, userID int64) (*DefaultGatewayAccess, error) {
+	s.provisionIDs = append(s.provisionIDs, userID)
+	if s.provisionErr != nil {
+		return nil, s.provisionErr
+	}
+	return &DefaultGatewayAccess{GroupID: 5, ShardID: 9, APIKeyID: 11}, nil
+}
+
+func TestAdminService_CreateUser_ProvisionsDefaultGatewayAccessForOrdinaryUser(t *testing.T) {
+	repo := &userRepoStub{nextID: 31}
+	access := &adminDefaultGatewayAccessStub{}
+	svc := &adminServiceImpl{userRepo: repo, defaultGatewayAccess: access}
+
+	user, err := svc.CreateUser(context.Background(), &CreateUserInput{
+		Email:    "ordinary@test.com",
+		Password: "password",
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(31), user.ID)
+	require.Equal(t, 1, access.requireCalls)
+	require.Equal(t, []int64{31}, access.provisionIDs)
+	require.Empty(t, repo.deletedIDs)
+}
+
+func TestAdminService_CreateUser_SkipsDefaultGatewayAccessForAdminUser(t *testing.T) {
+	repo := &userRepoStub{nextID: 32}
+	access := &adminDefaultGatewayAccessStub{}
+	svc := &adminServiceImpl{userRepo: repo, defaultGatewayAccess: access}
+
+	user, err := svc.CreateUser(context.Background(), &CreateUserInput{
+		Email:    "admin@test.com",
+		Password: "password",
+		Role:     RoleAdmin,
+	})
+	require.NoError(t, err)
+	require.Equal(t, RoleAdmin, user.Role)
+	require.Zero(t, access.requireCalls)
+	require.Empty(t, access.provisionIDs)
+}
+
+func TestAdminService_CreateUser_RollsBackUserWhenDefaultGatewayProvisionFails(t *testing.T) {
+	repo := &userRepoStub{nextID: 33}
+	provisionErr := errors.New("provision failed")
+	access := &adminDefaultGatewayAccessStub{provisionErr: provisionErr}
+	quotas := &userPlatformQuotaRepoStub{}
+	svc := &adminServiceImpl{
+		userRepo:             repo,
+		defaultGatewayAccess: access,
+		settingService: NewSettingService(&settingRepoStub{values: map[string]string{
+			SettingKeyDefaultPlatformQuotas: `{"openai":{"daily":100}}`,
+		}}, &config.Config{}),
+		userPlatformQuotaRepo: quotas,
+	}
+
+	_, err := svc.CreateUser(context.Background(), &CreateUserInput{
+		Email:    "rollback@test.com",
+		Password: "password",
+	})
+	require.ErrorIs(t, err, provisionErr)
+	require.Equal(t, []int64{33}, repo.deletedIDs)
+	require.Empty(t, quotas.bulkInsertCalls)
 }
