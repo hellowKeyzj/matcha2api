@@ -118,6 +118,12 @@ type Group struct {
 	SupportedModelScopes []string `json:"supported_model_scopes,omitempty"`
 	// 分组显示排序，数值越小越靠前
 	SortOrder int `json:"sort_order,omitempty"`
+	// 是否启用分组内用户/账号隔离分片；启用后调度仅从用户所在 shard 的账号中选择
+	ShardEnabled bool `json:"shard_enabled,omitempty"`
+	// 每个 shard 允许绑定的最大用户数
+	ShardMaxUsersPerShard int `json:"shard_max_users_per_shard,omitempty"`
+	// 启用 shard 隔离后，用户首次进入该分组时是否自动分配到可用 shard
+	ShardAutoCreate bool `json:"shard_auto_create,omitempty"`
 	// 是否允许 /v1/messages 调度到此 OpenAI 分组
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch,omitempty"`
 	// 是否允许此 OpenAI 分组访问 Live 接口
@@ -168,6 +174,8 @@ type GroupEdges struct {
 	Subscriptions []*UserSubscription `json:"subscriptions,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// Shards holds the value of the shards edge.
+	Shards []*GroupShard `json:"shards,omitempty"`
 	// Accounts holds the value of the accounts edge.
 	Accounts []*Account `json:"accounts,omitempty"`
 	// AllowedUsers holds the value of the allowed_users edge.
@@ -178,7 +186,7 @@ type GroupEdges struct {
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [9]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -217,10 +225,19 @@ func (e GroupEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
+// ShardsOrErr returns the Shards value or an error if the edge
+// was not loaded in eager-loading.
+func (e GroupEdges) ShardsOrErr() ([]*GroupShard, error) {
+	if e.loadedTypes[4] {
+		return e.Shards, nil
+	}
+	return nil, &NotLoadedError{edge: "shards"}
+}
+
 // AccountsOrErr returns the Accounts value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.Accounts, nil
 	}
 	return nil, &NotLoadedError{edge: "accounts"}
@@ -229,7 +246,7 @@ func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
 // AllowedUsersOrErr returns the AllowedUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AllowedUsersOrErr() ([]*User, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.AllowedUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "allowed_users"}
@@ -238,7 +255,7 @@ func (e GroupEdges) AllowedUsersOrErr() ([]*User, error) {
 // AccountGroupsOrErr returns the AccountGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.AccountGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "account_groups"}
@@ -247,7 +264,7 @@ func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -260,11 +277,11 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case group.FieldVideoModelPrices, group.FieldModelPricing, group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldMessagesDispatchModelConfig, group.FieldModelAllowlist, group.FieldCodexModelsManifestConfig, group.FieldReasoningEffortMappings:
 			values[i] = new([]byte)
-		case group.FieldPeakRateEnabled, group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldAllowBatchImageGeneration, group.FieldImageRateIndependent, group.FieldVideoRateIndependent, group.FieldLongContextPricingEnabled, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldAllowLive, group.FieldForceOpenaiFast, group.FieldFreeOpenaiFast, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldProfitControlEnabled:
+		case group.FieldPeakRateEnabled, group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldAllowBatchImageGeneration, group.FieldImageRateIndependent, group.FieldVideoRateIndependent, group.FieldLongContextPricingEnabled, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldShardEnabled, group.FieldShardAutoCreate, group.FieldAllowMessagesDispatch, group.FieldAllowLive, group.FieldForceOpenaiFast, group.FieldFreeOpenaiFast, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldProfitControlEnabled:
 			values[i] = new(sql.NullBool)
 		case group.FieldRateMultiplier, group.FieldPeakRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImageRateMultiplier, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k, group.FieldBatchImageDiscountMultiplier, group.FieldBatchImageHoldMultiplier, group.FieldVideoRateMultiplier, group.FieldVideoPrice480p, group.FieldVideoPrice720p, group.FieldVideoPrice1080p, group.FieldWebSearchPricePerCall, group.FieldSearchPricePer1k, group.FieldAudioRealtimePricePerMin, group.FieldAudioTtsPricePerMillionChars, group.FieldAudioSttPricePerHour, group.FieldProfitMinMargin, group.FieldProfitSafetyBuffer:
 			values[i] = new(sql.NullFloat64)
-		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder, group.FieldRpmLimit:
+		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder, group.FieldShardMaxUsersPerShard, group.FieldRpmLimit:
 			values[i] = new(sql.NullInt64)
 		case group.FieldName, group.FieldDescription, group.FieldPeakStart, group.FieldPeakEnd, group.FieldStatus, group.FieldDuplicateOperationID, group.FieldPlatform, group.FieldSubscriptionType, group.FieldDefaultMappedModel, group.FieldMaxReasoningEffort, group.FieldMaxReasoningEffortOverLimit:
 			values[i] = new(sql.NullString)
@@ -612,6 +629,24 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.SortOrder = int(value.Int64)
 			}
+		case group.FieldShardEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field shard_enabled", values[i])
+			} else if value.Valid {
+				_m.ShardEnabled = value.Bool
+			}
+		case group.FieldShardMaxUsersPerShard:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field shard_max_users_per_shard", values[i])
+			} else if value.Valid {
+				_m.ShardMaxUsersPerShard = int(value.Int64)
+			}
+		case group.FieldShardAutoCreate:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field shard_auto_create", values[i])
+			} else if value.Valid {
+				_m.ShardAutoCreate = value.Bool
+			}
 		case group.FieldAllowMessagesDispatch:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field allow_messages_dispatch", values[i])
@@ -753,6 +788,11 @@ func (_m *Group) QuerySubscriptions() *UserSubscriptionQuery {
 // QueryUsageLogs queries the "usage_logs" edge of the Group entity.
 func (_m *Group) QueryUsageLogs() *UsageLogQuery {
 	return NewGroupClient(_m.config).QueryUsageLogs(_m)
+}
+
+// QueryShards queries the "shards" edge of the Group entity.
+func (_m *Group) QueryShards() *GroupShardQuery {
+	return NewGroupClient(_m.config).QueryShards(_m)
 }
 
 // QueryAccounts queries the "accounts" edge of the Group entity.
@@ -982,6 +1022,15 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("sort_order=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SortOrder))
+	builder.WriteString(", ")
+	builder.WriteString("shard_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ShardEnabled))
+	builder.WriteString(", ")
+	builder.WriteString("shard_max_users_per_shard=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ShardMaxUsersPerShard))
+	builder.WriteString(", ")
+	builder.WriteString("shard_auto_create=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ShardAutoCreate))
 	builder.WriteString(", ")
 	builder.WriteString("allow_messages_dispatch=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AllowMessagesDispatch))

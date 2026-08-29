@@ -50,6 +50,9 @@ func (s *stubGroupRepoForAvailable) ListWithFilters(ctx context.Context, params 
 func (s *stubGroupRepoForAvailable) ListActiveByPlatform(ctx context.Context, platform string) ([]Group, error) {
 	return nil, nil
 }
+func (s *stubGroupRepoForAvailable) GetDefaultShardGroup(ctx context.Context) (*Group, error) {
+	return nil, ErrDefaultShardGroupNotConfigured
+}
 func (s *stubGroupRepoForAvailable) ExistsByName(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }

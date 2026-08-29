@@ -15,6 +15,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
@@ -676,6 +677,48 @@ func (_c *GroupCreate) SetNillableSortOrder(v *int) *GroupCreate {
 	return _c
 }
 
+// SetShardEnabled sets the "shard_enabled" field.
+func (_c *GroupCreate) SetShardEnabled(v bool) *GroupCreate {
+	_c.mutation.SetShardEnabled(v)
+	return _c
+}
+
+// SetNillableShardEnabled sets the "shard_enabled" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableShardEnabled(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetShardEnabled(*v)
+	}
+	return _c
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (_c *GroupCreate) SetShardMaxUsersPerShard(v int) *GroupCreate {
+	_c.mutation.SetShardMaxUsersPerShard(v)
+	return _c
+}
+
+// SetNillableShardMaxUsersPerShard sets the "shard_max_users_per_shard" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableShardMaxUsersPerShard(v *int) *GroupCreate {
+	if v != nil {
+		_c.SetShardMaxUsersPerShard(*v)
+	}
+	return _c
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (_c *GroupCreate) SetShardAutoCreate(v bool) *GroupCreate {
+	_c.mutation.SetShardAutoCreate(v)
+	return _c
+}
+
+// SetNillableShardAutoCreate sets the "shard_auto_create" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableShardAutoCreate(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetShardAutoCreate(*v)
+	}
+	return _c
+}
+
 // SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
 func (_c *GroupCreate) SetAllowMessagesDispatch(v bool) *GroupCreate {
 	_c.mutation.SetAllowMessagesDispatch(v)
@@ -966,6 +1009,21 @@ func (_c *GroupCreate) AddUsageLogs(v ...*UsageLog) *GroupCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
+// AddShardIDs adds the "shards" edge to the GroupShard entity by IDs.
+func (_c *GroupCreate) AddShardIDs(ids ...int64) *GroupCreate {
+	_c.mutation.AddShardIDs(ids...)
+	return _c
+}
+
+// AddShards adds the "shards" edges to the GroupShard entity.
+func (_c *GroupCreate) AddShards(v ...*GroupShard) *GroupCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddShardIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_c *GroupCreate) AddAccountIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAccountIDs(ids...)
@@ -1142,6 +1200,18 @@ func (_c *GroupCreate) defaults() error {
 	if _, ok := _c.mutation.SortOrder(); !ok {
 		v := group.DefaultSortOrder
 		_c.mutation.SetSortOrder(v)
+	}
+	if _, ok := _c.mutation.ShardEnabled(); !ok {
+		v := group.DefaultShardEnabled
+		_c.mutation.SetShardEnabled(v)
+	}
+	if _, ok := _c.mutation.ShardMaxUsersPerShard(); !ok {
+		v := group.DefaultShardMaxUsersPerShard
+		_c.mutation.SetShardMaxUsersPerShard(v)
+	}
+	if _, ok := _c.mutation.ShardAutoCreate(); !ok {
+		v := group.DefaultShardAutoCreate
+		_c.mutation.SetShardAutoCreate(v)
 	}
 	if _, ok := _c.mutation.AllowMessagesDispatch(); !ok {
 		v := group.DefaultAllowMessagesDispatch
@@ -1351,6 +1421,20 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.SortOrder(); !ok {
 		return &ValidationError{Name: "sort_order", err: errors.New(`ent: missing required field "Group.sort_order"`)}
+	}
+	if _, ok := _c.mutation.ShardEnabled(); !ok {
+		return &ValidationError{Name: "shard_enabled", err: errors.New(`ent: missing required field "Group.shard_enabled"`)}
+	}
+	if _, ok := _c.mutation.ShardMaxUsersPerShard(); !ok {
+		return &ValidationError{Name: "shard_max_users_per_shard", err: errors.New(`ent: missing required field "Group.shard_max_users_per_shard"`)}
+	}
+	if v, ok := _c.mutation.ShardMaxUsersPerShard(); ok {
+		if err := group.ShardMaxUsersPerShardValidator(v); err != nil {
+			return &ValidationError{Name: "shard_max_users_per_shard", err: fmt.Errorf(`ent: validator failed for field "Group.shard_max_users_per_shard": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.ShardAutoCreate(); !ok {
+		return &ValidationError{Name: "shard_auto_create", err: errors.New(`ent: missing required field "Group.shard_auto_create"`)}
 	}
 	if _, ok := _c.mutation.AllowMessagesDispatch(); !ok {
 		return &ValidationError{Name: "allow_messages_dispatch", err: errors.New(`ent: missing required field "Group.allow_messages_dispatch"`)}
@@ -1641,6 +1725,18 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldSortOrder, field.TypeInt, value)
 		_node.SortOrder = value
 	}
+	if value, ok := _c.mutation.ShardEnabled(); ok {
+		_spec.SetField(group.FieldShardEnabled, field.TypeBool, value)
+		_node.ShardEnabled = value
+	}
+	if value, ok := _c.mutation.ShardMaxUsersPerShard(); ok {
+		_spec.SetField(group.FieldShardMaxUsersPerShard, field.TypeInt, value)
+		_node.ShardMaxUsersPerShard = value
+	}
+	if value, ok := _c.mutation.ShardAutoCreate(); ok {
+		_spec.SetField(group.FieldShardAutoCreate, field.TypeBool, value)
+		_node.ShardAutoCreate = value
+	}
 	if value, ok := _c.mutation.AllowMessagesDispatch(); ok {
 		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
 		_node.AllowMessagesDispatch = value
@@ -1766,6 +1862,22 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ShardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -2696,6 +2808,48 @@ func (u *GroupUpsert) UpdateSortOrder() *GroupUpsert {
 // AddSortOrder adds v to the "sort_order" field.
 func (u *GroupUpsert) AddSortOrder(v int) *GroupUpsert {
 	u.Add(group.FieldSortOrder, v)
+	return u
+}
+
+// SetShardEnabled sets the "shard_enabled" field.
+func (u *GroupUpsert) SetShardEnabled(v bool) *GroupUpsert {
+	u.Set(group.FieldShardEnabled, v)
+	return u
+}
+
+// UpdateShardEnabled sets the "shard_enabled" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateShardEnabled() *GroupUpsert {
+	u.SetExcluded(group.FieldShardEnabled)
+	return u
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (u *GroupUpsert) SetShardMaxUsersPerShard(v int) *GroupUpsert {
+	u.Set(group.FieldShardMaxUsersPerShard, v)
+	return u
+}
+
+// UpdateShardMaxUsersPerShard sets the "shard_max_users_per_shard" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateShardMaxUsersPerShard() *GroupUpsert {
+	u.SetExcluded(group.FieldShardMaxUsersPerShard)
+	return u
+}
+
+// AddShardMaxUsersPerShard adds v to the "shard_max_users_per_shard" field.
+func (u *GroupUpsert) AddShardMaxUsersPerShard(v int) *GroupUpsert {
+	u.Add(group.FieldShardMaxUsersPerShard, v)
+	return u
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (u *GroupUpsert) SetShardAutoCreate(v bool) *GroupUpsert {
+	u.Set(group.FieldShardAutoCreate, v)
+	return u
+}
+
+// UpdateShardAutoCreate sets the "shard_auto_create" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateShardAutoCreate() *GroupUpsert {
+	u.SetExcluded(group.FieldShardAutoCreate)
 	return u
 }
 
@@ -3939,6 +4093,55 @@ func (u *GroupUpsertOne) AddSortOrder(v int) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateSortOrder() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateSortOrder()
+	})
+}
+
+// SetShardEnabled sets the "shard_enabled" field.
+func (u *GroupUpsertOne) SetShardEnabled(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetShardEnabled(v)
+	})
+}
+
+// UpdateShardEnabled sets the "shard_enabled" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateShardEnabled() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateShardEnabled()
+	})
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (u *GroupUpsertOne) SetShardMaxUsersPerShard(v int) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetShardMaxUsersPerShard(v)
+	})
+}
+
+// AddShardMaxUsersPerShard adds v to the "shard_max_users_per_shard" field.
+func (u *GroupUpsertOne) AddShardMaxUsersPerShard(v int) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddShardMaxUsersPerShard(v)
+	})
+}
+
+// UpdateShardMaxUsersPerShard sets the "shard_max_users_per_shard" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateShardMaxUsersPerShard() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateShardMaxUsersPerShard()
+	})
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (u *GroupUpsertOne) SetShardAutoCreate(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetShardAutoCreate(v)
+	})
+}
+
+// UpdateShardAutoCreate sets the "shard_auto_create" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateShardAutoCreate() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateShardAutoCreate()
 	})
 }
 
@@ -5385,6 +5588,55 @@ func (u *GroupUpsertBulk) AddSortOrder(v int) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateSortOrder() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateSortOrder()
+	})
+}
+
+// SetShardEnabled sets the "shard_enabled" field.
+func (u *GroupUpsertBulk) SetShardEnabled(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetShardEnabled(v)
+	})
+}
+
+// UpdateShardEnabled sets the "shard_enabled" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateShardEnabled() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateShardEnabled()
+	})
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (u *GroupUpsertBulk) SetShardMaxUsersPerShard(v int) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetShardMaxUsersPerShard(v)
+	})
+}
+
+// AddShardMaxUsersPerShard adds v to the "shard_max_users_per_shard" field.
+func (u *GroupUpsertBulk) AddShardMaxUsersPerShard(v int) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddShardMaxUsersPerShard(v)
+	})
+}
+
+// UpdateShardMaxUsersPerShard sets the "shard_max_users_per_shard" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateShardMaxUsersPerShard() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateShardMaxUsersPerShard()
+	})
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (u *GroupUpsertBulk) SetShardAutoCreate(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetShardAutoCreate(v)
+	})
+}
+
+// UpdateShardAutoCreate sets the "shard_auto_create" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateShardAutoCreate() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateShardAutoCreate()
 	})
 }
 

@@ -380,6 +380,23 @@ func normalizeUpdateGroupInputForSimpleMode(input *UpdateGroupInput) {
 	*input = UpdateGroupInput{Name: input.Name, Description: input.Description}
 }
 
+func (s *adminServiceImpl) validateDefaultShardGroupAssignment(ctx context.Context, currentGroupID int64, enabled bool) error {
+	if !enabled {
+		return nil
+	}
+	existing, err := s.groupRepo.GetDefaultShardGroup(ctx)
+	if err != nil {
+		if errors.Is(err, ErrDefaultShardGroupNotConfigured) {
+			return nil
+		}
+		return err
+	}
+	if existing != nil && existing.ID != currentGroupID {
+		return ErrDefaultShardGroupAlreadyAssigned
+	}
+	return nil
+}
+
 func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupInput) (*Group, error) {
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && NormalizeGroupPlatform(input.Platform) == PlatformComposite {
 		return nil, infraerrors.BadRequest("SIMPLE_MODE_GROUP_NOT_BINDABLE", "composite groups are not supported in simple mode")
@@ -517,6 +534,24 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		mcpXMLInject = *input.MCPXMLInject
 	}
 
+	shardMaxUsersPerShard := input.ShardMaxUsersPerShard
+	if shardMaxUsersPerShard == 0 {
+		shardMaxUsersPerShard = 2
+	}
+	if shardMaxUsersPerShard < 1 {
+		return nil, errors.New("shard_max_users_per_shard must be > 0")
+	}
+	shardAutoCreate := true
+	if input.ShardAutoCreate != nil {
+		shardAutoCreate = *input.ShardAutoCreate
+	}
+	if input.ShardEnabled {
+		shardAutoCreate = true
+		if err := s.validateDefaultShardGroupAssignment(ctx, 0, true); err != nil {
+			return nil, err
+		}
+	}
+
 	allowImageGeneration := input.AllowImageGeneration || defaultAllowImageGenerationForPlatform(platform)
 	allowBatchImageGeneration := input.AllowBatchImageGeneration && allowImageGeneration && platform == PlatformGemini
 
@@ -603,6 +638,9 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
 		ModelRouting:                    input.ModelRouting,
 		MCPXMLInject:                    mcpXMLInject,
+		ShardEnabled:                    input.ShardEnabled,
+		ShardMaxUsersPerShard:           shardMaxUsersPerShard,
+		ShardAutoCreate:                 shardAutoCreate,
 		SupportedModelScopes:            input.SupportedModelScopes,
 		AllowMessagesDispatch:           input.AllowMessagesDispatch,
 		AllowLive:                       input.AllowLive,
@@ -970,6 +1008,24 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.MCPXMLInject != nil {
 		group.MCPXMLInject = *input.MCPXMLInject
+	}
+	if input.ShardEnabled != nil {
+		group.ShardEnabled = *input.ShardEnabled
+	}
+	if input.ShardMaxUsersPerShard != nil {
+		if *input.ShardMaxUsersPerShard < 1 {
+			return nil, errors.New("shard_max_users_per_shard must be > 0")
+		}
+		group.ShardMaxUsersPerShard = *input.ShardMaxUsersPerShard
+	}
+	if input.ShardAutoCreate != nil {
+		group.ShardAutoCreate = *input.ShardAutoCreate
+	}
+	if group.ShardEnabled {
+		group.ShardAutoCreate = true
+		if err := s.validateDefaultShardGroupAssignment(ctx, id, true); err != nil {
+			return nil, err
+		}
 	}
 
 	// 支持的模型系列（仅 antigravity 平台使用）

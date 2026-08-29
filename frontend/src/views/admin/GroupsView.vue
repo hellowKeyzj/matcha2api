@@ -422,6 +422,17 @@
               </button>
               <button
                 v-if="!authStore.isSimpleMode"
+                data-testid="group-shards"
+                @click="handleGroupShards(row)"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-blue-600 dark:hover:bg-dark-700 dark:hover:text-blue-400"
+              >
+                <Icon name="grid" size="sm" />
+                <span class="text-xs">{{
+                  t("admin.groups.shards.action")
+                }}</span>
+              </button>
+              <button
+                v-if="!authStore.isSimpleMode"
                 data-testid="group-rate-multipliers"
                 @click="handleRateMultipliers(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-purple-600 dark:hover:bg-dark-700 dark:hover:text-purple-400"
@@ -637,6 +648,46 @@
             :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
           />
           <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+        <div class="border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.shards.configTitle") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.shards.configHint") }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="createForm.shard_enabled = !createForm.shard_enabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                createForm.shard_enabled
+                  ? 'bg-primary-500'
+                  : 'bg-gray-300 dark:bg-dark-600',
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  createForm.shard_enabled ? 'translate-x-6' : 'translate-x-1',
+                ]"
+              />
+            </button>
+          </div>
+          <div v-if="createForm.shard_enabled" class="max-w-sm">
+            <label class="input-label">{{ t("admin.groups.shards.maxUsersPerShard") }}</label>
+            <input
+              v-model.number="createForm.shard_max_users_per_shard"
+              type="number"
+              min="1"
+              step="1"
+              class="input"
+            />
+            <p class="input-hint">{{ t("admin.groups.shards.maxUsersPerShardHint") }}</p>
+          </div>
         </div>
         <ReasoningEffortPolicyFields
           v-if="supportsReasoningEffortPolicyPlatform(createForm.platform)"
@@ -2275,6 +2326,46 @@
             :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
           />
           <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+        <div class="border-t pt-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.groups.shards.configTitle") }}
+              </label>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.groups.shards.configHint") }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="editForm.shard_enabled = !editForm.shard_enabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                editForm.shard_enabled
+                  ? 'bg-primary-500'
+                  : 'bg-gray-300 dark:bg-dark-600',
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  editForm.shard_enabled ? 'translate-x-6' : 'translate-x-1',
+                ]"
+              />
+            </button>
+          </div>
+          <div v-if="editForm.shard_enabled" class="max-w-sm">
+            <label class="input-label">{{ t("admin.groups.shards.maxUsersPerShard") }}</label>
+            <input
+              v-model.number="editForm.shard_max_users_per_shard"
+              type="number"
+              min="1"
+              step="1"
+              class="input"
+            />
+            <p class="input-hint">{{ t("admin.groups.shards.maxUsersPerShardHint") }}</p>
+          </div>
         </div>
         <ReasoningEffortPolicyFields
           v-if="supportsReasoningEffortPolicyPlatform(editForm.platform)"
@@ -4267,6 +4358,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
 import { useOnboardingStore } from "@/stores/onboarding";
@@ -4318,7 +4410,7 @@ import {
 import type { ChannelModelPricing } from "@/api/admin/channels";
 import { VueDraggable } from "vue-draggable-plus";
 import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
-import { extractApiErrorMessage } from "@/utils/apiError";
+import { extractApiErrorCode, extractApiErrorMessage } from "@/utils/apiError";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
 import {
@@ -4449,9 +4541,28 @@ const groupPricingToAPI = (
     }));
 
 const { t } = useI18n();
+const router = useRouter();
 const appStore = useAppStore();
 const authStore = useAuthStore();
 const onboardingStore = useOnboardingStore();
+
+const GROUP_ERROR_MESSAGE_KEYS: Record<string, string> = {
+  GROUP_EXISTS: "admin.groups.errors.GROUP_EXISTS",
+  DEFAULT_SHARD_GROUP_NOT_CONFIGURED:
+    "admin.groups.errors.DEFAULT_SHARD_GROUP_NOT_CONFIGURED",
+  DEFAULT_SHARD_GROUP_ALREADY_ASSIGNED:
+    "admin.groups.errors.DEFAULT_SHARD_GROUP_ALREADY_ASSIGNED",
+  GROUP_MODEL_TIME_PRICING_UNSUPPORTED:
+    "admin.groups.errors.GROUP_MODEL_TIME_PRICING_UNSUPPORTED",
+  GROUP_MODEL_PRICING_MODELS_REQUIRED:
+    "admin.groups.errors.GROUP_MODEL_PRICING_MODELS_REQUIRED",
+};
+
+const groupErrorMessage = (error: unknown, fallbackKey: string): string => {
+  const code = extractApiErrorCode(error);
+  const messageKey = code ? GROUP_ERROR_MESSAGE_KEYS[code] : undefined;
+  return t(messageKey || fallbackKey);
+};
 
 const ALWAYS_VISIBLE_COLUMNS = new Set(["name", "actions"]);
 // Default hidden columns (hidden on first load / after schema bumps).
@@ -5007,6 +5118,9 @@ const createForm = reactive({
   copy_accounts_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
+  shard_enabled: false,
+  shard_max_users_per_shard: 2,
+  shard_auto_create: true,
   max_reasoning_effort: "",
   max_reasoning_effort_over_limit: reasoningEffortOverLimitDowngrade,
   reasoning_effort_mappings: [] as ReasoningEffortMappingRow[],
@@ -5373,6 +5487,9 @@ const editForm = reactive({
   copy_accounts_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
+  shard_enabled: false,
+  shard_max_users_per_shard: 2,
+  shard_auto_create: true,
   max_reasoning_effort: "",
   max_reasoning_effort_over_limit: reasoningEffortOverLimitDowngrade,
   reasoning_effort_mappings: [] as ReasoningEffortMappingRow[],
@@ -5816,6 +5933,9 @@ const closeCreateModal = () => {
   createForm.mcp_xml_inject = true;
   createForm.copy_accounts_from_group_ids = [];
   createForm.rpm_limit = 0;
+  createForm.shard_enabled = false;
+  createForm.shard_max_users_per_shard = 2;
+  createForm.shard_auto_create = true;
   createForm.max_reasoning_effort = "";
   createForm.max_reasoning_effort_over_limit = reasoningEffortOverLimitDowngrade;
   createForm.reasoning_effort_mappings = [];
@@ -5851,6 +5971,13 @@ const normalizeRateMultiplier = (
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
+};
+
+const normalizeShardMaxUsersPerShard = (
+  value: number | string | null | undefined,
+): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 2;
 };
 
 // 利润控制表单辅助（换算与校验逻辑见 groupsProfitControl.ts，便于单测）。
@@ -6018,6 +6145,11 @@ const handleCreateGroup = async () => {
     requestData.peak_rate_multiplier = normalizeRateMultiplier(
       createForm.peak_rate_multiplier,
     );
+    requestData.shard_enabled = Boolean(createForm.shard_enabled);
+    requestData.shard_max_users_per_shard = normalizeShardMaxUsersPerShard(
+      createForm.shard_max_users_per_shard,
+    );
+    requestData.shard_auto_create = Boolean(createForm.shard_enabled);
     const payload = authStore.isSimpleMode
       ? {
           name: createForm.name,
@@ -6033,10 +6165,8 @@ const handleCreateGroup = async () => {
     if (onboardingStore.isCurrentStep('[data-tour="group-form-submit"]')) {
       onboardingStore.nextStep(500);
     }
-  } catch (error: any) {
-    appStore.showError(
-      extractApiErrorMessage(error, t("admin.groups.failedToCreate")),
-    );
+  } catch (error: unknown) {
+    appStore.showError(groupErrorMessage(error, "admin.groups.failedToCreate"));
     console.error("Error creating group:", error);
     // Don't advance tour on error
   } finally {
@@ -6056,6 +6186,9 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.daily_limit_usd = group.daily_limit_usd;
   editForm.weekly_limit_usd = group.weekly_limit_usd;
   editForm.monthly_limit_usd = group.monthly_limit_usd;
+  editForm.shard_enabled = Boolean(group.shard_enabled);
+  editForm.shard_max_users_per_shard = group.shard_max_users_per_shard || 2;
+  editForm.shard_auto_create = group.shard_auto_create ?? true;
   editForm.long_context_pricing_enabled =
     group.long_context_pricing_enabled ?? true;
   editForm.force_openai_fast = group.force_openai_fast ?? false;
@@ -6175,6 +6308,9 @@ const closeEditModal = () => {
   editForm.max_reasoning_effort = "";
   editForm.max_reasoning_effort_over_limit = reasoningEffortOverLimitDowngrade;
   editForm.reasoning_effort_mappings = [];
+  editForm.shard_enabled = false;
+  editForm.shard_max_users_per_shard = 2;
+  editForm.shard_auto_create = true;
   editReasoningEffortPolicyRef.value?.resetValidation();
   editModelRoutingRules.value = [];
   editForm.copy_accounts_from_group_ids = [];
@@ -6369,6 +6505,11 @@ const handleUpdateGroup = async () => {
     payload.peak_rate_multiplier = normalizeRateMultiplier(
       editForm.peak_rate_multiplier,
     );
+    payload.shard_enabled = Boolean(editForm.shard_enabled);
+    payload.shard_max_users_per_shard = normalizeShardMaxUsersPerShard(
+      editForm.shard_max_users_per_shard,
+    );
+    payload.shard_auto_create = Boolean(editForm.shard_enabled);
     const requestData = authStore.isSimpleMode
       ? {
           name: editForm.name,
@@ -6379,10 +6520,8 @@ const handleUpdateGroup = async () => {
     appStore.showSuccess(t("admin.groups.groupUpdated"));
     closeEditModal();
     loadGroups();
-  } catch (error: any) {
-    appStore.showError(
-      extractApiErrorMessage(error, t("admin.groups.failedToUpdate")),
-    );
+  } catch (error: unknown) {
+    appStore.showError(groupErrorMessage(error, "admin.groups.failedToUpdate"));
     console.error("Error updating group:", error);
   } finally {
     submitting.value = false;
@@ -6411,6 +6550,10 @@ const removeEditMessagesDispatchMapping = (row: MessagesDispatchMappingRow) => {
   if (index !== -1) {
     editForm.exact_model_mappings.splice(index, 1);
   }
+};
+
+const handleGroupShards = (group: AdminGroup) => {
+  router.push({ name: "AdminGroupShards", params: { id: String(group.id) } });
 };
 
 const handleRateMultipliers = (group: AdminGroup) => {

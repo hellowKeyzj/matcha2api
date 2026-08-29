@@ -114,6 +114,12 @@ const (
 	FieldSupportedModelScopes = "supported_model_scopes"
 	// FieldSortOrder holds the string denoting the sort_order field in the database.
 	FieldSortOrder = "sort_order"
+	// FieldShardEnabled holds the string denoting the shard_enabled field in the database.
+	FieldShardEnabled = "shard_enabled"
+	// FieldShardMaxUsersPerShard holds the string denoting the shard_max_users_per_shard field in the database.
+	FieldShardMaxUsersPerShard = "shard_max_users_per_shard"
+	// FieldShardAutoCreate holds the string denoting the shard_auto_create field in the database.
+	FieldShardAutoCreate = "shard_auto_create"
 	// FieldAllowMessagesDispatch holds the string denoting the allow_messages_dispatch field in the database.
 	FieldAllowMessagesDispatch = "allow_messages_dispatch"
 	// FieldAllowLive holds the string denoting the allow_live field in the database.
@@ -156,6 +162,8 @@ const (
 	EdgeSubscriptions = "subscriptions"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeShards holds the string denoting the shards edge name in mutations.
+	EdgeShards = "shards"
 	// EdgeAccounts holds the string denoting the accounts edge name in mutations.
 	EdgeAccounts = "accounts"
 	// EdgeAllowedUsers holds the string denoting the allowed_users edge name in mutations.
@@ -194,6 +202,13 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "group_id"
+	// ShardsTable is the table that holds the shards relation/edge.
+	ShardsTable = "group_shards"
+	// ShardsInverseTable is the table name for the GroupShard entity.
+	// It exists in this package in order to avoid circular dependency with the "groupshard" package.
+	ShardsInverseTable = "group_shards"
+	// ShardsColumn is the table column denoting the shards relation/edge.
+	ShardsColumn = "group_shards"
 	// AccountsTable is the table that holds the accounts relation/edge. The primary key declared below.
 	AccountsTable = "account_groups"
 	// AccountsInverseTable is the table name for the Account entity.
@@ -272,6 +287,9 @@ var Columns = []string{
 	FieldMcpXMLInject,
 	FieldSupportedModelScopes,
 	FieldSortOrder,
+	FieldShardEnabled,
+	FieldShardMaxUsersPerShard,
+	FieldShardAutoCreate,
 	FieldAllowMessagesDispatch,
 	FieldAllowLive,
 	FieldForceOpenaiFast,
@@ -394,6 +412,14 @@ var (
 	DefaultSupportedModelScopes []string
 	// DefaultSortOrder holds the default value on creation for the "sort_order" field.
 	DefaultSortOrder int
+	// DefaultShardEnabled holds the default value on creation for the "shard_enabled" field.
+	DefaultShardEnabled bool
+	// DefaultShardMaxUsersPerShard holds the default value on creation for the "shard_max_users_per_shard" field.
+	DefaultShardMaxUsersPerShard int
+	// ShardMaxUsersPerShardValidator is a validator for the "shard_max_users_per_shard" field. It is called by the builders before save.
+	ShardMaxUsersPerShardValidator func(int) error
+	// DefaultShardAutoCreate holds the default value on creation for the "shard_auto_create" field.
+	DefaultShardAutoCreate bool
 	// DefaultAllowMessagesDispatch holds the default value on creation for the "allow_messages_dispatch" field.
 	DefaultAllowMessagesDispatch bool
 	// DefaultAllowLive holds the default value on creation for the "allow_live" field.
@@ -669,6 +695,21 @@ func BySortOrder(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSortOrder, opts...).ToFunc()
 }
 
+// ByShardEnabled orders the results by the shard_enabled field.
+func ByShardEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShardEnabled, opts...).ToFunc()
+}
+
+// ByShardMaxUsersPerShard orders the results by the shard_max_users_per_shard field.
+func ByShardMaxUsersPerShard(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShardMaxUsersPerShard, opts...).ToFunc()
+}
+
+// ByShardAutoCreate orders the results by the shard_auto_create field.
+func ByShardAutoCreate(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShardAutoCreate, opts...).ToFunc()
+}
+
 // ByAllowMessagesDispatch orders the results by the allow_messages_dispatch field.
 func ByAllowMessagesDispatch(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAllowMessagesDispatch, opts...).ToFunc()
@@ -790,6 +831,20 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByShardsCount orders the results by shards count.
+func ByShardsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newShardsStep(), opts...)
+	}
+}
+
+// ByShards orders the results by shards terms.
+func ByShards(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newShardsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAccountsCount orders the results by accounts count.
 func ByAccountsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -871,6 +926,13 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newShardsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ShardsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ShardsTable, ShardsColumn),
 	)
 }
 func newAccountsStep() *sqlgraph.Step {

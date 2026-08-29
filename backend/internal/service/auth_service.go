@@ -86,6 +86,7 @@ type AuthService struct {
 	affiliateService      *AffiliateService
 	defaultSubAssigner    DefaultSubscriptionAssigner
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	defaultGatewayAccess  DefaultGatewayAccessProvisioner
 }
 
 type CaptchaProof struct {
@@ -152,6 +153,10 @@ func (s *AuthService) SetTencentCaptchaService(tencentCaptchaService *TencentCap
 
 func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptchaService) {
 	s.aliyunCaptchaService = aliyunCaptchaService
+}
+
+func (s *AuthService) SetDefaultGatewayAccessProvisioner(provisioner DefaultGatewayAccessProvisioner) {
+	s.defaultGatewayAccess = provisioner
 }
 
 // Register 用户注册，返回token和用户
@@ -245,6 +250,9 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 		Status:       StatusActive,
 	}
 
+	if err := s.requireDefaultGatewayAccess(ctx); err != nil {
+		return "", nil, err
+	}
 	if err := s.createUserAndClaimInvitation(ctx, user, invitationRedeemCode); err != nil {
 		// 优先检查邮箱冲突错误（竞态条件下可能发生）
 		switch {
@@ -259,7 +267,9 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 			return "", nil, ErrServiceUnavailable
 		}
 	}
-	s.postAuthUserBootstrap(ctx, user, "email", true)
+	if err := s.postAuthUserBootstrap(ctx, user, "email", true); err != nil {
+		return "", nil, s.rollbackCreatedUser(ctx, user.ID, err)
+	}
 	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 	// snapshot user × platform quota（fail-open）
 	_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
@@ -634,7 +644,9 @@ func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username 
 				}
 			} else {
 				user = newUser
-				s.postAuthUserBootstrap(ctx, user, signupSource, false)
+				if err := s.postAuthUserBootstrap(ctx, user, signupSource, false); err != nil {
+					return "", nil, s.rollbackCreatedUser(ctx, user.ID, err)
+				}
 				s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 				// snapshot user × platform quota（fail-open）
 				_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
@@ -769,6 +781,10 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 				SignupSource: signupSource,
 			}
 
+			if err := s.requireDefaultGatewayAccess(ctx); err != nil {
+				return nil, nil, err
+			}
+
 			if s.entClient != nil && invitationRedeemCode != nil {
 				tx, err := s.entClient.Tx(ctx)
 				if err != nil {
@@ -799,7 +815,10 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 					}
 					user = newUser
 					created = true
-					s.postAuthUserBootstrap(ctx, user, signupSource, false)
+					if err := s.postAuthUserBootstrap(ctx, user, signupSource, false); err != nil {
+						_ = s.RollbackOAuthEmailAccountCreation(ctx, user.ID, invitationCode)
+						return nil, nil, err
+					}
 					s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 					// snapshot user × platform quota（fail-open）
 					_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
@@ -820,13 +839,16 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 				} else {
 					user = newUser
 					created = true
-					s.postAuthUserBootstrap(ctx, user, signupSource, false)
+					if err := s.postAuthUserBootstrap(ctx, user, signupSource, false); err != nil {
+						return nil, nil, s.rollbackCreatedUser(ctx, user.ID, err)
+					}
 					s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 					// snapshot user × platform quota（fail-open）
 					_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 					s.bindOAuthAffiliate(ctx, user.ID, affiliateCode)
 					if invitationRedeemCode != nil {
 						if err := s.redeemRepo.Use(ctx, invitationRedeemCode.ID, user.ID); err != nil {
+							_ = s.RollbackOAuthEmailAccountCreation(ctx, user.ID, invitationCode)
 							return nil, nil, ErrInvitationCodeInvalid
 						}
 					}
@@ -987,9 +1009,9 @@ func (s *AuthService) bindOAuthAffiliate(ctx context.Context, userID int64, affi
 	}
 }
 
-func (s *AuthService) postAuthUserBootstrap(ctx context.Context, user *User, signupSource string, touchLogin bool) {
+func (s *AuthService) postAuthUserBootstrap(ctx context.Context, user *User, signupSource string, touchLogin bool) error {
 	if user == nil || user.ID <= 0 {
-		return
+		return nil
 	}
 
 	if strings.TrimSpace(signupSource) == "" {
@@ -1000,6 +1022,35 @@ func (s *AuthService) postAuthUserBootstrap(ctx context.Context, user *User, sig
 	if touchLogin {
 		s.touchUserLogin(ctx, user.ID)
 	}
+	if err := s.provisionDefaultGatewayAccess(ctx, user.ID); err != nil {
+		return fmt.Errorf("provision default gateway access: %w", err)
+	}
+	return nil
+}
+
+func (s *AuthService) requireDefaultGatewayAccess(ctx context.Context) error {
+	if s == nil || s.defaultGatewayAccess == nil {
+		return nil
+	}
+	_, err := s.defaultGatewayAccess.RequireDefaultShardGroup(ctx)
+	return err
+}
+
+func (s *AuthService) provisionDefaultGatewayAccess(ctx context.Context, userID int64) error {
+	if s == nil || s.defaultGatewayAccess == nil {
+		return nil
+	}
+	_, err := s.defaultGatewayAccess.ProvisionDefaultGatewayAccess(ctx, userID)
+	return err
+}
+
+func (s *AuthService) rollbackCreatedUser(ctx context.Context, userID int64, cause error) error {
+	if s != nil && s.userRepo != nil && userID > 0 {
+		if err := s.userRepo.Delete(ctx, userID); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to rollback user after gateway access provisioning failure: user_id=%d err=%v", userID, err)
+		}
+	}
+	return cause
 }
 
 func (s *AuthService) updateUserSignupSource(ctx context.Context, userID int64, signupSource string) {

@@ -280,6 +280,21 @@ func SortOrder(v int) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldSortOrder, v))
 }
 
+// ShardEnabled applies equality check predicate on the "shard_enabled" field. It's identical to ShardEnabledEQ.
+func ShardEnabled(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldShardEnabled, v))
+}
+
+// ShardMaxUsersPerShard applies equality check predicate on the "shard_max_users_per_shard" field. It's identical to ShardMaxUsersPerShardEQ.
+func ShardMaxUsersPerShard(v int) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardAutoCreate applies equality check predicate on the "shard_auto_create" field. It's identical to ShardAutoCreateEQ.
+func ShardAutoCreate(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldShardAutoCreate, v))
+}
+
 // AllowMessagesDispatch applies equality check predicate on the "allow_messages_dispatch" field. It's identical to AllowMessagesDispatchEQ.
 func AllowMessagesDispatch(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldAllowMessagesDispatch, v))
@@ -2265,6 +2280,66 @@ func SortOrderLTE(v int) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldSortOrder, v))
 }
 
+// ShardEnabledEQ applies the EQ predicate on the "shard_enabled" field.
+func ShardEnabledEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldShardEnabled, v))
+}
+
+// ShardEnabledNEQ applies the NEQ predicate on the "shard_enabled" field.
+func ShardEnabledNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldShardEnabled, v))
+}
+
+// ShardMaxUsersPerShardEQ applies the EQ predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardEQ(v int) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardMaxUsersPerShardNEQ applies the NEQ predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardNEQ(v int) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardMaxUsersPerShardIn applies the In predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardIn(vs ...int) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldShardMaxUsersPerShard, vs...))
+}
+
+// ShardMaxUsersPerShardNotIn applies the NotIn predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardNotIn(vs ...int) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldShardMaxUsersPerShard, vs...))
+}
+
+// ShardMaxUsersPerShardGT applies the GT predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardGT(v int) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardMaxUsersPerShardGTE applies the GTE predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardGTE(v int) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardMaxUsersPerShardLT applies the LT predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardLT(v int) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardMaxUsersPerShardLTE applies the LTE predicate on the "shard_max_users_per_shard" field.
+func ShardMaxUsersPerShardLTE(v int) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldShardMaxUsersPerShard, v))
+}
+
+// ShardAutoCreateEQ applies the EQ predicate on the "shard_auto_create" field.
+func ShardAutoCreateEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldShardAutoCreate, v))
+}
+
+// ShardAutoCreateNEQ applies the NEQ predicate on the "shard_auto_create" field.
+func ShardAutoCreateNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldShardAutoCreate, v))
+}
+
 // AllowMessagesDispatchEQ applies the EQ predicate on the "allow_messages_dispatch" field.
 func AllowMessagesDispatchEQ(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldAllowMessagesDispatch, v))
@@ -2734,6 +2809,29 @@ func HasUsageLogs() predicate.Group {
 func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
 		step := newUsageLogsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasShards applies the HasEdge predicate on the "shards" edge.
+func HasShards() predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ShardsTable, ShardsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasShardsWith applies the HasEdge predicate on the "shards" edge with a given conditions (other predicates).
+func HasShardsWith(preds ...predicate.GroupShard) predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := newShardsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

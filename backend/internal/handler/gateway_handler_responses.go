@@ -187,7 +187,7 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 		if failoverClientGone(c) {
 			return
 		}
-		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(requestCtx, apiKey.GroupID, sessionHash, reqModel, fs.FailedAccountIDs, "", int64(0))
+		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(requestCtx, apiKey.GroupID, sessionHash, reqModel, fs.FailedAccountIDs, "", subject.UserID)
 		if err != nil {
 			if failoverClientGone(c) {
 				reqLog.Info("gateway.responses.account_select_aborted_client_disconnected", zap.Error(err))

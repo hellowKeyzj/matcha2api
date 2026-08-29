@@ -345,7 +345,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		}
 
 		for {
-			selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, "", int64(0)) // Gemini 不使用会话限制
+			selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, "", subject.UserID)
 			if err != nil {
 				if failoverClientGone(c) {
 					reqLog.Info("gateway.account_select_aborted_client_disconnected", zap.Error(err))

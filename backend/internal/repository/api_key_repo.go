@@ -258,6 +258,9 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey, fiel
 	builder := client.APIKey.Update().
 		Where(apikey.IDEQ(key.ID), apikey.DeletedAtIsNil()).
 		SetUpdatedAt(now)
+	if fields.Key {
+		builder.SetKey(key.Key)
+	}
 	if fields.Name {
 		builder.SetName(key.Name)
 	}
@@ -332,7 +335,7 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey, fiel
 
 	affected, err := builder.Save(ctx)
 	if err != nil {
-		return err
+		return translatePersistenceError(err, service.ErrAPIKeyNotFound, service.ErrAPIKeyExists)
 	}
 	if affected == 0 {
 		// 更新影响行数为 0，说明记录不存在或已被软删除。
@@ -1020,6 +1023,9 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 		MCPXMLInject:                    g.McpXMLInject,
 		SupportedModelScopes:            g.SupportedModelScopes,
 		SortOrder:                       g.SortOrder,
+		ShardEnabled:                    g.ShardEnabled,
+		ShardMaxUsersPerShard:           g.ShardMaxUsersPerShard,
+		ShardAutoCreate:                 g.ShardAutoCreate,
 		AllowMessagesDispatch:           g.AllowMessagesDispatch,
 		AllowLive:                       g.AllowLive,
 		ForceOpenAIFast:                 g.ForceOpenaiFast,

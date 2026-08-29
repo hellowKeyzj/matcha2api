@@ -97,6 +97,10 @@ type Group struct {
 	// 分组排序
 	SortOrder int
 
+	ShardEnabled          bool
+	ShardMaxUsersPerShard int
+	ShardAutoCreate       bool
+
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
 	AllowMessagesDispatch       bool
 	AllowLive                   bool

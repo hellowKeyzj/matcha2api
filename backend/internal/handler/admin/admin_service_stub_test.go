@@ -365,6 +365,58 @@ func (s *stubAdminService) PreviewCompositeRoute(ctx context.Context, groupID in
 	return &decision, nil
 }
 
+func (s *stubAdminService) ListGroupShards(ctx context.Context, groupID int64) ([]service.GroupShard, error) {
+	return []service.GroupShard{{ID: 1, GroupID: groupID, Name: "Shard 1", Status: service.StatusActive}}, nil
+}
+
+func (s *stubAdminService) GetGroupShard(ctx context.Context, groupID, shardID int64) (*service.GroupShard, error) {
+	return &service.GroupShard{ID: shardID, GroupID: groupID, Name: "Shard 1", Status: service.StatusActive}, nil
+}
+
+func (s *stubAdminService) CreateGroupShard(ctx context.Context, groupID int64, input service.GroupShardInput) (*service.GroupShard, error) {
+	return &service.GroupShard{ID: 1, GroupID: groupID, Name: input.Name, Description: input.Description, Status: service.StatusActive}, nil
+}
+
+func (s *stubAdminService) UpdateGroupShard(ctx context.Context, groupID, shardID int64, input service.UpdateGroupShardInput) (*service.GroupShard, error) {
+	name := "Shard 1"
+	if input.Name != nil {
+		name = *input.Name
+	}
+	status := service.StatusActive
+	if input.Status != nil {
+		status = *input.Status
+	}
+	return &service.GroupShard{ID: shardID, GroupID: groupID, Name: name, Status: status}, nil
+}
+
+func (s *stubAdminService) DeleteGroupShard(ctx context.Context, groupID, shardID int64) error {
+	return nil
+}
+
+func (s *stubAdminService) ListGroupShardUsers(ctx context.Context, groupID, shardID int64) ([]service.GroupShardUser, error) {
+	return []service.GroupShardUser{{GroupShardID: shardID, GroupID: groupID, UserID: 1, Email: "user@example.com"}}, nil
+}
+
+func (s *stubAdminService) AssignGroupShardUser(ctx context.Context, groupID, shardID, userID int64) error {
+	return nil
+}
+
+func (s *stubAdminService) RemoveGroupShardUser(ctx context.Context, groupID, shardID, userID int64) error {
+	return nil
+}
+
+func (s *stubAdminService) ListGroupShardAccounts(ctx context.Context, groupID, shardID int64) ([]service.GroupShardAccount, error) {
+	return []service.GroupShardAccount{{GroupShardID: shardID, GroupID: groupID, AccountID: 3, Name: "account", Platform: service.PlatformAnthropic, Type: service.AccountTypeOAuth, Status: service.StatusActive}}, nil
+}
+
+func (s *stubAdminService) SetGroupShardAccounts(ctx context.Context, groupID, shardID int64, input service.GroupShardAccountsInput) ([]service.GroupShardAccount, error) {
+	out := make([]service.GroupShardAccount, 0, len(input.Accounts))
+	for _, account := range input.Accounts {
+		out = append(out, service.GroupShardAccount{GroupShardID: shardID, GroupID: groupID, AccountID: account.AccountID, Platform: service.PlatformAnthropic, Status: service.StatusActive, Priority: account.Priority})
+	}
+	return out, nil
+}
+
 func (s *stubAdminService) CreateGroup(ctx context.Context, input *service.CreateGroupInput) (*service.Group, error) {
 	s.createdGroups = append(s.createdGroups, input)
 	group := service.Group{ID: 200, Name: input.Name, Status: service.StatusActive}

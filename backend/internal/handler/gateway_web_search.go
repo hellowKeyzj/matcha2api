@@ -152,7 +152,7 @@ func (h *GatewayHandler) WebSearch(c *gin.Context) {
 	// First attempt + up to 3 failover accounts (max 4 total).
 	for attempt := 0; attempt < 4; attempt++ {
 		selected, selectErr := h.gatewayService.SelectAccountWithLoadAwareness(
-			c.Request.Context(), groupID, "", searchModel, failedAccounts, "", 0,
+			c.Request.Context(), groupID, "", searchModel, failedAccounts, "", subject.UserID,
 		)
 		if selectErr != nil {
 			if attempt == 0 {

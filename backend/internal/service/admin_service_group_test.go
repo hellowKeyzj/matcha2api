@@ -41,6 +41,9 @@ type groupRepoStubForAdmin struct {
 	listWithFiltersGroups      []Group
 	listWithFiltersResult      *pagination.PaginationResult
 	listWithFiltersErr         error
+	defaultShardGroup          *Group
+	defaultShardGroupErr       error
+	defaultShardGroupCalls     int
 }
 
 func (s *groupRepoStubForAdmin) Create(_ context.Context, g *Group) error {
@@ -302,6 +305,18 @@ func (s *groupRepoStubForAdmin) ListActiveByPlatform(_ context.Context, _ string
 	panic("unexpected ListActiveByPlatform call")
 }
 
+func (s *groupRepoStubForAdmin) GetDefaultShardGroup(context.Context) (*Group, error) {
+	s.defaultShardGroupCalls++
+	if s.defaultShardGroupErr != nil {
+		return nil, s.defaultShardGroupErr
+	}
+	if s.defaultShardGroup == nil {
+		return nil, ErrDefaultShardGroupNotConfigured
+	}
+	clone := *s.defaultShardGroup
+	return &clone, nil
+}
+
 func (s *groupRepoStubForAdmin) ExistsByName(_ context.Context, _ string) (bool, error) {
 	panic("unexpected ExistsByName call")
 }
@@ -376,6 +391,88 @@ func TestAdminService_UpdateGroup_RejectsTimePricing(t *testing.T) {
 	require.Equal(t, int32(http.StatusBadRequest), appErr.Code)
 	require.Equal(t, "GROUP_MODEL_TIME_PRICING_UNSUPPORTED", appErr.Reason)
 	require.Nil(t, repo.updated)
+}
+
+func TestAdminService_CreateGroup_RejectsSecondDefaultShardGroup(t *testing.T) {
+	repo := &groupRepoStubForAdmin{defaultShardGroup: &Group{ID: 9, Name: "existing-default"}}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	_, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:           "second-default",
+		Platform:       PlatformOpenAI,
+		RateMultiplier: 1,
+		ShardEnabled:   true,
+	})
+
+	require.ErrorIs(t, err, ErrDefaultShardGroupAlreadyAssigned)
+	require.Equal(t, 1, repo.defaultShardGroupCalls)
+	require.Nil(t, repo.created)
+}
+
+func TestAdminService_CreateGroup_ForcesAutoCreateForShardEnabledGroup(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	svc := &adminServiceImpl{groupRepo: repo}
+	shardAutoCreate := false
+
+	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:                  "default-shard",
+		Platform:              PlatformOpenAI,
+		RateMultiplier:        1,
+		ShardEnabled:          true,
+		ShardMaxUsersPerShard: 3,
+		ShardAutoCreate:       &shardAutoCreate,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.Equal(t, 1, repo.defaultShardGroupCalls)
+	require.NotNil(t, repo.created)
+	require.True(t, repo.created.ShardEnabled)
+	require.Equal(t, 3, repo.created.ShardMaxUsersPerShard)
+	require.True(t, repo.created.ShardAutoCreate)
+}
+
+func TestAdminService_UpdateGroup_RejectsSecondDefaultShardGroup(t *testing.T) {
+	existing := &Group{ID: 1, Name: "ordinary", Platform: PlatformOpenAI, Status: StatusActive}
+	repo := &groupRepoStubForAdmin{
+		getByID:           existing,
+		defaultShardGroup: &Group{ID: 2, Name: "existing-default"},
+	}
+	svc := &adminServiceImpl{groupRepo: repo}
+	shardEnabled := true
+
+	_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{ShardEnabled: &shardEnabled})
+
+	require.ErrorIs(t, err, ErrDefaultShardGroupAlreadyAssigned)
+	require.Equal(t, 1, repo.defaultShardGroupCalls)
+	require.Nil(t, repo.updated)
+}
+
+func TestAdminService_UpdateGroup_AllowsCurrentDefaultShardGroupAndForcesAutoCreate(t *testing.T) {
+	existing := &Group{
+		ID:                    1,
+		Name:                  "default-shard",
+		Platform:              PlatformOpenAI,
+		Status:                StatusActive,
+		ShardEnabled:          true,
+		ShardMaxUsersPerShard: 2,
+		ShardAutoCreate:       false,
+	}
+	repo := &groupRepoStubForAdmin{
+		getByID:           existing,
+		defaultShardGroup: &Group{ID: existing.ID, Name: existing.Name},
+	}
+	svc := &adminServiceImpl{groupRepo: repo}
+	shardAutoCreate := false
+
+	group, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{ShardAutoCreate: &shardAutoCreate})
+
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.Equal(t, 1, repo.defaultShardGroupCalls)
+	require.NotNil(t, repo.updated)
+	require.True(t, repo.updated.ShardEnabled)
+	require.True(t, repo.updated.ShardAutoCreate)
 }
 
 func TestNormalizeGroupModelPricing_NormalizesEmptyTimePricing(t *testing.T) {
@@ -1584,6 +1681,10 @@ func (s *groupRepoStubForFallbackCycle) ListActiveByPlatform(_ context.Context, 
 	panic("unexpected ListActiveByPlatform call")
 }
 
+func (s *groupRepoStubForFallbackCycle) GetDefaultShardGroup(context.Context) (*Group, error) {
+	return nil, ErrDefaultShardGroupNotConfigured
+}
+
 func (s *groupRepoStubForFallbackCycle) ExistsByName(_ context.Context, _ string) (bool, error) {
 	panic("unexpected ExistsByName call")
 }
@@ -1657,6 +1758,10 @@ func (s *groupRepoStubForInvalidRequestFallback) ListActive(_ context.Context) (
 
 func (s *groupRepoStubForInvalidRequestFallback) ListActiveByPlatform(_ context.Context, _ string) ([]Group, error) {
 	panic("unexpected ListActiveByPlatform call")
+}
+
+func (s *groupRepoStubForInvalidRequestFallback) GetDefaultShardGroup(context.Context) (*Group, error) {
+	return nil, ErrDefaultShardGroupNotConfigured
 }
 
 func (s *groupRepoStubForInvalidRequestFallback) ExistsByName(_ context.Context, _ string) (bool, error) {

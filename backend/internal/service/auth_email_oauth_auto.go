@@ -190,6 +190,9 @@ func (s *AuthService) createEmailOAuthUser(ctx context.Context, email, username,
 		Status:       StatusActive,
 		SignupSource: providerType,
 	}
+	if err := s.requireDefaultGatewayAccess(ctx); err != nil {
+		return nil, err
+	}
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		if errors.Is(err, ErrEmailExists) {
 			existing, loadErr := s.userRepo.GetByEmail(ctx, email)
@@ -200,7 +203,9 @@ func (s *AuthService) createEmailOAuthUser(ctx context.Context, email, username,
 		}
 		return nil, ErrServiceUnavailable
 	}
-	s.postAuthUserBootstrap(ctx, user, providerType, false)
+	if err := s.postAuthUserBootstrap(ctx, user, providerType, false); err != nil {
+		return nil, s.rollbackCreatedUser(ctx, user.ID, err)
+	}
 	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 	// snapshot user × platform quota（fail-open）
 	_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)

@@ -226,9 +226,84 @@ func groupFromServiceBase(g *service.Group) Group {
 		MaxReasoningEffort:              g.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit:     g.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:         g.ReasoningEffortMappings,
+		ShardEnabled:                    g.ShardEnabled,
+		ShardMaxUsersPerShard:           g.ShardMaxUsersPerShard,
+		ShardAutoCreate:                 g.ShardAutoCreate,
 		CreatedAt:                       g.CreatedAt,
 		UpdatedAt:                       g.UpdatedAt,
 	}
+}
+
+func GroupShardFromService(s *service.GroupShard) *GroupShard {
+	if s == nil {
+		return nil
+	}
+	return &GroupShard{
+		ID:           s.ID,
+		GroupID:      s.GroupID,
+		Name:         s.Name,
+		Description:  s.Description,
+		Status:       s.Status,
+		UserCount:    s.UserCount,
+		AccountCount: s.AccountCount,
+		CreatedAt:    s.CreatedAt,
+		UpdatedAt:    s.UpdatedAt,
+	}
+}
+
+func GroupShardsFromService(items []service.GroupShard) []GroupShard {
+	out := make([]GroupShard, 0, len(items))
+	for i := range items {
+		out = append(out, *GroupShardFromService(&items[i]))
+	}
+	return out
+}
+
+func GroupShardUserFromService(u *service.GroupShardUser) *GroupShardUser {
+	if u == nil {
+		return nil
+	}
+	return &GroupShardUser{
+		GroupShardID: u.GroupShardID,
+		GroupID:      u.GroupID,
+		UserID:       u.UserID,
+		Email:        u.Email,
+		Username:     u.Username,
+		CreatedAt:    u.CreatedAt,
+	}
+}
+
+func GroupShardUsersFromService(items []service.GroupShardUser) []GroupShardUser {
+	out := make([]GroupShardUser, 0, len(items))
+	for i := range items {
+		out = append(out, *GroupShardUserFromService(&items[i]))
+	}
+	return out
+}
+
+func GroupShardAccountFromService(a *service.GroupShardAccount) *GroupShardAccount {
+	if a == nil {
+		return nil
+	}
+	return &GroupShardAccount{
+		GroupShardID: a.GroupShardID,
+		GroupID:      a.GroupID,
+		AccountID:    a.AccountID,
+		Name:         a.Name,
+		Platform:     a.Platform,
+		Type:         a.Type,
+		Status:       a.Status,
+		Priority:     a.Priority,
+		CreatedAt:    a.CreatedAt,
+	}
+}
+
+func GroupShardAccountsFromService(items []service.GroupShardAccount) []GroupShardAccount {
+	out := make([]GroupShardAccount, 0, len(items))
+	for i := range items {
+		out = append(out, *GroupShardAccountFromService(&items[i]))
+	}
+	return out
 }
 
 func AccountFromServiceShallow(a *service.Account) *Account {

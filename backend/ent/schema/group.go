@@ -235,6 +235,18 @@ func (Group) Fields() []ent.Field {
 			Default(0).
 			Comment("分组显示排序，数值越小越靠前"),
 
+		// 用户/账号隔离分片配置（added by migration 231）
+		field.Bool("shard_enabled").
+			Default(false).
+			Comment("是否启用分组内用户/账号隔离分片；启用后调度仅从用户所在 shard 的账号中选择"),
+		field.Int("shard_max_users_per_shard").
+			Default(2).
+			Min(1).
+			Comment("每个 shard 允许绑定的最大用户数"),
+		field.Bool("shard_auto_create").
+			Default(true).
+			Comment("启用 shard 隔离后，用户首次进入该分组时是否自动分配到可用 shard"),
+
 		// OpenAI Messages 调度配置 (added by migration 069)
 		field.Bool("allow_messages_dispatch").
 			Default(false).
@@ -312,6 +324,7 @@ func (Group) Edges() []ent.Edge {
 		edge.To("redeem_codes", RedeemCode.Type),
 		edge.To("subscriptions", UserSubscription.Type),
 		edge.To("usage_logs", UsageLog.Type),
+		edge.To("shards", GroupShard.Type),
 		edge.From("accounts", Account.Type).
 			Ref("groups").
 			Through("account_groups", AccountGroup.Type),
@@ -336,5 +349,9 @@ func (Group) Indexes() []ent.Index {
 			Unique().
 			StorageKey("idx_groups_duplicate_operation_id_active").
 			Annotations(entsql.IndexWhere("duplicate_operation_id IS NOT NULL AND deleted_at IS NULL")),
+		index.Fields("shard_enabled").
+			Unique().
+			StorageKey("idx_groups_single_default_shard_group").
+			Annotations(entsql.IndexWhere("shard_enabled = true AND deleted_at IS NULL")),
 	}
 }

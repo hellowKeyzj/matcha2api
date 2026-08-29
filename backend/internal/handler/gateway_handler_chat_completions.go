@@ -190,7 +190,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		if failoverClientGone(c) {
 			return
 		}
-		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, selectionSessionHash, reqModel, fs.FailedAccountIDs, "", int64(0))
+		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, selectionSessionHash, reqModel, fs.FailedAccountIDs, "", subject.UserID)
 		if err != nil {
 			if failoverClientGone(c) {
 				reqLog.Info("gateway.cc.account_select_aborted_client_disconnected", zap.Error(err))

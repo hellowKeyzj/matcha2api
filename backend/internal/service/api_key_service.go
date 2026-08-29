@@ -24,16 +24,15 @@ import (
 )
 
 var (
-	ErrAPIKeyNotFound       = infraerrors.NotFound("API_KEY_NOT_FOUND", "api key not found")
-	ErrGroupNotAllowed      = infraerrors.Forbidden("GROUP_NOT_ALLOWED", "user is not allowed to bind this group")
-	ErrAPIKeyExists         = infraerrors.Conflict("API_KEY_EXISTS", "api key already exists")
-	ErrAPIKeyTooShort       = infraerrors.BadRequest("API_KEY_TOO_SHORT", "api key must be at least 16 characters")
-	ErrAPIKeyInvalidChars   = infraerrors.BadRequest("API_KEY_INVALID_CHARS", "api key can only contain letters, numbers, underscores, and hyphens")
-	ErrAPIKeyRateLimited    = infraerrors.TooManyRequests("API_KEY_RATE_LIMITED", "too many failed attempts, please try again later")
-	ErrAPIKeyCreateLimited  = infraerrors.TooManyRequests("API_KEY_CREATE_RATE_LIMITED", "too many api keys created recently, please try again later")
-	ErrAPIKeyCountExceeded  = infraerrors.Forbidden("API_KEY_COUNT_EXCEEDED", "api key count limit reached, please delete unused keys first")
-	ErrAPIKeyAuthOverloaded = infraerrors.ServiceUnavailable("API_KEY_AUTH_OVERLOADED", "api key authentication is temporarily overloaded")
-	ErrInvalidIPPattern     = infraerrors.BadRequest("INVALID_IP_PATTERN", "invalid IP or CIDR pattern")
+	ErrAPIKeyNotFound            = infraerrors.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	ErrAPIKeyExists              = infraerrors.Conflict("API_KEY_EXISTS", "api key already exists")
+	ErrAPIKeyCreateLimited       = infraerrors.TooManyRequests("API_KEY_CREATE_RATE_LIMITED", "too many api keys created recently, please try again later")
+	ErrAPIKeyCountExceeded       = infraerrors.Forbidden("API_KEY_COUNT_EXCEEDED", "api key count limit reached")
+	ErrAPIKeyAuthOverloaded      = infraerrors.ServiceUnavailable("API_KEY_AUTH_OVERLOADED", "api key authentication is temporarily overloaded")
+	ErrAPIKeySelfCreateDisabled  = infraerrors.Forbidden("API_KEY_SELF_CREATE_DISABLED", "API key creation is managed by the system; rotate the default key instead")
+	ErrAPIKeySelfDeleteDisabled  = infraerrors.Forbidden("API_KEY_SELF_DELETE_DISABLED", "API key deletion is disabled; rotate the key instead")
+	ErrAPIKeyGroupChangeDisabled = infraerrors.Forbidden("API_KEY_GROUP_CHANGE_DISABLED", "API key group binding is managed by the system")
+	ErrInvalidIPPattern          = infraerrors.BadRequest("INVALID_IP_PATTERN", "invalid IP or CIDR pattern")
 	// ErrAPIKeyExpired        = infraerrors.Forbidden("API_KEY_EXPIRED", "api key has expired")
 	ErrAPIKeyExpired = infraerrors.Forbidden("API_KEY_EXPIRED", "api key 已过期")
 	// ErrAPIKeyQuotaExhausted = infraerrors.TooManyRequests("API_KEY_QUOTA_EXHAUSTED", "api key quota exhausted")
@@ -49,7 +48,6 @@ const (
 	MaxAPIKeyCredentialBytes     = 128
 	defaultAuthLookupConcurrency = 64
 	defaultNegativeAuthCacheSize = 16384
-	apiKeyMaxErrorsPerHour       = 20
 	apiKeyCreateCountWindow      = time.Hour
 	apiKeyLastUsedMinTouch       = 30 * time.Second
 	apiKeySortCurrentConcurrency = "current_concurrency"
@@ -64,6 +62,7 @@ const (
 // 若编辑 Key 时无条件整行回写，并发累计的配额与限流计数就会被旧快照覆盖。
 // 因此调用方必须显式声明要改的列。
 type APIKeyUpdateFields struct {
+	Key       bool
 	Name      bool
 	Status    bool
 	Quota     bool
@@ -389,58 +388,17 @@ func (s *APIKeyService) GenerateKey() (string, error) {
 	}
 
 	// 转换为十六进制字符串并添加前缀
-	prefix := s.cfg.Default.APIKeyPrefix
-	if prefix == "" {
-		prefix = "sk-"
+	prefix := "sk-"
+	if s != nil && s.cfg != nil && s.cfg.Default.APIKeyPrefix != "" {
+		prefix = s.cfg.Default.APIKeyPrefix
 	}
 
 	key := prefix + hex.EncodeToString(bytes)
 	return key, nil
 }
 
-// ValidateCustomKey 验证自定义API Key格式
-func (s *APIKeyService) ValidateCustomKey(key string) error {
-	// 检查长度
-	if len(key) < 16 {
-		return ErrAPIKeyTooShort
-	}
-
-	// 检查字符：只允许字母、数字、下划线、连字符
-	for _, c := range key {
-		if (c >= 'a' && c <= 'z') ||
-			(c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') ||
-			c == '_' || c == '-' {
-			continue
-		}
-		return ErrAPIKeyInvalidChars
-	}
-
-	return nil
-}
-
-// checkAPIKeyRateLimit 检查用户创建自定义Key的错误次数是否超限
-func (s *APIKeyService) checkAPIKeyRateLimit(ctx context.Context, userID int64) error {
-	if s.cache == nil {
-		return nil
-	}
-
-	count, err := s.cache.GetCreateAttemptCount(ctx, userID)
-	if err != nil {
-		// Redis 出错时不阻止用户操作
-		return nil
-	}
-
-	if count >= apiKeyMaxErrorsPerHour {
-		return ErrAPIKeyRateLimited
-	}
-
-	return nil
-}
-
-// checkAPIKeyCreateLimits 校验创建 API Key 的防滥用限制（对自定义与自动生成的 Key 一视同仁）。
-// 数量上限按未删除的 Key 计；创建次数按固定窗口累计，删除 Key 不返还次数，
-// 以阻断"删除后反复新建"的循环。Redis 出错时与自定义 Key 限流一致，不阻止用户操作。
+// checkAPIKeyCreateLimits 保留托管 Key 的数量上限和创建速率保护。
+// 计数按用户累计，不因删除、状态更新或轮换重置；Redis 出错时不阻止发放。
 func (s *APIKeyService) checkAPIKeyCreateLimits(ctx context.Context, userID int64) error {
 	if s.cfg == nil {
 		return nil
@@ -466,106 +424,49 @@ func (s *APIKeyService) checkAPIKeyCreateLimits(ctx context.Context, userID int6
 	return nil
 }
 
-// incrementAPIKeyErrorCount 增加用户创建自定义Key的错误计数
-func (s *APIKeyService) incrementAPIKeyErrorCount(ctx context.Context, userID int64) {
-	if s.cache == nil {
-		return
-	}
-
-	_ = s.cache.IncrementCreateAttemptCount(ctx, userID)
-}
-
-// canUserBindGroup 检查用户是否可以绑定指定分组
-// 对于订阅类型分组：检查用户是否有有效订阅
-// 对于标准类型分组：使用原有的 AllowedGroups 和 IsExclusive 逻辑
-func (s *APIKeyService) canUserBindGroup(ctx context.Context, user *User, group *Group) bool {
-	// 订阅类型分组：需要有效订阅
-	if group.IsSubscriptionType() {
-		_, err := s.userSubRepo.GetActiveByUserIDAndGroupID(ctx, user.ID, group.ID)
-		return err == nil // 有有效订阅则允许
-	}
-	// 标准类型分组：使用原有逻辑
-	return user.CanBindGroup(group.ID, group.IsExclusive)
-}
-
-// Create 创建API Key
+// Create rejects ordinary user-created API keys; default keys are issued by DefaultGatewayAccessService.
 func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIKeyRequest) (*APIKey, error) {
+	return nil, ErrAPIKeySelfCreateDisabled
+}
+
+// CreateSystem issues a random managed key; trusted callers control group binding.
+// CustomKey is deliberately ignored, and ordinary user creation remains disabled.
+func (s *APIKeyService) CreateSystem(ctx context.Context, userID int64, req CreateAPIKeyRequest) (*APIKey, error) {
 	if err := validateCreateAPIKeyRequest(req); err != nil {
 		return nil, err
 	}
-	// 验证用户存在
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
+	if s == nil || s.userRepo == nil || s.groupRepo == nil || s.apiKeyRepo == nil {
+		return nil, ErrServiceUnavailable
+	}
+	if _, err := s.userRepo.GetByID(ctx, userID); err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	// 验证 IP 白名单格式
 	if len(req.IPWhitelist) > 0 {
 		if invalid := ip.ValidateIPPatterns(req.IPWhitelist); len(invalid) > 0 {
 			return nil, fmt.Errorf("%w: %v", ErrInvalidIPPattern, invalid)
 		}
 	}
-
-	// 验证 IP 黑名单格式
 	if len(req.IPBlacklist) > 0 {
 		if invalid := ip.ValidateIPPatterns(req.IPBlacklist); len(invalid) > 0 {
 			return nil, fmt.Errorf("%w: %v", ErrInvalidIPPattern, invalid)
 		}
 	}
 
-	// 验证分组权限（如果指定了分组）
 	if req.GroupID != nil {
-		group, err := s.groupRepo.GetByID(ctx, *req.GroupID)
-		if err != nil {
+		if _, err := s.groupRepo.GetByID(ctx, *req.GroupID); err != nil {
 			return nil, fmt.Errorf("get group: %w", err)
 		}
-
-		// 检查用户是否可以绑定该分组
-		if !s.canUserBindGroup(ctx, user, group) {
-			return nil, ErrGroupNotAllowed
-		}
 	}
 
-	var key string
-
-	// 判断是否使用自定义Key
-	if req.CustomKey != nil && *req.CustomKey != "" {
-		// 检查限流（仅对自定义key进行限流）
-		if err := s.checkAPIKeyRateLimit(ctx, userID); err != nil {
-			return nil, err
-		}
-
-		// 验证自定义Key格式
-		if err := s.ValidateCustomKey(*req.CustomKey); err != nil {
-			return nil, err
-		}
-
-		// 检查Key是否已存在
-		exists, err := s.apiKeyRepo.ExistsByKey(ctx, *req.CustomKey)
-		if err != nil {
-			return nil, fmt.Errorf("check key exists: %w", err)
-		}
-		if exists {
-			// Key已存在，增加错误计数
-			s.incrementAPIKeyErrorCount(ctx, userID)
-			return nil, ErrAPIKeyExists
-		}
-
-		key = *req.CustomKey
-	} else {
-		// 生成随机API Key
-		var err error
-		key, err = s.GenerateKey()
-		if err != nil {
-			return nil, fmt.Errorf("generate key: %w", err)
-		}
+	key, err := s.GenerateKey()
+	if err != nil {
+		return nil, fmt.Errorf("generate key: %w", err)
 	}
-
 	if err := s.checkAPIKeyCreateLimits(ctx, userID); err != nil {
 		return nil, err
 	}
 
-	// 创建API Key记录
 	apiKey := &APIKey{
 		UserID:      userID,
 		Key:         key,
@@ -580,20 +481,16 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		RateLimit1d: req.RateLimit1d,
 		RateLimit7d: req.RateLimit7d,
 	}
-
-	// Set expiration time if specified
 	if req.ExpiresInDays != nil && *req.ExpiresInDays > 0 {
 		expiresAt := time.Now().AddDate(0, 0, *req.ExpiresInDays)
 		apiKey.ExpiresAt = &expiresAt
 	}
-
 	if err := s.apiKeyRepo.Create(ctx, apiKey); err != nil {
 		return nil, fmt.Errorf("create api key: %w", err)
 	}
 
 	s.InvalidateAuthCacheByKey(ctx, apiKey.Key)
 	s.compileAPIKeyIPRules(apiKey)
-
 	return apiKey, nil
 }
 
@@ -833,23 +730,7 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	}
 
 	if req.GroupID != nil {
-		// 验证分组权限
-		user, err := s.userRepo.GetByID(ctx, userID)
-		if err != nil {
-			return nil, fmt.Errorf("get user: %w", err)
-		}
-
-		group, err := s.groupRepo.GetByID(ctx, *req.GroupID)
-		if err != nil {
-			return nil, fmt.Errorf("get group: %w", err)
-		}
-
-		if !s.canUserBindGroup(ctx, user, group) {
-			return nil, ErrGroupNotAllowed
-		}
-
-		apiKey.GroupID = req.GroupID
-		fields.GroupID = true
+		return nil, ErrAPIKeyGroupChangeDisabled
 	}
 
 	if req.Status != nil {
@@ -944,29 +825,44 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	return apiKey, nil
 }
 
+// Rotate regenerates the credential while preserving the key's binding and limits.
+func (s *APIKeyService) Rotate(ctx context.Context, id int64, userID int64) (*APIKey, error) {
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get api key: %w", err)
+	}
+	if apiKey.UserID != userID {
+		return nil, ErrInsufficientPerms
+	}
+
+	oldKey := apiKey.Key
+	newKey, err := s.GenerateKey()
+	if err != nil {
+		return nil, fmt.Errorf("generate key: %w", err)
+	}
+	apiKey.Key = newKey
+	if err := s.apiKeyRepo.Update(ctx, apiKey, APIKeyUpdateFields{Key: true}); err != nil {
+		return nil, fmt.Errorf("rotate api key: %w", err)
+	}
+
+	s.InvalidateAuthCacheByKey(ctx, oldKey)
+	s.InvalidateAuthCacheByKey(ctx, newKey)
+	s.lastUsedTouchL1.Delete(id)
+	s.compileAPIKeyIPRules(apiKey)
+	return apiKey, nil
+}
+
 // Delete 删除API Key
 func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) error {
-	key, ownerID, err := s.apiKeyRepo.GetKeyAndOwnerID(ctx, id)
+	_, ownerID, err := s.apiKeyRepo.GetKeyAndOwnerID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get api key: %w", err)
 	}
-
-	// 验证当前用户是否为该 API Key 的所有者
 	if ownerID != userID {
 		return ErrInsufficientPerms
 	}
-
-	// 事务内:写审计 + 软删除(tombstone)。
-	if err := s.apiKeyRepo.DeleteWithAudit(ctx, id); err != nil {
-		return fmt.Errorf("delete api key: %w", err)
-	}
-
-	// 删除成功后再清理缓存,避免"缓存已清但删除失败"的竞态。
-	// 注意:不清零创建相关计数,否则"删除后反复新建"即可绕过创建限流。
-	s.InvalidateAuthCacheByKey(ctx, key)
-	s.lastUsedTouchL1.Delete(id)
-
-	return nil
+	// Administrative deletion still uses APIKeyRepository.DeleteWithAudit.
+	return ErrAPIKeySelfDeleteDisabled
 }
 
 // ValidateKey 验证API Key是否有效（用于认证中间件）

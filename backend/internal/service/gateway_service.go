@@ -764,6 +764,7 @@ func (s *GatewayService) TempUnscheduleRetryableError(ctx context.Context, accou
 type GatewayService struct {
 	accountRepo           AccountRepository
 	groupRepo             GroupRepository
+	groupShardRepo        GroupShardRepository
 	usageLogRepo          UsageLogRepository
 	usageBillingRepo      UsageBillingRepository
 	userRepo              UserRepository
@@ -805,6 +806,7 @@ type GatewayService struct {
 func NewGatewayService(
 	accountRepo AccountRepository,
 	groupRepo GroupRepository,
+	groupShardRepo GroupShardRepository,
 	usageLogRepo UsageLogRepository,
 	usageBillingRepo UsageBillingRepository,
 	userRepo UserRepository,
@@ -838,6 +840,7 @@ func NewGatewayService(
 	svc := &GatewayService{
 		accountRepo:           accountRepo,
 		groupRepo:             groupRepo,
+		groupShardRepo:        groupShardRepo,
 		usageLogRepo:          usageLogRepo,
 		usageBillingRepo:      usageBillingRepo,
 		userRepo:              userRepo,

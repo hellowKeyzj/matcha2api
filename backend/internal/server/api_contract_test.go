@@ -220,37 +220,11 @@ func TestAPIContracts(t *testing.T) {
 			headers: map[string]string{
 				"Content-Type": "application/json",
 			},
-			wantStatus: http.StatusOK,
+			wantStatus: http.StatusForbidden,
 			wantJSON: `{
-				"code": 0,
-				"message": "success",
-				"data": {
-					"id": 100,
-					"user_id": 1,
-					"key": "sk_custom_1234567890",
-					"name": "Key One",
-					"group_id": null,
-					"status": "active",
-					"ip_whitelist": null,
-					"ip_blacklist": null,
-					"last_used_at": null,
-					"last_used_ip": null,
-					"current_concurrency": 0,
-					"quota": 0,
-					"quota_used": 0,
-					"rate_limit_5h": 0,
-					"rate_limit_1d": 0,
-					"rate_limit_7d": 0,
-					"usage_5h": 0,
-					"usage_1d": 0,
-					"usage_7d": 0,
-					"window_5h_start": null,
-					"window_1d_start": null,
-					"window_7d_start": null,
-					"expires_at": null,
-					"created_at": "2025-01-02T03:04:05Z",
-					"updated_at": "2025-01-02T03:04:05Z"
-				}
+				"code": 403,
+				"message": "API key creation is managed by the system; rotate the default key instead",
+				"reason": "API_KEY_SELF_CREATE_DISABLED"
 			}`,
 		},
 		{
@@ -334,9 +308,11 @@ func TestAPIContracts(t *testing.T) {
 						ModelRouting: map[string][]int64{
 							"claude-3-*": []int64{101, 102},
 						},
-						AccountCount: 2,
-						CreatedAt:    deps.now,
-						UpdatedAt:    deps.now,
+						AccountCount:          2,
+						ShardMaxUsersPerShard: 2,
+						ShardAutoCreate:       true,
+						CreatedAt:             deps.now,
+						UpdatedAt:             deps.now,
 					},
 				})
 				deps.userSubRepo.SetActiveByUserID(1, nil)
@@ -373,6 +349,9 @@ func TestAPIContracts(t *testing.T) {
 						"video_price_1080p": null,
 						"web_search_price_per_call": null,
 						"search_price_per_1k": null,
+						"shard_enabled": false,
+						"shard_max_users_per_shard": 2,
+						"shard_auto_create": true,
 						"audio_tts_price_per_million_chars": null,
 						"audio_stt_price_per_hour": null,
 						"audio_realtime_price_per_min": null,
@@ -1494,7 +1473,34 @@ func newContractDeps(t *testing.T) *contractDeps {
 	settingRepo := newStubSettingRepo()
 	settingService := service.NewSettingService(settingRepo, cfg)
 
-	adminService := service.NewAdminService(nil, userRepo, groupRepo, &accountRepo, proxyRepo, apiKeyRepo, redeemRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		adminService := service.NewAdminService(
+			cfg,
+			userRepo,
+			groupRepo,
+			nil,
+			&accountRepo,
+			proxyRepo,
+			apiKeyRepo,
+			redeemRepo,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		)
 	authHandler := handler.NewAuthHandler(cfg, nil, userService, settingService, nil, redeemService, nil, nil)
 	apiKeyHandler := handler.NewAPIKeyHandler(apiKeyService)
 	usageHandler := handler.NewUsageHandler(usageService, apiKeyService, nil, nil)
@@ -1832,6 +1838,10 @@ func (r *stubGroupRepo) ListActiveByPlatform(ctx context.Context, platform strin
 		}
 	}
 	return out, nil
+}
+
+func (stubGroupRepo) GetDefaultShardGroup(ctx context.Context) (*service.Group, error) {
+	return nil, service.ErrDefaultShardGroupNotConfigured
 }
 
 func (stubGroupRepo) ExistsByName(ctx context.Context, name string) (bool, error) {

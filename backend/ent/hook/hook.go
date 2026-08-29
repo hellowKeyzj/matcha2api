@@ -213,6 +213,42 @@ func (f GroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupMutation", m)
 }
 
+// The GroupShardFunc type is an adapter to allow the use of ordinary
+// function as GroupShard mutator.
+type GroupShardFunc func(context.Context, *ent.GroupShardMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GroupShardFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GroupShardMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupShardMutation", m)
+}
+
+// The GroupShardAccountFunc type is an adapter to allow the use of ordinary
+// function as GroupShardAccount mutator.
+type GroupShardAccountFunc func(context.Context, *ent.GroupShardAccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GroupShardAccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GroupShardAccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupShardAccountMutation", m)
+}
+
+// The GroupShardUserFunc type is an adapter to allow the use of ordinary
+// function as GroupShardUser mutator.
+type GroupShardUserFunc func(context.Context, *ent.GroupShardUserMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GroupShardUserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GroupShardUserMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupShardUserMutation", m)
+}
+
 // The IdempotencyRecordFunc type is an adapter to allow the use of ordinary
 // function as IdempotencyRecord mutator.
 type IdempotencyRecordFunc func(context.Context, *ent.IdempotencyRecordMutation) (ent.Value, error)

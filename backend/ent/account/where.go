@@ -1628,6 +1628,29 @@ func HasGroupsWith(preds ...predicate.Group) predicate.Account {
 	})
 }
 
+// HasGroupShards applies the HasEdge predicate on the "group_shards" edge.
+func HasGroupShards() predicate.Account {
+	return predicate.Account(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, GroupShardsTable, GroupShardsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasGroupShardsWith applies the HasEdge predicate on the "group_shards" edge with a given conditions (other predicates).
+func HasGroupShardsWith(preds ...predicate.GroupShard) predicate.Account {
+	return predicate.Account(func(s *sql.Selector) {
+		step := newGroupShardsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProxy applies the HasEdge predicate on the "proxy" edge.
 func HasProxy() predicate.Account {
 	return predicate.Account(func(s *sql.Selector) {
@@ -1735,6 +1758,29 @@ func HasAccountGroups() predicate.Account {
 func HasAccountGroupsWith(preds ...predicate.AccountGroup) predicate.Account {
 	return predicate.Account(func(s *sql.Selector) {
 		step := newAccountGroupsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasGroupShardAccounts applies the HasEdge predicate on the "group_shard_accounts" edge.
+func HasGroupShardAccounts() predicate.Account {
+	return predicate.Account(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, GroupShardAccountsTable, GroupShardAccountsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasGroupShardAccountsWith applies the HasEdge predicate on the "group_shard_accounts" edge with a given conditions (other predicates).
+func HasGroupShardAccountsWith(preds ...predicate.GroupShardAccount) predicate.Account {
+	return predicate.Account(func(s *sql.Selector) {
+		step := newGroupShardAccountsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/proxy"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -579,6 +580,21 @@ func (_u *AccountUpdate) AddGroups(v ...*Group) *AccountUpdate {
 	return _u.AddGroupIDs(ids...)
 }
 
+// AddGroupShardIDs adds the "group_shards" edge to the GroupShard entity by IDs.
+func (_u *AccountUpdate) AddGroupShardIDs(ids ...int64) *AccountUpdate {
+	_u.mutation.AddGroupShardIDs(ids...)
+	return _u
+}
+
+// AddGroupShards adds the "group_shards" edges to the GroupShard entity.
+func (_u *AccountUpdate) AddGroupShards(v ...*GroupShard) *AccountUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddGroupShardIDs(ids...)
+}
+
 // SetProxy sets the "proxy" edge to the Proxy entity.
 func (_u *AccountUpdate) SetProxy(v *Proxy) *AccountUpdate {
 	return _u.SetProxyID(v.ID)
@@ -657,6 +673,27 @@ func (_u *AccountUpdate) RemoveGroups(v ...*Group) *AccountUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveGroupIDs(ids...)
+}
+
+// ClearGroupShards clears all "group_shards" edges to the GroupShard entity.
+func (_u *AccountUpdate) ClearGroupShards() *AccountUpdate {
+	_u.mutation.ClearGroupShards()
+	return _u
+}
+
+// RemoveGroupShardIDs removes the "group_shards" edge to GroupShard entities by IDs.
+func (_u *AccountUpdate) RemoveGroupShardIDs(ids ...int64) *AccountUpdate {
+	_u.mutation.RemoveGroupShardIDs(ids...)
+	return _u
+}
+
+// RemoveGroupShards removes "group_shards" edges to GroupShard entities.
+func (_u *AccountUpdate) RemoveGroupShards(v ...*GroupShard) *AccountUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveGroupShardIDs(ids...)
 }
 
 // ClearProxy clears the "proxy" edge to the Proxy entity.
@@ -998,6 +1035,63 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.GroupShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.GroupShardsTable,
+			Columns: account.GroupShardsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedGroupShardsIDs(); len(nodes) > 0 && !_u.mutation.GroupShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.GroupShardsTable,
+			Columns: account.GroupShardsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.GroupShardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.GroupShardsTable,
+			Columns: account.GroupShardsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
@@ -1719,6 +1813,21 @@ func (_u *AccountUpdateOne) AddGroups(v ...*Group) *AccountUpdateOne {
 	return _u.AddGroupIDs(ids...)
 }
 
+// AddGroupShardIDs adds the "group_shards" edge to the GroupShard entity by IDs.
+func (_u *AccountUpdateOne) AddGroupShardIDs(ids ...int64) *AccountUpdateOne {
+	_u.mutation.AddGroupShardIDs(ids...)
+	return _u
+}
+
+// AddGroupShards adds the "group_shards" edges to the GroupShard entity.
+func (_u *AccountUpdateOne) AddGroupShards(v ...*GroupShard) *AccountUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddGroupShardIDs(ids...)
+}
+
 // SetProxy sets the "proxy" edge to the Proxy entity.
 func (_u *AccountUpdateOne) SetProxy(v *Proxy) *AccountUpdateOne {
 	return _u.SetProxyID(v.ID)
@@ -1797,6 +1906,27 @@ func (_u *AccountUpdateOne) RemoveGroups(v ...*Group) *AccountUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveGroupIDs(ids...)
+}
+
+// ClearGroupShards clears all "group_shards" edges to the GroupShard entity.
+func (_u *AccountUpdateOne) ClearGroupShards() *AccountUpdateOne {
+	_u.mutation.ClearGroupShards()
+	return _u
+}
+
+// RemoveGroupShardIDs removes the "group_shards" edge to GroupShard entities by IDs.
+func (_u *AccountUpdateOne) RemoveGroupShardIDs(ids ...int64) *AccountUpdateOne {
+	_u.mutation.RemoveGroupShardIDs(ids...)
+	return _u
+}
+
+// RemoveGroupShards removes "group_shards" edges to GroupShard entities.
+func (_u *AccountUpdateOne) RemoveGroupShards(v ...*GroupShard) *AccountUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveGroupShardIDs(ids...)
 }
 
 // ClearProxy clears the "proxy" edge to the Proxy entity.
@@ -2168,6 +2298,63 @@ func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err er
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.GroupShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.GroupShardsTable,
+			Columns: account.GroupShardsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedGroupShardsIDs(); len(nodes) > 0 && !_u.mutation.GroupShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.GroupShardsTable,
+			Columns: account.GroupShardsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.GroupShardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.GroupShardsTable,
+			Columns: account.GroupShardsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields

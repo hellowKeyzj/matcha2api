@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -961,6 +962,55 @@ func (_u *GroupUpdate) AddSortOrder(v int) *GroupUpdate {
 	return _u
 }
 
+// SetShardEnabled sets the "shard_enabled" field.
+func (_u *GroupUpdate) SetShardEnabled(v bool) *GroupUpdate {
+	_u.mutation.SetShardEnabled(v)
+	return _u
+}
+
+// SetNillableShardEnabled sets the "shard_enabled" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableShardEnabled(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetShardEnabled(*v)
+	}
+	return _u
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (_u *GroupUpdate) SetShardMaxUsersPerShard(v int) *GroupUpdate {
+	_u.mutation.ResetShardMaxUsersPerShard()
+	_u.mutation.SetShardMaxUsersPerShard(v)
+	return _u
+}
+
+// SetNillableShardMaxUsersPerShard sets the "shard_max_users_per_shard" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableShardMaxUsersPerShard(v *int) *GroupUpdate {
+	if v != nil {
+		_u.SetShardMaxUsersPerShard(*v)
+	}
+	return _u
+}
+
+// AddShardMaxUsersPerShard adds value to the "shard_max_users_per_shard" field.
+func (_u *GroupUpdate) AddShardMaxUsersPerShard(v int) *GroupUpdate {
+	_u.mutation.AddShardMaxUsersPerShard(v)
+	return _u
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (_u *GroupUpdate) SetShardAutoCreate(v bool) *GroupUpdate {
+	_u.mutation.SetShardAutoCreate(v)
+	return _u
+}
+
+// SetNillableShardAutoCreate sets the "shard_auto_create" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableShardAutoCreate(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetShardAutoCreate(*v)
+	}
+	return _u
+}
+
 // SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
 func (_u *GroupUpdate) SetAllowMessagesDispatch(v bool) *GroupUpdate {
 	_u.mutation.SetAllowMessagesDispatch(v)
@@ -1278,6 +1328,21 @@ func (_u *GroupUpdate) AddUsageLogs(v ...*UsageLog) *GroupUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddShardIDs adds the "shards" edge to the GroupShard entity by IDs.
+func (_u *GroupUpdate) AddShardIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.AddShardIDs(ids...)
+	return _u
+}
+
+// AddShards adds the "shards" edges to the GroupShard entity.
+func (_u *GroupUpdate) AddShards(v ...*GroupShard) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddShardIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *GroupUpdate) AddAccountIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAccountIDs(ids...)
@@ -1395,6 +1460,27 @@ func (_u *GroupUpdate) RemoveUsageLogs(v ...*UsageLog) *GroupUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearShards clears all "shards" edges to the GroupShard entity.
+func (_u *GroupUpdate) ClearShards() *GroupUpdate {
+	_u.mutation.ClearShards()
+	return _u
+}
+
+// RemoveShardIDs removes the "shards" edge to GroupShard entities by IDs.
+func (_u *GroupUpdate) RemoveShardIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.RemoveShardIDs(ids...)
+	return _u
+}
+
+// RemoveShards removes "shards" edges to GroupShard entities.
+func (_u *GroupUpdate) RemoveShards(v ...*GroupShard) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveShardIDs(ids...)
 }
 
 // ClearAccounts clears all "accounts" edges to the Account entity.
@@ -1531,6 +1617,11 @@ func (_u *GroupUpdate) check() error {
 	if v, ok := _u.mutation.AudioSttPricePerHour(); ok {
 		if err := group.AudioSttPricePerHourValidator(v); err != nil {
 			return &ValidationError{Name: "audio_stt_price_per_hour", err: fmt.Errorf(`ent: validator failed for field "Group.audio_stt_price_per_hour": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ShardMaxUsersPerShard(); ok {
+		if err := group.ShardMaxUsersPerShardValidator(v); err != nil {
+			return &ValidationError{Name: "shard_max_users_per_shard", err: fmt.Errorf(`ent: validator failed for field "Group.shard_max_users_per_shard": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
@@ -1852,6 +1943,18 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedSortOrder(); ok {
 		_spec.AddField(group.FieldSortOrder, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.ShardEnabled(); ok {
+		_spec.SetField(group.FieldShardEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ShardMaxUsersPerShard(); ok {
+		_spec.SetField(group.FieldShardMaxUsersPerShard, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedShardMaxUsersPerShard(); ok {
+		_spec.AddField(group.FieldShardMaxUsersPerShard, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ShardAutoCreate(); ok {
+		_spec.SetField(group.FieldShardAutoCreate, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.AllowMessagesDispatch(); ok {
 		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
 	}
@@ -2090,6 +2193,51 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedShardsIDs(); len(nodes) > 0 && !_u.mutation.ShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ShardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -3155,6 +3303,55 @@ func (_u *GroupUpdateOne) AddSortOrder(v int) *GroupUpdateOne {
 	return _u
 }
 
+// SetShardEnabled sets the "shard_enabled" field.
+func (_u *GroupUpdateOne) SetShardEnabled(v bool) *GroupUpdateOne {
+	_u.mutation.SetShardEnabled(v)
+	return _u
+}
+
+// SetNillableShardEnabled sets the "shard_enabled" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableShardEnabled(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetShardEnabled(*v)
+	}
+	return _u
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (_u *GroupUpdateOne) SetShardMaxUsersPerShard(v int) *GroupUpdateOne {
+	_u.mutation.ResetShardMaxUsersPerShard()
+	_u.mutation.SetShardMaxUsersPerShard(v)
+	return _u
+}
+
+// SetNillableShardMaxUsersPerShard sets the "shard_max_users_per_shard" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableShardMaxUsersPerShard(v *int) *GroupUpdateOne {
+	if v != nil {
+		_u.SetShardMaxUsersPerShard(*v)
+	}
+	return _u
+}
+
+// AddShardMaxUsersPerShard adds value to the "shard_max_users_per_shard" field.
+func (_u *GroupUpdateOne) AddShardMaxUsersPerShard(v int) *GroupUpdateOne {
+	_u.mutation.AddShardMaxUsersPerShard(v)
+	return _u
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (_u *GroupUpdateOne) SetShardAutoCreate(v bool) *GroupUpdateOne {
+	_u.mutation.SetShardAutoCreate(v)
+	return _u
+}
+
+// SetNillableShardAutoCreate sets the "shard_auto_create" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableShardAutoCreate(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetShardAutoCreate(*v)
+	}
+	return _u
+}
+
 // SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
 func (_u *GroupUpdateOne) SetAllowMessagesDispatch(v bool) *GroupUpdateOne {
 	_u.mutation.SetAllowMessagesDispatch(v)
@@ -3472,6 +3669,21 @@ func (_u *GroupUpdateOne) AddUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddShardIDs adds the "shards" edge to the GroupShard entity by IDs.
+func (_u *GroupUpdateOne) AddShardIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.AddShardIDs(ids...)
+	return _u
+}
+
+// AddShards adds the "shards" edges to the GroupShard entity.
+func (_u *GroupUpdateOne) AddShards(v ...*GroupShard) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddShardIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *GroupUpdateOne) AddAccountIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAccountIDs(ids...)
@@ -3589,6 +3801,27 @@ func (_u *GroupUpdateOne) RemoveUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearShards clears all "shards" edges to the GroupShard entity.
+func (_u *GroupUpdateOne) ClearShards() *GroupUpdateOne {
+	_u.mutation.ClearShards()
+	return _u
+}
+
+// RemoveShardIDs removes the "shards" edge to GroupShard entities by IDs.
+func (_u *GroupUpdateOne) RemoveShardIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.RemoveShardIDs(ids...)
+	return _u
+}
+
+// RemoveShards removes "shards" edges to GroupShard entities.
+func (_u *GroupUpdateOne) RemoveShards(v ...*GroupShard) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveShardIDs(ids...)
 }
 
 // ClearAccounts clears all "accounts" edges to the Account entity.
@@ -3738,6 +3971,11 @@ func (_u *GroupUpdateOne) check() error {
 	if v, ok := _u.mutation.AudioSttPricePerHour(); ok {
 		if err := group.AudioSttPricePerHourValidator(v); err != nil {
 			return &ValidationError{Name: "audio_stt_price_per_hour", err: fmt.Errorf(`ent: validator failed for field "Group.audio_stt_price_per_hour": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ShardMaxUsersPerShard(); ok {
+		if err := group.ShardMaxUsersPerShardValidator(v); err != nil {
+			return &ValidationError{Name: "shard_max_users_per_shard", err: fmt.Errorf(`ent: validator failed for field "Group.shard_max_users_per_shard": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
@@ -4076,6 +4314,18 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.AddedSortOrder(); ok {
 		_spec.AddField(group.FieldSortOrder, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.ShardEnabled(); ok {
+		_spec.SetField(group.FieldShardEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ShardMaxUsersPerShard(); ok {
+		_spec.SetField(group.FieldShardMaxUsersPerShard, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedShardMaxUsersPerShard(); ok {
+		_spec.AddField(group.FieldShardMaxUsersPerShard, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ShardAutoCreate(); ok {
+		_spec.SetField(group.FieldShardAutoCreate, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.AllowMessagesDispatch(); ok {
 		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
 	}
@@ -4314,6 +4564,51 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedShardsIDs(); len(nodes) > 0 && !_u.mutation.ShardsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ShardsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.ShardsTable,
+			Columns: []string{group.ShardsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(groupshard.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

@@ -29,6 +29,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
+	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -81,6 +84,9 @@ const (
 	TypeCompositeModelRoute           = "CompositeModelRoute"
 	TypeErrorPassthroughRule          = "ErrorPassthroughRule"
 	TypeGroup                         = "Group"
+	TypeGroupShard                    = "GroupShard"
+	TypeGroupShardAccount             = "GroupShardAccount"
+	TypeGroupShardUser                = "GroupShardUser"
 	TypeIdempotencyRecord             = "IdempotencyRecord"
 	TypeIdentityAdoptionDecision      = "IdentityAdoptionDecision"
 	TypePaymentAuditLog               = "PaymentAuditLog"
@@ -2323,6 +2329,9 @@ type AccountMutation struct {
 	groups                      map[int64]struct{}
 	removedgroups               map[int64]struct{}
 	clearedgroups               bool
+	group_shards                map[int64]struct{}
+	removedgroup_shards         map[int64]struct{}
+	clearedgroup_shards         bool
 	proxy                       *int64
 	clearedproxy                bool
 	parent                      *int64
@@ -3929,6 +3938,60 @@ func (m *AccountMutation) ResetGroups() {
 	m.removedgroups = nil
 }
 
+// AddGroupShardIDs adds the "group_shards" edge to the GroupShard entity by ids.
+func (m *AccountMutation) AddGroupShardIDs(ids ...int64) {
+	if m.group_shards == nil {
+		m.group_shards = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.group_shards[ids[i]] = struct{}{}
+	}
+}
+
+// ClearGroupShards clears the "group_shards" edge to the GroupShard entity.
+func (m *AccountMutation) ClearGroupShards() {
+	m.clearedgroup_shards = true
+}
+
+// GroupShardsCleared reports if the "group_shards" edge to the GroupShard entity was cleared.
+func (m *AccountMutation) GroupShardsCleared() bool {
+	return m.clearedgroup_shards
+}
+
+// RemoveGroupShardIDs removes the "group_shards" edge to the GroupShard entity by IDs.
+func (m *AccountMutation) RemoveGroupShardIDs(ids ...int64) {
+	if m.removedgroup_shards == nil {
+		m.removedgroup_shards = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.group_shards, ids[i])
+		m.removedgroup_shards[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedGroupShards returns the removed IDs of the "group_shards" edge to the GroupShard entity.
+func (m *AccountMutation) RemovedGroupShardsIDs() (ids []int64) {
+	for id := range m.removedgroup_shards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// GroupShardsIDs returns the "group_shards" edge IDs in the mutation.
+func (m *AccountMutation) GroupShardsIDs() (ids []int64) {
+	for id := range m.group_shards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetGroupShards resets all changes to the "group_shards" edge.
+func (m *AccountMutation) ResetGroupShards() {
+	m.group_shards = nil
+	m.clearedgroup_shards = false
+	m.removedgroup_shards = nil
+}
+
 // ClearProxy clears the "proxy" edge to the Proxy entity.
 func (m *AccountMutation) ClearProxy() {
 	m.clearedproxy = true
@@ -4915,9 +4978,12 @@ func (m *AccountMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AccountMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.groups != nil {
 		edges = append(edges, account.EdgeGroups)
+	}
+	if m.group_shards != nil {
+		edges = append(edges, account.EdgeGroupShards)
 	}
 	if m.proxy != nil {
 		edges = append(edges, account.EdgeProxy)
@@ -4941,6 +5007,12 @@ func (m *AccountMutation) AddedIDs(name string) []ent.Value {
 	case account.EdgeGroups:
 		ids := make([]ent.Value, 0, len(m.groups))
 		for id := range m.groups {
+			ids = append(ids, id)
+		}
+		return ids
+	case account.EdgeGroupShards:
+		ids := make([]ent.Value, 0, len(m.group_shards))
+		for id := range m.group_shards {
 			ids = append(ids, id)
 		}
 		return ids
@@ -4970,9 +5042,12 @@ func (m *AccountMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AccountMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.removedgroups != nil {
 		edges = append(edges, account.EdgeGroups)
+	}
+	if m.removedgroup_shards != nil {
+		edges = append(edges, account.EdgeGroupShards)
 	}
 	if m.removedchildren != nil {
 		edges = append(edges, account.EdgeChildren)
@@ -4990,6 +5065,12 @@ func (m *AccountMutation) RemovedIDs(name string) []ent.Value {
 	case account.EdgeGroups:
 		ids := make([]ent.Value, 0, len(m.removedgroups))
 		for id := range m.removedgroups {
+			ids = append(ids, id)
+		}
+		return ids
+	case account.EdgeGroupShards:
+		ids := make([]ent.Value, 0, len(m.removedgroup_shards))
+		for id := range m.removedgroup_shards {
 			ids = append(ids, id)
 		}
 		return ids
@@ -5011,9 +5092,12 @@ func (m *AccountMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AccountMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.clearedgroups {
 		edges = append(edges, account.EdgeGroups)
+	}
+	if m.clearedgroup_shards {
+		edges = append(edges, account.EdgeGroupShards)
 	}
 	if m.clearedproxy {
 		edges = append(edges, account.EdgeProxy)
@@ -5036,6 +5120,8 @@ func (m *AccountMutation) EdgeCleared(name string) bool {
 	switch name {
 	case account.EdgeGroups:
 		return m.clearedgroups
+	case account.EdgeGroupShards:
+		return m.clearedgroup_shards
 	case account.EdgeProxy:
 		return m.clearedproxy
 	case account.EdgeParent:
@@ -5068,6 +5154,9 @@ func (m *AccountMutation) ResetEdge(name string) error {
 	switch name {
 	case account.EdgeGroups:
 		m.ResetGroups()
+		return nil
+	case account.EdgeGroupShards:
+		m.ResetGroupShards()
 		return nil
 	case account.EdgeProxy:
 		m.ResetProxy()
@@ -22156,6 +22245,10 @@ type GroupMutation struct {
 	appendsupported_model_scopes            []string
 	sort_order                              *int
 	addsort_order                           *int
+	shard_enabled                           *bool
+	shard_max_users_per_shard               *int
+	addshard_max_users_per_shard            *int
+	shard_auto_create                       *bool
 	allow_messages_dispatch                 *bool
 	allow_live                              *bool
 	force_openai_fast                       *bool
@@ -22190,6 +22283,9 @@ type GroupMutation struct {
 	usage_logs                              map[int64]struct{}
 	removedusage_logs                       map[int64]struct{}
 	clearedusage_logs                       bool
+	shards                                  map[int64]struct{}
+	removedshards                           map[int64]struct{}
+	clearedshards                           bool
 	accounts                                map[int64]struct{}
 	removedaccounts                         map[int64]struct{}
 	clearedaccounts                         bool
@@ -24876,6 +24972,134 @@ func (m *GroupMutation) ResetSortOrder() {
 	m.addsort_order = nil
 }
 
+// SetShardEnabled sets the "shard_enabled" field.
+func (m *GroupMutation) SetShardEnabled(b bool) {
+	m.shard_enabled = &b
+}
+
+// ShardEnabled returns the value of the "shard_enabled" field in the mutation.
+func (m *GroupMutation) ShardEnabled() (r bool, exists bool) {
+	v := m.shard_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShardEnabled returns the old "shard_enabled" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldShardEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShardEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShardEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShardEnabled: %w", err)
+	}
+	return oldValue.ShardEnabled, nil
+}
+
+// ResetShardEnabled resets all changes to the "shard_enabled" field.
+func (m *GroupMutation) ResetShardEnabled() {
+	m.shard_enabled = nil
+}
+
+// SetShardMaxUsersPerShard sets the "shard_max_users_per_shard" field.
+func (m *GroupMutation) SetShardMaxUsersPerShard(i int) {
+	m.shard_max_users_per_shard = &i
+	m.addshard_max_users_per_shard = nil
+}
+
+// ShardMaxUsersPerShard returns the value of the "shard_max_users_per_shard" field in the mutation.
+func (m *GroupMutation) ShardMaxUsersPerShard() (r int, exists bool) {
+	v := m.shard_max_users_per_shard
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShardMaxUsersPerShard returns the old "shard_max_users_per_shard" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldShardMaxUsersPerShard(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShardMaxUsersPerShard is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShardMaxUsersPerShard requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShardMaxUsersPerShard: %w", err)
+	}
+	return oldValue.ShardMaxUsersPerShard, nil
+}
+
+// AddShardMaxUsersPerShard adds i to the "shard_max_users_per_shard" field.
+func (m *GroupMutation) AddShardMaxUsersPerShard(i int) {
+	if m.addshard_max_users_per_shard != nil {
+		*m.addshard_max_users_per_shard += i
+	} else {
+		m.addshard_max_users_per_shard = &i
+	}
+}
+
+// AddedShardMaxUsersPerShard returns the value that was added to the "shard_max_users_per_shard" field in this mutation.
+func (m *GroupMutation) AddedShardMaxUsersPerShard() (r int, exists bool) {
+	v := m.addshard_max_users_per_shard
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetShardMaxUsersPerShard resets all changes to the "shard_max_users_per_shard" field.
+func (m *GroupMutation) ResetShardMaxUsersPerShard() {
+	m.shard_max_users_per_shard = nil
+	m.addshard_max_users_per_shard = nil
+}
+
+// SetShardAutoCreate sets the "shard_auto_create" field.
+func (m *GroupMutation) SetShardAutoCreate(b bool) {
+	m.shard_auto_create = &b
+}
+
+// ShardAutoCreate returns the value of the "shard_auto_create" field in the mutation.
+func (m *GroupMutation) ShardAutoCreate() (r bool, exists bool) {
+	v := m.shard_auto_create
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShardAutoCreate returns the old "shard_auto_create" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldShardAutoCreate(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShardAutoCreate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShardAutoCreate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShardAutoCreate: %w", err)
+	}
+	return oldValue.ShardAutoCreate, nil
+}
+
+// ResetShardAutoCreate resets all changes to the "shard_auto_create" field.
+func (m *GroupMutation) ResetShardAutoCreate() {
+	m.shard_auto_create = nil
+}
+
 // SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
 func (m *GroupMutation) SetAllowMessagesDispatch(b bool) {
 	m.allow_messages_dispatch = &b
@@ -25779,6 +26003,60 @@ func (m *GroupMutation) ResetUsageLogs() {
 	m.removedusage_logs = nil
 }
 
+// AddShardIDs adds the "shards" edge to the GroupShard entity by ids.
+func (m *GroupMutation) AddShardIDs(ids ...int64) {
+	if m.shards == nil {
+		m.shards = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.shards[ids[i]] = struct{}{}
+	}
+}
+
+// ClearShards clears the "shards" edge to the GroupShard entity.
+func (m *GroupMutation) ClearShards() {
+	m.clearedshards = true
+}
+
+// ShardsCleared reports if the "shards" edge to the GroupShard entity was cleared.
+func (m *GroupMutation) ShardsCleared() bool {
+	return m.clearedshards
+}
+
+// RemoveShardIDs removes the "shards" edge to the GroupShard entity by IDs.
+func (m *GroupMutation) RemoveShardIDs(ids ...int64) {
+	if m.removedshards == nil {
+		m.removedshards = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.shards, ids[i])
+		m.removedshards[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedShards returns the removed IDs of the "shards" edge to the GroupShard entity.
+func (m *GroupMutation) RemovedShardsIDs() (ids []int64) {
+	for id := range m.removedshards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ShardsIDs returns the "shards" edge IDs in the mutation.
+func (m *GroupMutation) ShardsIDs() (ids []int64) {
+	for id := range m.shards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetShards resets all changes to the "shards" edge.
+func (m *GroupMutation) ResetShards() {
+	m.shards = nil
+	m.clearedshards = false
+	m.removedshards = nil
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by ids.
 func (m *GroupMutation) AddAccountIDs(ids ...int64) {
 	if m.accounts == nil {
@@ -25921,7 +26199,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 66)
+	fields := make([]string, 0, 69)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -26068,6 +26346,15 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.sort_order != nil {
 		fields = append(fields, group.FieldSortOrder)
+	}
+	if m.shard_enabled != nil {
+		fields = append(fields, group.FieldShardEnabled)
+	}
+	if m.shard_max_users_per_shard != nil {
+		fields = append(fields, group.FieldShardMaxUsersPerShard)
+	}
+	if m.shard_auto_create != nil {
+		fields = append(fields, group.FieldShardAutoCreate)
 	}
 	if m.allow_messages_dispatch != nil {
 		fields = append(fields, group.FieldAllowMessagesDispatch)
@@ -26226,6 +26513,12 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.SupportedModelScopes()
 	case group.FieldSortOrder:
 		return m.SortOrder()
+	case group.FieldShardEnabled:
+		return m.ShardEnabled()
+	case group.FieldShardMaxUsersPerShard:
+		return m.ShardMaxUsersPerShard()
+	case group.FieldShardAutoCreate:
+		return m.ShardAutoCreate()
 	case group.FieldAllowMessagesDispatch:
 		return m.AllowMessagesDispatch()
 	case group.FieldAllowLive:
@@ -26367,6 +26660,12 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldSupportedModelScopes(ctx)
 	case group.FieldSortOrder:
 		return m.OldSortOrder(ctx)
+	case group.FieldShardEnabled:
+		return m.OldShardEnabled(ctx)
+	case group.FieldShardMaxUsersPerShard:
+		return m.OldShardMaxUsersPerShard(ctx)
+	case group.FieldShardAutoCreate:
+		return m.OldShardAutoCreate(ctx)
 	case group.FieldAllowMessagesDispatch:
 		return m.OldAllowMessagesDispatch(ctx)
 	case group.FieldAllowLive:
@@ -26753,6 +27052,27 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSortOrder(v)
 		return nil
+	case group.FieldShardEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShardEnabled(v)
+		return nil
+	case group.FieldShardMaxUsersPerShard:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShardMaxUsersPerShard(v)
+		return nil
+	case group.FieldShardAutoCreate:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShardAutoCreate(v)
+		return nil
 	case group.FieldAllowMessagesDispatch:
 		v, ok := value.(bool)
 		if !ok {
@@ -26952,6 +27272,9 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addsort_order != nil {
 		fields = append(fields, group.FieldSortOrder)
 	}
+	if m.addshard_max_users_per_shard != nil {
+		fields = append(fields, group.FieldShardMaxUsersPerShard)
+	}
 	if m.addrpm_limit != nil {
 		fields = append(fields, group.FieldRpmLimit)
 	}
@@ -27017,6 +27340,8 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedFallbackGroupIDOnInvalidRequest()
 	case group.FieldSortOrder:
 		return m.AddedSortOrder()
+	case group.FieldShardMaxUsersPerShard:
+		return m.AddedShardMaxUsersPerShard()
 	case group.FieldRpmLimit:
 		return m.AddedRpmLimit()
 	case group.FieldProfitMinMargin:
@@ -27199,6 +27524,13 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddSortOrder(v)
+		return nil
+	case group.FieldShardMaxUsersPerShard:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddShardMaxUsersPerShard(v)
 		return nil
 	case group.FieldRpmLimit:
 		v, ok := value.(int)
@@ -27530,6 +27862,15 @@ func (m *GroupMutation) ResetField(name string) error {
 	case group.FieldSortOrder:
 		m.ResetSortOrder()
 		return nil
+	case group.FieldShardEnabled:
+		m.ResetShardEnabled()
+		return nil
+	case group.FieldShardMaxUsersPerShard:
+		m.ResetShardMaxUsersPerShard()
+		return nil
+	case group.FieldShardAutoCreate:
+		m.ResetShardAutoCreate()
+		return nil
 	case group.FieldAllowMessagesDispatch:
 		m.ResetAllowMessagesDispatch()
 		return nil
@@ -27587,7 +27928,7 @@ func (m *GroupMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *GroupMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.api_keys != nil {
 		edges = append(edges, group.EdgeAPIKeys)
 	}
@@ -27599,6 +27940,9 @@ func (m *GroupMutation) AddedEdges() []string {
 	}
 	if m.usage_logs != nil {
 		edges = append(edges, group.EdgeUsageLogs)
+	}
+	if m.shards != nil {
+		edges = append(edges, group.EdgeShards)
 	}
 	if m.accounts != nil {
 		edges = append(edges, group.EdgeAccounts)
@@ -27637,6 +27981,12 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case group.EdgeShards:
+		ids := make([]ent.Value, 0, len(m.shards))
+		for id := range m.shards {
+			ids = append(ids, id)
+		}
+		return ids
 	case group.EdgeAccounts:
 		ids := make([]ent.Value, 0, len(m.accounts))
 		for id := range m.accounts {
@@ -27655,7 +28005,7 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *GroupMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.removedapi_keys != nil {
 		edges = append(edges, group.EdgeAPIKeys)
 	}
@@ -27667,6 +28017,9 @@ func (m *GroupMutation) RemovedEdges() []string {
 	}
 	if m.removedusage_logs != nil {
 		edges = append(edges, group.EdgeUsageLogs)
+	}
+	if m.removedshards != nil {
+		edges = append(edges, group.EdgeShards)
 	}
 	if m.removedaccounts != nil {
 		edges = append(edges, group.EdgeAccounts)
@@ -27705,6 +28058,12 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case group.EdgeShards:
+		ids := make([]ent.Value, 0, len(m.removedshards))
+		for id := range m.removedshards {
+			ids = append(ids, id)
+		}
+		return ids
 	case group.EdgeAccounts:
 		ids := make([]ent.Value, 0, len(m.removedaccounts))
 		for id := range m.removedaccounts {
@@ -27723,7 +28082,7 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *GroupMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.clearedapi_keys {
 		edges = append(edges, group.EdgeAPIKeys)
 	}
@@ -27735,6 +28094,9 @@ func (m *GroupMutation) ClearedEdges() []string {
 	}
 	if m.clearedusage_logs {
 		edges = append(edges, group.EdgeUsageLogs)
+	}
+	if m.clearedshards {
+		edges = append(edges, group.EdgeShards)
 	}
 	if m.clearedaccounts {
 		edges = append(edges, group.EdgeAccounts)
@@ -27757,6 +28119,8 @@ func (m *GroupMutation) EdgeCleared(name string) bool {
 		return m.clearedsubscriptions
 	case group.EdgeUsageLogs:
 		return m.clearedusage_logs
+	case group.EdgeShards:
+		return m.clearedshards
 	case group.EdgeAccounts:
 		return m.clearedaccounts
 	case group.EdgeAllowedUsers:
@@ -27789,6 +28153,9 @@ func (m *GroupMutation) ResetEdge(name string) error {
 	case group.EdgeUsageLogs:
 		m.ResetUsageLogs()
 		return nil
+	case group.EdgeShards:
+		m.ResetShards()
+		return nil
 	case group.EdgeAccounts:
 		m.ResetAccounts()
 		return nil
@@ -27797,6 +28164,1948 @@ func (m *GroupMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Group edge %s", name)
+}
+
+// GroupShardMutation represents an operation that mutates the GroupShard nodes in the graph.
+type GroupShardMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int64
+	created_at      *time.Time
+	updated_at      *time.Time
+	name            *string
+	description     *string
+	status          *string
+	clearedFields   map[string]struct{}
+	group           *int64
+	clearedgroup    bool
+	users           map[int64]struct{}
+	removedusers    map[int64]struct{}
+	clearedusers    bool
+	accounts        map[int64]struct{}
+	removedaccounts map[int64]struct{}
+	clearedaccounts bool
+	done            bool
+	oldValue        func(context.Context) (*GroupShard, error)
+	predicates      []predicate.GroupShard
+}
+
+var _ ent.Mutation = (*GroupShardMutation)(nil)
+
+// groupshardOption allows management of the mutation configuration using functional options.
+type groupshardOption func(*GroupShardMutation)
+
+// newGroupShardMutation creates new mutation for the GroupShard entity.
+func newGroupShardMutation(c config, op Op, opts ...groupshardOption) *GroupShardMutation {
+	m := &GroupShardMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGroupShard,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withGroupShardID sets the ID field of the mutation.
+func withGroupShardID(id int64) groupshardOption {
+	return func(m *GroupShardMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *GroupShard
+		)
+		m.oldValue = func(ctx context.Context) (*GroupShard, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().GroupShard.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withGroupShard sets the old GroupShard of the mutation.
+func withGroupShard(node *GroupShard) groupshardOption {
+	return func(m *GroupShardMutation) {
+		m.oldValue = func(context.Context) (*GroupShard, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GroupShardMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GroupShardMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *GroupShardMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *GroupShardMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().GroupShard.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *GroupShardMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *GroupShardMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the GroupShard entity.
+// If the GroupShard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupShardMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *GroupShardMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *GroupShardMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *GroupShardMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the GroupShard entity.
+// If the GroupShard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupShardMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *GroupShardMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *GroupShardMutation) SetGroupID(i int64) {
+	m.group = &i
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *GroupShardMutation) GroupID() (r int64, exists bool) {
+	v := m.group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGroupID returns the old "group_id" field's value of the GroupShard entity.
+// If the GroupShard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupShardMutation) OldGroupID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGroupID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGroupID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGroupID: %w", err)
+	}
+	return oldValue.GroupID, nil
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *GroupShardMutation) ResetGroupID() {
+	m.group = nil
+}
+
+// SetName sets the "name" field.
+func (m *GroupShardMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *GroupShardMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the GroupShard entity.
+// If the GroupShard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupShardMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *GroupShardMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *GroupShardMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *GroupShardMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the GroupShard entity.
+// If the GroupShard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupShardMutation) OldDescription(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *GroupShardMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[groupshard.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *GroupShardMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[groupshard.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *GroupShardMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, groupshard.FieldDescription)
+}
+
+// SetStatus sets the "status" field.
+func (m *GroupShardMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *GroupShardMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the GroupShard entity.
+// If the GroupShard object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupShardMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *GroupShardMutation) ResetStatus() {
+	m.status = nil
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (m *GroupShardMutation) ClearGroup() {
+	m.clearedgroup = true
+	m.clearedFields[groupshard.FieldGroupID] = struct{}{}
+}
+
+// GroupCleared reports if the "group" edge to the Group entity was cleared.
+func (m *GroupShardMutation) GroupCleared() bool {
+	return m.clearedgroup
+}
+
+// GroupIDs returns the "group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupID instead. It exists only for internal usage by the builders.
+func (m *GroupShardMutation) GroupIDs() (ids []int64) {
+	if id := m.group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroup resets all changes to the "group" edge.
+func (m *GroupShardMutation) ResetGroup() {
+	m.group = nil
+	m.clearedgroup = false
+}
+
+// AddUserIDs adds the "users" edge to the User entity by ids.
+func (m *GroupShardMutation) AddUserIDs(ids ...int64) {
+	if m.users == nil {
+		m.users = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.users[ids[i]] = struct{}{}
+	}
+}
+
+// ClearUsers clears the "users" edge to the User entity.
+func (m *GroupShardMutation) ClearUsers() {
+	m.clearedusers = true
+}
+
+// UsersCleared reports if the "users" edge to the User entity was cleared.
+func (m *GroupShardMutation) UsersCleared() bool {
+	return m.clearedusers
+}
+
+// RemoveUserIDs removes the "users" edge to the User entity by IDs.
+func (m *GroupShardMutation) RemoveUserIDs(ids ...int64) {
+	if m.removedusers == nil {
+		m.removedusers = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.users, ids[i])
+		m.removedusers[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedUsers returns the removed IDs of the "users" edge to the User entity.
+func (m *GroupShardMutation) RemovedUsersIDs() (ids []int64) {
+	for id := range m.removedusers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// UsersIDs returns the "users" edge IDs in the mutation.
+func (m *GroupShardMutation) UsersIDs() (ids []int64) {
+	for id := range m.users {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetUsers resets all changes to the "users" edge.
+func (m *GroupShardMutation) ResetUsers() {
+	m.users = nil
+	m.clearedusers = false
+	m.removedusers = nil
+}
+
+// AddAccountIDs adds the "accounts" edge to the Account entity by ids.
+func (m *GroupShardMutation) AddAccountIDs(ids ...int64) {
+	if m.accounts == nil {
+		m.accounts = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.accounts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAccounts clears the "accounts" edge to the Account entity.
+func (m *GroupShardMutation) ClearAccounts() {
+	m.clearedaccounts = true
+}
+
+// AccountsCleared reports if the "accounts" edge to the Account entity was cleared.
+func (m *GroupShardMutation) AccountsCleared() bool {
+	return m.clearedaccounts
+}
+
+// RemoveAccountIDs removes the "accounts" edge to the Account entity by IDs.
+func (m *GroupShardMutation) RemoveAccountIDs(ids ...int64) {
+	if m.removedaccounts == nil {
+		m.removedaccounts = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.accounts, ids[i])
+		m.removedaccounts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAccounts returns the removed IDs of the "accounts" edge to the Account entity.
+func (m *GroupShardMutation) RemovedAccountsIDs() (ids []int64) {
+	for id := range m.removedaccounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// AccountsIDs returns the "accounts" edge IDs in the mutation.
+func (m *GroupShardMutation) AccountsIDs() (ids []int64) {
+	for id := range m.accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAccounts resets all changes to the "accounts" edge.
+func (m *GroupShardMutation) ResetAccounts() {
+	m.accounts = nil
+	m.clearedaccounts = false
+	m.removedaccounts = nil
+}
+
+// Where appends a list predicates to the GroupShardMutation builder.
+func (m *GroupShardMutation) Where(ps ...predicate.GroupShard) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GroupShardMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GroupShardMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GroupShard, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GroupShardMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GroupShardMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GroupShard).
+func (m *GroupShardMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GroupShardMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.created_at != nil {
+		fields = append(fields, groupshard.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, groupshard.FieldUpdatedAt)
+	}
+	if m.group != nil {
+		fields = append(fields, groupshard.FieldGroupID)
+	}
+	if m.name != nil {
+		fields = append(fields, groupshard.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, groupshard.FieldDescription)
+	}
+	if m.status != nil {
+		fields = append(fields, groupshard.FieldStatus)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GroupShardMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case groupshard.FieldCreatedAt:
+		return m.CreatedAt()
+	case groupshard.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case groupshard.FieldGroupID:
+		return m.GroupID()
+	case groupshard.FieldName:
+		return m.Name()
+	case groupshard.FieldDescription:
+		return m.Description()
+	case groupshard.FieldStatus:
+		return m.Status()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GroupShardMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case groupshard.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case groupshard.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case groupshard.FieldGroupID:
+		return m.OldGroupID(ctx)
+	case groupshard.FieldName:
+		return m.OldName(ctx)
+	case groupshard.FieldDescription:
+		return m.OldDescription(ctx)
+	case groupshard.FieldStatus:
+		return m.OldStatus(ctx)
+	}
+	return nil, fmt.Errorf("unknown GroupShard field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupShardMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case groupshard.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case groupshard.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case groupshard.FieldGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case groupshard.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case groupshard.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case groupshard.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShard field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GroupShardMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GroupShardMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupShardMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown GroupShard numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GroupShardMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(groupshard.FieldDescription) {
+		fields = append(fields, groupshard.FieldDescription)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GroupShardMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GroupShardMutation) ClearField(name string) error {
+	switch name {
+	case groupshard.FieldDescription:
+		m.ClearDescription()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShard nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GroupShardMutation) ResetField(name string) error {
+	switch name {
+	case groupshard.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case groupshard.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case groupshard.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case groupshard.FieldName:
+		m.ResetName()
+		return nil
+	case groupshard.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case groupshard.FieldStatus:
+		m.ResetStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShard field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GroupShardMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.group != nil {
+		edges = append(edges, groupshard.EdgeGroup)
+	}
+	if m.users != nil {
+		edges = append(edges, groupshard.EdgeUsers)
+	}
+	if m.accounts != nil {
+		edges = append(edges, groupshard.EdgeAccounts)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GroupShardMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case groupshard.EdgeGroup:
+		if id := m.group; id != nil {
+			return []ent.Value{*id}
+		}
+	case groupshard.EdgeUsers:
+		ids := make([]ent.Value, 0, len(m.users))
+		for id := range m.users {
+			ids = append(ids, id)
+		}
+		return ids
+	case groupshard.EdgeAccounts:
+		ids := make([]ent.Value, 0, len(m.accounts))
+		for id := range m.accounts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GroupShardMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedusers != nil {
+		edges = append(edges, groupshard.EdgeUsers)
+	}
+	if m.removedaccounts != nil {
+		edges = append(edges, groupshard.EdgeAccounts)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GroupShardMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case groupshard.EdgeUsers:
+		ids := make([]ent.Value, 0, len(m.removedusers))
+		for id := range m.removedusers {
+			ids = append(ids, id)
+		}
+		return ids
+	case groupshard.EdgeAccounts:
+		ids := make([]ent.Value, 0, len(m.removedaccounts))
+		for id := range m.removedaccounts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GroupShardMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedgroup {
+		edges = append(edges, groupshard.EdgeGroup)
+	}
+	if m.clearedusers {
+		edges = append(edges, groupshard.EdgeUsers)
+	}
+	if m.clearedaccounts {
+		edges = append(edges, groupshard.EdgeAccounts)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GroupShardMutation) EdgeCleared(name string) bool {
+	switch name {
+	case groupshard.EdgeGroup:
+		return m.clearedgroup
+	case groupshard.EdgeUsers:
+		return m.clearedusers
+	case groupshard.EdgeAccounts:
+		return m.clearedaccounts
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GroupShardMutation) ClearEdge(name string) error {
+	switch name {
+	case groupshard.EdgeGroup:
+		m.ClearGroup()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShard unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GroupShardMutation) ResetEdge(name string) error {
+	switch name {
+	case groupshard.EdgeGroup:
+		m.ResetGroup()
+		return nil
+	case groupshard.EdgeUsers:
+		m.ResetUsers()
+		return nil
+	case groupshard.EdgeAccounts:
+		m.ResetAccounts()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShard edge %s", name)
+}
+
+// GroupShardAccountMutation represents an operation that mutates the GroupShardAccount nodes in the graph.
+type GroupShardAccountMutation struct {
+	config
+	op                 Op
+	typ                string
+	platform           *string
+	priority           *int
+	addpriority        *int
+	created_at         *time.Time
+	clearedFields      map[string]struct{}
+	group_shard        *int64
+	clearedgroup_shard bool
+	group              *int64
+	clearedgroup       bool
+	account            *int64
+	clearedaccount     bool
+	done               bool
+	oldValue           func(context.Context) (*GroupShardAccount, error)
+	predicates         []predicate.GroupShardAccount
+}
+
+var _ ent.Mutation = (*GroupShardAccountMutation)(nil)
+
+// groupshardaccountOption allows management of the mutation configuration using functional options.
+type groupshardaccountOption func(*GroupShardAccountMutation)
+
+// newGroupShardAccountMutation creates new mutation for the GroupShardAccount entity.
+func newGroupShardAccountMutation(c config, op Op, opts ...groupshardaccountOption) *GroupShardAccountMutation {
+	m := &GroupShardAccountMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGroupShardAccount,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GroupShardAccountMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GroupShardAccountMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetGroupShardID sets the "group_shard_id" field.
+func (m *GroupShardAccountMutation) SetGroupShardID(i int64) {
+	m.group_shard = &i
+}
+
+// GroupShardID returns the value of the "group_shard_id" field in the mutation.
+func (m *GroupShardAccountMutation) GroupShardID() (r int64, exists bool) {
+	v := m.group_shard
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetGroupShardID resets all changes to the "group_shard_id" field.
+func (m *GroupShardAccountMutation) ResetGroupShardID() {
+	m.group_shard = nil
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *GroupShardAccountMutation) SetGroupID(i int64) {
+	m.group = &i
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *GroupShardAccountMutation) GroupID() (r int64, exists bool) {
+	v := m.group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *GroupShardAccountMutation) ResetGroupID() {
+	m.group = nil
+}
+
+// SetAccountID sets the "account_id" field.
+func (m *GroupShardAccountMutation) SetAccountID(i int64) {
+	m.account = &i
+}
+
+// AccountID returns the value of the "account_id" field in the mutation.
+func (m *GroupShardAccountMutation) AccountID() (r int64, exists bool) {
+	v := m.account
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAccountID resets all changes to the "account_id" field.
+func (m *GroupShardAccountMutation) ResetAccountID() {
+	m.account = nil
+}
+
+// SetPlatform sets the "platform" field.
+func (m *GroupShardAccountMutation) SetPlatform(s string) {
+	m.platform = &s
+}
+
+// Platform returns the value of the "platform" field in the mutation.
+func (m *GroupShardAccountMutation) Platform() (r string, exists bool) {
+	v := m.platform
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPlatform resets all changes to the "platform" field.
+func (m *GroupShardAccountMutation) ResetPlatform() {
+	m.platform = nil
+}
+
+// SetPriority sets the "priority" field.
+func (m *GroupShardAccountMutation) SetPriority(i int) {
+	m.priority = &i
+	m.addpriority = nil
+}
+
+// Priority returns the value of the "priority" field in the mutation.
+func (m *GroupShardAccountMutation) Priority() (r int, exists bool) {
+	v := m.priority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// AddPriority adds i to the "priority" field.
+func (m *GroupShardAccountMutation) AddPriority(i int) {
+	if m.addpriority != nil {
+		*m.addpriority += i
+	} else {
+		m.addpriority = &i
+	}
+}
+
+// AddedPriority returns the value that was added to the "priority" field in this mutation.
+func (m *GroupShardAccountMutation) AddedPriority() (r int, exists bool) {
+	v := m.addpriority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPriority resets all changes to the "priority" field.
+func (m *GroupShardAccountMutation) ResetPriority() {
+	m.priority = nil
+	m.addpriority = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *GroupShardAccountMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *GroupShardAccountMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *GroupShardAccountMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// ClearGroupShard clears the "group_shard" edge to the GroupShard entity.
+func (m *GroupShardAccountMutation) ClearGroupShard() {
+	m.clearedgroup_shard = true
+	m.clearedFields[groupshardaccount.FieldGroupShardID] = struct{}{}
+}
+
+// GroupShardCleared reports if the "group_shard" edge to the GroupShard entity was cleared.
+func (m *GroupShardAccountMutation) GroupShardCleared() bool {
+	return m.clearedgroup_shard
+}
+
+// GroupShardIDs returns the "group_shard" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupShardID instead. It exists only for internal usage by the builders.
+func (m *GroupShardAccountMutation) GroupShardIDs() (ids []int64) {
+	if id := m.group_shard; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroupShard resets all changes to the "group_shard" edge.
+func (m *GroupShardAccountMutation) ResetGroupShard() {
+	m.group_shard = nil
+	m.clearedgroup_shard = false
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (m *GroupShardAccountMutation) ClearGroup() {
+	m.clearedgroup = true
+	m.clearedFields[groupshardaccount.FieldGroupID] = struct{}{}
+}
+
+// GroupCleared reports if the "group" edge to the Group entity was cleared.
+func (m *GroupShardAccountMutation) GroupCleared() bool {
+	return m.clearedgroup
+}
+
+// GroupIDs returns the "group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupID instead. It exists only for internal usage by the builders.
+func (m *GroupShardAccountMutation) GroupIDs() (ids []int64) {
+	if id := m.group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroup resets all changes to the "group" edge.
+func (m *GroupShardAccountMutation) ResetGroup() {
+	m.group = nil
+	m.clearedgroup = false
+}
+
+// ClearAccount clears the "account" edge to the Account entity.
+func (m *GroupShardAccountMutation) ClearAccount() {
+	m.clearedaccount = true
+	m.clearedFields[groupshardaccount.FieldAccountID] = struct{}{}
+}
+
+// AccountCleared reports if the "account" edge to the Account entity was cleared.
+func (m *GroupShardAccountMutation) AccountCleared() bool {
+	return m.clearedaccount
+}
+
+// AccountIDs returns the "account" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AccountID instead. It exists only for internal usage by the builders.
+func (m *GroupShardAccountMutation) AccountIDs() (ids []int64) {
+	if id := m.account; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAccount resets all changes to the "account" edge.
+func (m *GroupShardAccountMutation) ResetAccount() {
+	m.account = nil
+	m.clearedaccount = false
+}
+
+// Where appends a list predicates to the GroupShardAccountMutation builder.
+func (m *GroupShardAccountMutation) Where(ps ...predicate.GroupShardAccount) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GroupShardAccountMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GroupShardAccountMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GroupShardAccount, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GroupShardAccountMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GroupShardAccountMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GroupShardAccount).
+func (m *GroupShardAccountMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GroupShardAccountMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.group_shard != nil {
+		fields = append(fields, groupshardaccount.FieldGroupShardID)
+	}
+	if m.group != nil {
+		fields = append(fields, groupshardaccount.FieldGroupID)
+	}
+	if m.account != nil {
+		fields = append(fields, groupshardaccount.FieldAccountID)
+	}
+	if m.platform != nil {
+		fields = append(fields, groupshardaccount.FieldPlatform)
+	}
+	if m.priority != nil {
+		fields = append(fields, groupshardaccount.FieldPriority)
+	}
+	if m.created_at != nil {
+		fields = append(fields, groupshardaccount.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GroupShardAccountMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case groupshardaccount.FieldGroupShardID:
+		return m.GroupShardID()
+	case groupshardaccount.FieldGroupID:
+		return m.GroupID()
+	case groupshardaccount.FieldAccountID:
+		return m.AccountID()
+	case groupshardaccount.FieldPlatform:
+		return m.Platform()
+	case groupshardaccount.FieldPriority:
+		return m.Priority()
+	case groupshardaccount.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GroupShardAccountMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, errors.New("edge schema GroupShardAccount does not support getting old values")
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupShardAccountMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case groupshardaccount.FieldGroupShardID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupShardID(v)
+		return nil
+	case groupshardaccount.FieldGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case groupshardaccount.FieldAccountID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccountID(v)
+		return nil
+	case groupshardaccount.FieldPlatform:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPlatform(v)
+		return nil
+	case groupshardaccount.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPriority(v)
+		return nil
+	case groupshardaccount.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardAccount field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GroupShardAccountMutation) AddedFields() []string {
+	var fields []string
+	if m.addpriority != nil {
+		fields = append(fields, groupshardaccount.FieldPriority)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GroupShardAccountMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case groupshardaccount.FieldPriority:
+		return m.AddedPriority()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupShardAccountMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case groupshardaccount.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPriority(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardAccount numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GroupShardAccountMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GroupShardAccountMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GroupShardAccountMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown GroupShardAccount nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GroupShardAccountMutation) ResetField(name string) error {
+	switch name {
+	case groupshardaccount.FieldGroupShardID:
+		m.ResetGroupShardID()
+		return nil
+	case groupshardaccount.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case groupshardaccount.FieldAccountID:
+		m.ResetAccountID()
+		return nil
+	case groupshardaccount.FieldPlatform:
+		m.ResetPlatform()
+		return nil
+	case groupshardaccount.FieldPriority:
+		m.ResetPriority()
+		return nil
+	case groupshardaccount.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardAccount field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GroupShardAccountMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.group_shard != nil {
+		edges = append(edges, groupshardaccount.EdgeGroupShard)
+	}
+	if m.group != nil {
+		edges = append(edges, groupshardaccount.EdgeGroup)
+	}
+	if m.account != nil {
+		edges = append(edges, groupshardaccount.EdgeAccount)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GroupShardAccountMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case groupshardaccount.EdgeGroupShard:
+		if id := m.group_shard; id != nil {
+			return []ent.Value{*id}
+		}
+	case groupshardaccount.EdgeGroup:
+		if id := m.group; id != nil {
+			return []ent.Value{*id}
+		}
+	case groupshardaccount.EdgeAccount:
+		if id := m.account; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GroupShardAccountMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GroupShardAccountMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GroupShardAccountMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedgroup_shard {
+		edges = append(edges, groupshardaccount.EdgeGroupShard)
+	}
+	if m.clearedgroup {
+		edges = append(edges, groupshardaccount.EdgeGroup)
+	}
+	if m.clearedaccount {
+		edges = append(edges, groupshardaccount.EdgeAccount)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GroupShardAccountMutation) EdgeCleared(name string) bool {
+	switch name {
+	case groupshardaccount.EdgeGroupShard:
+		return m.clearedgroup_shard
+	case groupshardaccount.EdgeGroup:
+		return m.clearedgroup
+	case groupshardaccount.EdgeAccount:
+		return m.clearedaccount
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GroupShardAccountMutation) ClearEdge(name string) error {
+	switch name {
+	case groupshardaccount.EdgeGroupShard:
+		m.ClearGroupShard()
+		return nil
+	case groupshardaccount.EdgeGroup:
+		m.ClearGroup()
+		return nil
+	case groupshardaccount.EdgeAccount:
+		m.ClearAccount()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardAccount unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GroupShardAccountMutation) ResetEdge(name string) error {
+	switch name {
+	case groupshardaccount.EdgeGroupShard:
+		m.ResetGroupShard()
+		return nil
+	case groupshardaccount.EdgeGroup:
+		m.ResetGroup()
+		return nil
+	case groupshardaccount.EdgeAccount:
+		m.ResetAccount()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardAccount edge %s", name)
+}
+
+// GroupShardUserMutation represents an operation that mutates the GroupShardUser nodes in the graph.
+type GroupShardUserMutation struct {
+	config
+	op                 Op
+	typ                string
+	created_at         *time.Time
+	clearedFields      map[string]struct{}
+	group_shard        *int64
+	clearedgroup_shard bool
+	group              *int64
+	clearedgroup       bool
+	user               *int64
+	cleareduser        bool
+	done               bool
+	oldValue           func(context.Context) (*GroupShardUser, error)
+	predicates         []predicate.GroupShardUser
+}
+
+var _ ent.Mutation = (*GroupShardUserMutation)(nil)
+
+// groupsharduserOption allows management of the mutation configuration using functional options.
+type groupsharduserOption func(*GroupShardUserMutation)
+
+// newGroupShardUserMutation creates new mutation for the GroupShardUser entity.
+func newGroupShardUserMutation(c config, op Op, opts ...groupsharduserOption) *GroupShardUserMutation {
+	m := &GroupShardUserMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGroupShardUser,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GroupShardUserMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GroupShardUserMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetGroupShardID sets the "group_shard_id" field.
+func (m *GroupShardUserMutation) SetGroupShardID(i int64) {
+	m.group_shard = &i
+}
+
+// GroupShardID returns the value of the "group_shard_id" field in the mutation.
+func (m *GroupShardUserMutation) GroupShardID() (r int64, exists bool) {
+	v := m.group_shard
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetGroupShardID resets all changes to the "group_shard_id" field.
+func (m *GroupShardUserMutation) ResetGroupShardID() {
+	m.group_shard = nil
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *GroupShardUserMutation) SetGroupID(i int64) {
+	m.group = &i
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *GroupShardUserMutation) GroupID() (r int64, exists bool) {
+	v := m.group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *GroupShardUserMutation) ResetGroupID() {
+	m.group = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *GroupShardUserMutation) SetUserID(i int64) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *GroupShardUserMutation) UserID() (r int64, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *GroupShardUserMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *GroupShardUserMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *GroupShardUserMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *GroupShardUserMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// ClearGroupShard clears the "group_shard" edge to the GroupShard entity.
+func (m *GroupShardUserMutation) ClearGroupShard() {
+	m.clearedgroup_shard = true
+	m.clearedFields[groupsharduser.FieldGroupShardID] = struct{}{}
+}
+
+// GroupShardCleared reports if the "group_shard" edge to the GroupShard entity was cleared.
+func (m *GroupShardUserMutation) GroupShardCleared() bool {
+	return m.clearedgroup_shard
+}
+
+// GroupShardIDs returns the "group_shard" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupShardID instead. It exists only for internal usage by the builders.
+func (m *GroupShardUserMutation) GroupShardIDs() (ids []int64) {
+	if id := m.group_shard; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroupShard resets all changes to the "group_shard" edge.
+func (m *GroupShardUserMutation) ResetGroupShard() {
+	m.group_shard = nil
+	m.clearedgroup_shard = false
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (m *GroupShardUserMutation) ClearGroup() {
+	m.clearedgroup = true
+	m.clearedFields[groupsharduser.FieldGroupID] = struct{}{}
+}
+
+// GroupCleared reports if the "group" edge to the Group entity was cleared.
+func (m *GroupShardUserMutation) GroupCleared() bool {
+	return m.clearedgroup
+}
+
+// GroupIDs returns the "group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupID instead. It exists only for internal usage by the builders.
+func (m *GroupShardUserMutation) GroupIDs() (ids []int64) {
+	if id := m.group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroup resets all changes to the "group" edge.
+func (m *GroupShardUserMutation) ResetGroup() {
+	m.group = nil
+	m.clearedgroup = false
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *GroupShardUserMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[groupsharduser.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *GroupShardUserMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *GroupShardUserMutation) UserIDs() (ids []int64) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *GroupShardUserMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the GroupShardUserMutation builder.
+func (m *GroupShardUserMutation) Where(ps ...predicate.GroupShardUser) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GroupShardUserMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GroupShardUserMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GroupShardUser, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GroupShardUserMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GroupShardUserMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GroupShardUser).
+func (m *GroupShardUserMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GroupShardUserMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.group_shard != nil {
+		fields = append(fields, groupsharduser.FieldGroupShardID)
+	}
+	if m.group != nil {
+		fields = append(fields, groupsharduser.FieldGroupID)
+	}
+	if m.user != nil {
+		fields = append(fields, groupsharduser.FieldUserID)
+	}
+	if m.created_at != nil {
+		fields = append(fields, groupsharduser.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GroupShardUserMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case groupsharduser.FieldGroupShardID:
+		return m.GroupShardID()
+	case groupsharduser.FieldGroupID:
+		return m.GroupID()
+	case groupsharduser.FieldUserID:
+		return m.UserID()
+	case groupsharduser.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GroupShardUserMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, errors.New("edge schema GroupShardUser does not support getting old values")
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupShardUserMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case groupsharduser.FieldGroupShardID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupShardID(v)
+		return nil
+	case groupsharduser.FieldGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case groupsharduser.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case groupsharduser.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardUser field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GroupShardUserMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GroupShardUserMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupShardUserMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown GroupShardUser numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GroupShardUserMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GroupShardUserMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GroupShardUserMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown GroupShardUser nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GroupShardUserMutation) ResetField(name string) error {
+	switch name {
+	case groupsharduser.FieldGroupShardID:
+		m.ResetGroupShardID()
+		return nil
+	case groupsharduser.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case groupsharduser.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case groupsharduser.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardUser field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GroupShardUserMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.group_shard != nil {
+		edges = append(edges, groupsharduser.EdgeGroupShard)
+	}
+	if m.group != nil {
+		edges = append(edges, groupsharduser.EdgeGroup)
+	}
+	if m.user != nil {
+		edges = append(edges, groupsharduser.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GroupShardUserMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case groupsharduser.EdgeGroupShard:
+		if id := m.group_shard; id != nil {
+			return []ent.Value{*id}
+		}
+	case groupsharduser.EdgeGroup:
+		if id := m.group; id != nil {
+			return []ent.Value{*id}
+		}
+	case groupsharduser.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GroupShardUserMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GroupShardUserMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GroupShardUserMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedgroup_shard {
+		edges = append(edges, groupsharduser.EdgeGroupShard)
+	}
+	if m.clearedgroup {
+		edges = append(edges, groupsharduser.EdgeGroup)
+	}
+	if m.cleareduser {
+		edges = append(edges, groupsharduser.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GroupShardUserMutation) EdgeCleared(name string) bool {
+	switch name {
+	case groupsharduser.EdgeGroupShard:
+		return m.clearedgroup_shard
+	case groupsharduser.EdgeGroup:
+		return m.clearedgroup
+	case groupsharduser.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GroupShardUserMutation) ClearEdge(name string) error {
+	switch name {
+	case groupsharduser.EdgeGroupShard:
+		m.ClearGroupShard()
+		return nil
+	case groupsharduser.EdgeGroup:
+		m.ClearGroup()
+		return nil
+	case groupsharduser.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardUser unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GroupShardUserMutation) ResetEdge(name string) error {
+	switch name {
+	case groupsharduser.EdgeGroupShard:
+		m.ResetGroupShard()
+		return nil
+	case groupsharduser.EdgeGroup:
+		m.ResetGroup()
+		return nil
+	case groupsharduser.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupShardUser edge %s", name)
 }
 
 // IdempotencyRecordMutation represents an operation that mutates the IdempotencyRecord nodes in the graph.
@@ -48837,6 +51146,9 @@ type UserMutation struct {
 	allowed_groups                map[int64]struct{}
 	removedallowed_groups         map[int64]struct{}
 	clearedallowed_groups         bool
+	group_shards                  map[int64]struct{}
+	removedgroup_shards           map[int64]struct{}
+	clearedgroup_shards           bool
 	usage_logs                    map[int64]struct{}
 	removedusage_logs             map[int64]struct{}
 	clearedusage_logs             bool
@@ -50384,6 +52696,60 @@ func (m *UserMutation) ResetAllowedGroups() {
 	m.removedallowed_groups = nil
 }
 
+// AddGroupShardIDs adds the "group_shards" edge to the GroupShard entity by ids.
+func (m *UserMutation) AddGroupShardIDs(ids ...int64) {
+	if m.group_shards == nil {
+		m.group_shards = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.group_shards[ids[i]] = struct{}{}
+	}
+}
+
+// ClearGroupShards clears the "group_shards" edge to the GroupShard entity.
+func (m *UserMutation) ClearGroupShards() {
+	m.clearedgroup_shards = true
+}
+
+// GroupShardsCleared reports if the "group_shards" edge to the GroupShard entity was cleared.
+func (m *UserMutation) GroupShardsCleared() bool {
+	return m.clearedgroup_shards
+}
+
+// RemoveGroupShardIDs removes the "group_shards" edge to the GroupShard entity by IDs.
+func (m *UserMutation) RemoveGroupShardIDs(ids ...int64) {
+	if m.removedgroup_shards == nil {
+		m.removedgroup_shards = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.group_shards, ids[i])
+		m.removedgroup_shards[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedGroupShards returns the removed IDs of the "group_shards" edge to the GroupShard entity.
+func (m *UserMutation) RemovedGroupShardsIDs() (ids []int64) {
+	for id := range m.removedgroup_shards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// GroupShardsIDs returns the "group_shards" edge IDs in the mutation.
+func (m *UserMutation) GroupShardsIDs() (ids []int64) {
+	for id := range m.group_shards {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetGroupShards resets all changes to the "group_shards" edge.
+func (m *UserMutation) ResetGroupShards() {
+	m.group_shards = nil
+	m.clearedgroup_shards = false
+	m.removedgroup_shards = nil
+}
+
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by ids.
 func (m *UserMutation) AddUsageLogIDs(ids ...int64) {
 	if m.usage_logs == nil {
@@ -51417,7 +53783,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.api_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -51435,6 +53801,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.allowed_groups != nil {
 		edges = append(edges, user.EdgeAllowedGroups)
+	}
+	if m.group_shards != nil {
+		edges = append(edges, user.EdgeGroupShards)
 	}
 	if m.usage_logs != nil {
 		edges = append(edges, user.EdgeUsageLogs)
@@ -51500,6 +53869,12 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeGroupShards:
+		ids := make([]ent.Value, 0, len(m.group_shards))
+		for id := range m.group_shards {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeUsageLogs:
 		ids := make([]ent.Value, 0, len(m.usage_logs))
 		for id := range m.usage_logs {
@@ -51548,7 +53923,7 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.removedapi_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -51566,6 +53941,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedallowed_groups != nil {
 		edges = append(edges, user.EdgeAllowedGroups)
+	}
+	if m.removedgroup_shards != nil {
+		edges = append(edges, user.EdgeGroupShards)
 	}
 	if m.removedusage_logs != nil {
 		edges = append(edges, user.EdgeUsageLogs)
@@ -51631,6 +54009,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeGroupShards:
+		ids := make([]ent.Value, 0, len(m.removedgroup_shards))
+		for id := range m.removedgroup_shards {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeUsageLogs:
 		ids := make([]ent.Value, 0, len(m.removedusage_logs))
 		for id := range m.removedusage_logs {
@@ -51679,7 +54063,7 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.clearedapi_keys {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -51697,6 +54081,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	}
 	if m.clearedallowed_groups {
 		edges = append(edges, user.EdgeAllowedGroups)
+	}
+	if m.clearedgroup_shards {
+		edges = append(edges, user.EdgeGroupShards)
 	}
 	if m.clearedusage_logs {
 		edges = append(edges, user.EdgeUsageLogs)
@@ -51738,6 +54125,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedannouncement_reads
 	case user.EdgeAllowedGroups:
 		return m.clearedallowed_groups
+	case user.EdgeGroupShards:
+		return m.clearedgroup_shards
 	case user.EdgeUsageLogs:
 		return m.clearedusage_logs
 	case user.EdgeAttributeValues:
@@ -51785,6 +54174,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeAllowedGroups:
 		m.ResetAllowedGroups()
+		return nil
+	case user.EdgeGroupShards:
+		m.ResetGroupShards()
 		return nil
 	case user.EdgeUsageLogs:
 		m.ResetUsageLogs()

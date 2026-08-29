@@ -567,6 +567,9 @@ export interface Group {
   platform: GroupPlatform
   rate_multiplier: number
   rpm_limit?: number // Group-level RPM cap (0 = unlimited); overrides user-level rpm_limit when set
+  shard_enabled: boolean
+  shard_max_users_per_shard: number
+  shard_auto_create: boolean
   max_reasoning_effort?: string // Anthropic/OpenAI reasoning ceiling; empty means unlimited
   max_reasoning_effort_over_limit?: string // downgrade (default) or deny when over the ceiling
   reasoning_effort_mappings?: ReasoningEffortMapping[]
@@ -726,6 +729,50 @@ export interface CompositeRouteDecision {
   reason?: string
 }
 
+export interface GroupShard {
+  id: number
+  group_id: number
+  name: string
+  description: string
+  status: 'active' | 'inactive'
+  user_count: number
+  account_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupShardUser {
+  group_shard_id: number
+  group_id: number
+  user_id: number
+  email: string
+  username: string
+  created_at: string
+}
+
+export interface GroupShardAccount {
+  group_shard_id: number
+  group_id: number
+  account_id: number
+  name: string
+  platform: AccountPlatform
+  type: AccountType | string
+  status: string
+  priority: number
+  created_at: string
+}
+
+export interface GroupShardInput {
+  name: string
+  description?: string
+  status?: 'active' | 'inactive'
+}
+
+export interface GroupShardAccountInput {
+  account_id: number
+  priority?: number
+}
+
 export interface ApiKey {
   id: number
   user_id: number
@@ -842,6 +889,9 @@ export interface CreateGroupRequest {
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
+  shard_enabled?: boolean
+  shard_max_users_per_shard?: number
+  shard_auto_create?: boolean
   max_reasoning_effort?: string
   max_reasoning_effort_over_limit?: string
   reasoning_effort_mappings?: ReasoningEffortMapping[]
@@ -908,6 +958,9 @@ export interface UpdateGroupRequest {
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
+  shard_enabled?: boolean
+  shard_max_users_per_shard?: number
+  shard_auto_create?: boolean
   max_reasoning_effort?: string
   max_reasoning_effort_over_limit?: string
   reasoning_effort_mappings?: ReasoningEffortMapping[]

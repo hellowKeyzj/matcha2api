@@ -57,6 +57,15 @@ type ErrorPassthroughRule func(*sql.Selector)
 // Group is the predicate function for group builders.
 type Group func(*sql.Selector)
 
+// GroupShard is the predicate function for groupshard builders.
+type GroupShard func(*sql.Selector)
+
+// GroupShardAccount is the predicate function for groupshardaccount builders.
+type GroupShardAccount func(*sql.Selector)
+
+// GroupShardUser is the predicate function for groupsharduser builders.
+type GroupShardUser func(*sql.Selector)
+
 // IdempotencyRecord is the predicate function for idempotencyrecord builders.
 type IdempotencyRecord func(*sql.Selector)
 

@@ -225,9 +225,12 @@ type CreateGroupRequest struct {
 	FallbackGroupID                 *int64                        `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64                        `json:"fallback_group_id_on_invalid_request"`
 	// 模型路由配置（仅 anthropic 平台使用）
-	ModelRouting        map[string][]int64 `json:"model_routing"`
-	ModelRoutingEnabled bool               `json:"model_routing_enabled"`
-	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
+	ModelRouting          map[string][]int64 `json:"model_routing"`
+	ModelRoutingEnabled   bool               `json:"model_routing_enabled"`
+	MCPXMLInject          *bool              `json:"mcp_xml_inject"`
+	ShardEnabled          bool               `json:"shard_enabled"`
+	ShardMaxUsersPerShard int                `json:"shard_max_users_per_shard"`
+	ShardAutoCreate       *bool              `json:"shard_auto_create"`
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string `json:"supported_model_scopes"`
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
@@ -300,9 +303,12 @@ type UpdateGroupRequest struct {
 	FallbackGroupID                 *int64                        `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64                        `json:"fallback_group_id_on_invalid_request"`
 	// 模型路由配置（仅 anthropic 平台使用）
-	ModelRouting        map[string][]int64 `json:"model_routing"`
-	ModelRoutingEnabled *bool              `json:"model_routing_enabled"`
-	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
+	ModelRouting          map[string][]int64 `json:"model_routing"`
+	ModelRoutingEnabled   *bool              `json:"model_routing_enabled"`
+	MCPXMLInject          *bool              `json:"mcp_xml_inject"`
+	ShardEnabled          *bool              `json:"shard_enabled"`
+	ShardMaxUsersPerShard *int               `json:"shard_max_users_per_shard"`
+	ShardAutoCreate       *bool              `json:"shard_auto_create"`
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string `json:"supported_model_scopes"`
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
@@ -343,6 +349,31 @@ type CompositeRouteRequest struct {
 type CompositeRoutePreviewRequest struct {
 	Model    string `json:"model" binding:"required"`
 	Endpoint string `json:"endpoint" binding:"omitempty,oneof=any messages count_tokens responses chat_completions embeddings images gemini"`
+}
+
+type GroupShardRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+	Status      string `json:"status" binding:"omitempty,oneof=active inactive"`
+}
+
+type UpdateGroupShardRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	Status      *string `json:"status" binding:"omitempty,oneof=active inactive"`
+}
+
+type AssignGroupShardUserRequest struct {
+	UserID int64 `json:"user_id" binding:"required,gt=0"`
+}
+
+type GroupShardAccountRequest struct {
+	AccountID int64 `json:"account_id" binding:"required,gt=0"`
+	Priority  int   `json:"priority"`
+}
+
+type SetGroupShardAccountsRequest struct {
+	Accounts []GroupShardAccountRequest `json:"accounts"`
 }
 
 // List handles listing all groups with pagination
@@ -506,6 +537,216 @@ func (h *GroupHandler) PreviewCompositeRoute(c *gin.Context) {
 		return
 	}
 	response.Success(c, decision)
+}
+
+func (h *GroupHandler) ListShards(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shards, err := h.adminService.ListGroupShards(c.Request.Context(), groupID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardsFromService(shards))
+}
+
+func (h *GroupHandler) GetShard(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	shard, err := h.adminService.GetGroupShard(c.Request.Context(), groupID, shardID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardFromService(shard))
+}
+
+func (h *GroupHandler) CreateShard(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	var req GroupShardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body: "+err.Error())
+		return
+	}
+	shard, err := h.adminService.CreateGroupShard(c.Request.Context(), groupID, groupShardRequestToInput(req))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Created(c, dto.GroupShardFromService(shard))
+}
+
+func (h *GroupHandler) UpdateShard(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	var req UpdateGroupShardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body: "+err.Error())
+		return
+	}
+	shard, err := h.adminService.UpdateGroupShard(c.Request.Context(), groupID, shardID, updateGroupShardRequestToInput(req))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardFromService(shard))
+}
+
+func (h *GroupHandler) DeleteShard(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	if err := h.adminService.DeleteGroupShard(c.Request.Context(), groupID, shardID); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"message": "Group shard deleted"})
+}
+
+func (h *GroupHandler) ListShardUsers(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	users, err := h.adminService.ListGroupShardUsers(c.Request.Context(), groupID, shardID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardUsersFromService(users))
+}
+
+func (h *GroupHandler) AssignShardUser(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	var req AssignGroupShardUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body: "+err.Error())
+		return
+	}
+	if err := h.adminService.AssignGroupShardUser(c.Request.Context(), groupID, shardID, req.UserID); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"message": "Group shard user assigned"})
+}
+
+func (h *GroupHandler) RemoveShardUser(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	userID, ok := parsePositiveIDParam(c, "user_id")
+	if !ok {
+		return
+	}
+	if err := h.adminService.RemoveGroupShardUser(c.Request.Context(), groupID, shardID, userID); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"message": "Group shard user removed"})
+}
+
+func (h *GroupHandler) ListShardAccounts(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	accounts, err := h.adminService.ListGroupShardAccounts(c.Request.Context(), groupID, shardID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardAccountsFromService(accounts))
+}
+
+func (h *GroupHandler) SetShardAccounts(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	shardID, ok := parsePositiveIDParam(c, "shard_id")
+	if !ok {
+		return
+	}
+	var req SetGroupShardAccountsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body: "+err.Error())
+		return
+	}
+	accounts, err := h.adminService.SetGroupShardAccounts(c.Request.Context(), groupID, shardID, setGroupShardAccountsRequestToInput(req))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardAccountsFromService(accounts))
+}
+
+func groupShardRequestToInput(req GroupShardRequest) service.GroupShardInput {
+	return service.GroupShardInput{
+		Name:        req.Name,
+		Description: req.Description,
+		Status:      req.Status,
+	}
+}
+
+func updateGroupShardRequestToInput(req UpdateGroupShardRequest) service.UpdateGroupShardInput {
+	return service.UpdateGroupShardInput{
+		Name:        req.Name,
+		Description: req.Description,
+		Status:      req.Status,
+	}
+}
+
+func setGroupShardAccountsRequestToInput(req SetGroupShardAccountsRequest) service.GroupShardAccountsInput {
+	accounts := make([]service.GroupShardAccountInput, 0, len(req.Accounts))
+	for _, item := range req.Accounts {
+		accounts = append(accounts, service.GroupShardAccountInput{
+			AccountID: item.AccountID,
+			Priority:  item.Priority,
+		})
+	}
+	return service.GroupShardAccountsInput{Accounts: accounts}
 }
 
 func compositeRouteRequestToInput(req CompositeRouteRequest, defaultEnabled bool) service.CompositeRouteInput {
@@ -706,6 +947,9 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		ModelRouting:                    req.ModelRouting,
 		ModelRoutingEnabled:             req.ModelRoutingEnabled,
 		MCPXMLInject:                    req.MCPXMLInject,
+		ShardEnabled:                    req.ShardEnabled,
+		ShardMaxUsersPerShard:           req.ShardMaxUsersPerShard,
+		ShardAutoCreate:                 req.ShardAutoCreate,
 		SupportedModelScopes:            req.SupportedModelScopes,
 		AllowMessagesDispatch:           req.AllowMessagesDispatch,
 		AllowLive:                       req.AllowLive,
@@ -852,6 +1096,9 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		ModelRouting:                    req.ModelRouting,
 		ModelRoutingEnabled:             req.ModelRoutingEnabled,
 		MCPXMLInject:                    req.MCPXMLInject,
+		ShardEnabled:                    req.ShardEnabled,
+		ShardMaxUsersPerShard:           req.ShardMaxUsersPerShard,
+		ShardAutoCreate:                 req.ShardAutoCreate,
 		SupportedModelScopes:            req.SupportedModelScopes,
 		AllowMessagesDispatch:           req.AllowMessagesDispatch,
 		AllowLive:                       req.AllowLive,

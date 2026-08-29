@@ -952,6 +952,9 @@ var (
 		{Name: "mcp_xml_inject", Type: field.TypeBool, Default: true},
 		{Name: "supported_model_scopes", Type: field.TypeJSON, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "sort_order", Type: field.TypeInt, Default: 0},
+		{Name: "shard_enabled", Type: field.TypeBool, Default: false},
+		{Name: "shard_max_users_per_shard", Type: field.TypeInt, Default: 2},
+		{Name: "shard_auto_create", Type: field.TypeBool, Default: true},
 		{Name: "allow_messages_dispatch", Type: field.TypeBool, Default: false},
 		{Name: "allow_live", Type: field.TypeBool, Default: false},
 		{Name: "force_openai_fast", Type: field.TypeBool, Default: false},
@@ -1013,6 +1016,179 @@ var (
 				Annotation: &entsql.IndexAnnotation{
 					Where: "duplicate_operation_id IS NOT NULL AND deleted_at IS NULL",
 				},
+			},
+			{
+				Name:    "idx_groups_single_default_shard_group",
+				Unique:  true,
+				Columns: []*schema.Column{GroupsColumns[50]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "shard_enabled = true AND deleted_at IS NULL",
+				},
+			},
+		},
+	}
+	// GroupShardsColumns holds the columns for the "group_shards" table.
+	GroupShardsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "name", Type: field.TypeString, Size: 100},
+		{Name: "description", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "status", Type: field.TypeString, Size: 20, Default: "active"},
+		{Name: "group_shards", Type: field.TypeInt64, Nullable: true},
+		{Name: "group_id", Type: field.TypeInt64},
+	}
+	// GroupShardsTable holds the schema information for the "group_shards" table.
+	GroupShardsTable = &schema.Table{
+		Name:       "group_shards",
+		Columns:    GroupShardsColumns,
+		PrimaryKey: []*schema.Column{GroupShardsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "group_shards_groups_shards",
+				Columns:    []*schema.Column{GroupShardsColumns[6]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "group_shards_groups_group",
+				Columns:    []*schema.Column{GroupShardsColumns[7]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "groupshard_group_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardsColumns[7]},
+			},
+			{
+				Name:    "groupshard_status",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardsColumns[5]},
+			},
+			{
+				Name:    "groupshard_group_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{GroupShardsColumns[7], GroupShardsColumns[3]},
+			},
+		},
+	}
+	// GroupShardAccountsColumns holds the columns for the "group_shard_accounts" table.
+	GroupShardAccountsColumns = []*schema.Column{
+		{Name: "platform", Type: field.TypeString, Size: 50},
+		{Name: "priority", Type: field.TypeInt, Default: 50},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "group_shard_id", Type: field.TypeInt64},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "account_id", Type: field.TypeInt64},
+	}
+	// GroupShardAccountsTable holds the schema information for the "group_shard_accounts" table.
+	GroupShardAccountsTable = &schema.Table{
+		Name:       "group_shard_accounts",
+		Columns:    GroupShardAccountsColumns,
+		PrimaryKey: []*schema.Column{GroupShardAccountsColumns[5], GroupShardAccountsColumns[3]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "group_shard_accounts_group_shards_group_shard",
+				Columns:    []*schema.Column{GroupShardAccountsColumns[3]},
+				RefColumns: []*schema.Column{GroupShardsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "group_shard_accounts_groups_group",
+				Columns:    []*schema.Column{GroupShardAccountsColumns[4]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "group_shard_accounts_accounts_account",
+				Columns:    []*schema.Column{GroupShardAccountsColumns[5]},
+				RefColumns: []*schema.Column{AccountsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "groupshardaccount_group_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardAccountsColumns[4]},
+			},
+			{
+				Name:    "groupshardaccount_account_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardAccountsColumns[5]},
+			},
+			{
+				Name:    "groupshardaccount_group_id_account_id",
+				Unique:  true,
+				Columns: []*schema.Column{GroupShardAccountsColumns[4], GroupShardAccountsColumns[5]},
+			},
+			{
+				Name:    "groupshardaccount_group_id_platform",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardAccountsColumns[4], GroupShardAccountsColumns[0]},
+			},
+			{
+				Name:    "groupshardaccount_group_shard_id_platform",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardAccountsColumns[3], GroupShardAccountsColumns[0]},
+			},
+			{
+				Name:    "groupshardaccount_priority",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardAccountsColumns[1]},
+			},
+		},
+	}
+	// GroupShardUsersColumns holds the columns for the "group_shard_users" table.
+	GroupShardUsersColumns = []*schema.Column{
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "group_shard_id", Type: field.TypeInt64},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// GroupShardUsersTable holds the schema information for the "group_shard_users" table.
+	GroupShardUsersTable = &schema.Table{
+		Name:       "group_shard_users",
+		Columns:    GroupShardUsersColumns,
+		PrimaryKey: []*schema.Column{GroupShardUsersColumns[3], GroupShardUsersColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "group_shard_users_group_shards_group_shard",
+				Columns:    []*schema.Column{GroupShardUsersColumns[1]},
+				RefColumns: []*schema.Column{GroupShardsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "group_shard_users_groups_group",
+				Columns:    []*schema.Column{GroupShardUsersColumns[2]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "group_shard_users_users_user",
+				Columns:    []*schema.Column{GroupShardUsersColumns[3]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "groupsharduser_group_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardUsersColumns[2]},
+			},
+			{
+				Name:    "groupsharduser_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupShardUsersColumns[3]},
+			},
+			{
+				Name:    "groupsharduser_group_id_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{GroupShardUsersColumns[2], GroupShardUsersColumns[3]},
 			},
 		},
 	}
@@ -2106,6 +2282,9 @@ var (
 		CompositeModelRoutesTable,
 		ErrorPassthroughRulesTable,
 		GroupsTable,
+		GroupShardsTable,
+		GroupShardAccountsTable,
+		GroupShardUsersTable,
 		IdempotencyRecordsTable,
 		IdentityAdoptionDecisionsTable,
 		PaymentAuditLogsTable,
@@ -2196,6 +2375,23 @@ func init() {
 	}
 	GroupsTable.Annotation = &entsql.Annotation{
 		Table: "groups",
+	}
+	GroupShardsTable.ForeignKeys[0].RefTable = GroupsTable
+	GroupShardsTable.ForeignKeys[1].RefTable = GroupsTable
+	GroupShardsTable.Annotation = &entsql.Annotation{
+		Table: "group_shards",
+	}
+	GroupShardAccountsTable.ForeignKeys[0].RefTable = GroupShardsTable
+	GroupShardAccountsTable.ForeignKeys[1].RefTable = GroupsTable
+	GroupShardAccountsTable.ForeignKeys[2].RefTable = AccountsTable
+	GroupShardAccountsTable.Annotation = &entsql.Annotation{
+		Table: "group_shard_accounts",
+	}
+	GroupShardUsersTable.ForeignKeys[0].RefTable = GroupShardsTable
+	GroupShardUsersTable.ForeignKeys[1].RefTable = GroupsTable
+	GroupShardUsersTable.ForeignKeys[2].RefTable = UsersTable
+	GroupShardUsersTable.Annotation = &entsql.Annotation{
+		Table: "group_shard_users",
 	}
 	IdempotencyRecordsTable.Annotation = &entsql.Annotation{
 		Table: "idempotency_records",

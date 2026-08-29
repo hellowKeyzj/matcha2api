@@ -172,7 +172,7 @@ func TestWebSearch_RejectsWhenInflightExceedsBalance(t *testing.T) {
 	t.Cleanup(billingCache.Stop)
 	billing := service.NewBillingService(cfg, nil)
 	gw := service.NewGatewayService(
-		nil, nil, nil, nil, nil, nil, nil, nil, cfg, nil, nil, billing, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, cfg, nil, nil, billing, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, service.NewModelPricingResolver(nil, billing), nil, nil, nil,
 	)
 	h := &GatewayHandler{gatewayService: gw, billingCacheService: billingCache}

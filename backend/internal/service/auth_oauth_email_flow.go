@@ -163,6 +163,9 @@ func (s *AuthService) RegisterOAuthEmailAccount(
 		SignupSource: signupSource,
 	}
 
+	if err := s.requireDefaultGatewayAccess(ctx); err != nil {
+		return nil, nil, err
+	}
 	if err := s.createUserWithRegistrationEmailGuard(ctx, user); err != nil {
 		switch {
 		case errors.Is(err, ErrEmailExists):
@@ -250,6 +253,9 @@ func (s *AuthService) RegisterVerifiedOAuthEmailAccount(
 		SignupSource: signupSource,
 	}
 
+	if err := s.requireDefaultGatewayAccess(ctx); err != nil {
+		return nil, nil, err
+	}
 	if err := s.createUserWithRegistrationEmailGuard(ctx, user); err != nil {
 		switch {
 		case errors.Is(err, ErrEmailExists):
@@ -294,6 +300,9 @@ func (s *AuthService) FinalizeOAuthEmailAccount(
 	}
 
 	s.updateOAuthSignupSource(ctx, user.ID, signupSource)
+	if err := s.provisionDefaultGatewayAccess(ctx, user.ID); err != nil {
+		return fmt.Errorf("provision default gateway access: %w", err)
+	}
 	grantPlan := s.resolveSignupGrantPlan(ctx, signupSource)
 	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 	// snapshot user × platform quota（fail-open）

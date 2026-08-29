@@ -71,6 +71,7 @@ func ProvideAuthService(
 	defaultSubAssigner DefaultSubscriptionAssigner,
 	affiliateService *AffiliateService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
+	defaultGatewayAccess DefaultGatewayAccessProvisioner,
 ) *AuthService {
 	svc := NewAuthService(
 		entClient,
@@ -89,6 +90,7 @@ func ProvideAuthService(
 	)
 	svc.SetTencentCaptchaService(tencentCaptchaService)
 	svc.SetAliyunCaptchaService(aliyunCaptchaService)
+	svc.SetDefaultGatewayAccessProvisioner(defaultGatewayAccess)
 	return svc
 }
 
@@ -854,6 +856,8 @@ var ProviderSet = wire.NewSet(
 	NewPasskeyService,
 	NewUserService,
 	ProvideAPIKeyService,
+	NewDefaultGatewayAccessService,
+	wire.Bind(new(DefaultGatewayAccessProvisioner), new(*DefaultGatewayAccessService)),
 	ProvideAPIKeyAuthCacheInvalidator,
 	ProvideAuthCacheInvalidationWorker,
 	NewGroupService,

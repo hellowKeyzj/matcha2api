@@ -92,6 +92,7 @@ type OpenAIAccountScheduleRequest struct {
 	// and compact_model_mapping; native remote compaction v2 leaves it false.
 	RequireCompact bool
 	ExcludedIDs    map[int64]struct{}
+	ShardScope     *GroupShardAccountScope
 }
 
 type OpenAIAccountScheduleDecision struct {
@@ -125,6 +126,13 @@ type OpenAIAccountScheduler interface {
 	ReportResult(accountID int64, success bool, firstTokenMs *int)
 	ReportSwitch()
 	SnapshotMetrics() OpenAIAccountSchedulerMetricsSnapshot
+}
+
+func openAIAccountAllowedByShardScope(accountID int64, scope *GroupShardAccountScope) bool {
+	if scope == nil || !scope.Enabled {
+		return true
+	}
+	return scope.Allows(accountID)
 }
 
 type openAIAccountSchedulerMetrics struct {
@@ -410,12 +418,18 @@ func (s *defaultOpenAIAccountScheduler) Select(
 		}
 		if selection != nil && selection.Account != nil {
 			compatible, _ := s.isAccountRequestCompatibleReason(ctx, selection.Account, req)
+			shardCompatible := openAIAccountAllowedByShardScope(selection.Account.ID, req.ShardScope)
 			hasGroupMetadata := len(selection.Account.GroupIDs) > 0 || len(selection.Account.AccountGroups) > 0
 			groupCompatible := !hasGroupMetadata || openAIStickyAccountMatchesGroup(selection.Account, req.GroupID)
 			if hasGroupMetadata && s.service != nil {
 				groupCompatible = s.service.openAIAccountMatchesSchedulingGroup(selection.Account, req.GroupID)
 			}
-			if !groupCompatible ||
+			if !shardCompatible {
+				if store := s.service.getOpenAIWSStateStore(); store != nil {
+					_ = store.DeleteResponseAccount(ctx, derefGroupID(req.GroupID), previousResponseID)
+				}
+			}
+			if !shardCompatible || !groupCompatible ||
 				!compatible || !s.isAccountTransportCompatible(selection.Account, req.RequiredTransport) {
 				if selection.ReleaseFunc != nil {
 					selection.ReleaseFunc()
@@ -521,6 +535,10 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 		if _, excluded := req.ExcludedIDs[accountID]; excluded {
 			return nil, false, nil
 		}
+	}
+	if !openAIAccountAllowedByShardScope(accountID, req.ShardScope) {
+		clearBinding()
+		return nil, false, nil
 	}
 
 	account, err := s.service.getSchedulableAccount(ctx, accountID)
@@ -1282,6 +1300,12 @@ func (s *defaultOpenAIAccountScheduler) tryFallbackToWeightedSticky(
 				continue
 			}
 		}
+		if !openAIAccountAllowedByShardScope(accountID, req.ShardScope) {
+			if accountID == req.StickyAccountID && strings.TrimSpace(req.SessionHash) != "" {
+				_ = s.service.deleteStickySessionAccountID(ctx, req.GroupID, req.SessionHash)
+			}
+			continue
+		}
 		account, err := s.service.getSchedulableAccount(ctx, accountID)
 		if err != nil || account == nil {
 			continue
@@ -1406,8 +1430,13 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 	if err != nil {
 		return nil, 0, 0, 0, err
 	}
+	accounts = filterOpenAIAccountsByShardScope(accounts, req.ShardScope)
 	if len(accounts) == 0 {
-		return nil, 0, 0, 0, noAvailableOpenAISelectionError(req.RequestedModel, false, openAISelectionFilterStats{}.summary(""))
+		reason := ""
+		if req.ShardScope != nil && req.ShardScope.Enabled {
+			reason = "group_shard_empty"
+		}
+		return nil, 0, 0, 0, noAvailableOpenAISelectionError(req.RequestedModel, false, openAISelectionFilterStats{}.summary(reason))
 	}
 	// Local free-tier soft gate on the Grok scheduling path only (not admin probe).
 	accounts = s.filterGrokFreeQuotaAccounts(ctx, accounts)
@@ -2243,7 +2272,7 @@ func applyLegacySelectionDecision(decision *OpenAIAccountScheduleDecision, selec
 
 // selectLegacyAccountByPreviousResponse 在非高级调度路径按 previous_response_id 命中持有该响应的账号，
 // 先按请求模型做渠道限制检查，再复用高级调度器 previous_response 层的账号兼容校验
-// （分组、隐私、运行期封禁、代理隔离、上游模型渠道限制、传输与能力）；未命中返回 (nil, false, nil)。
+// （分组、分片、隐私、运行期封禁、代理隔离、上游模型渠道限制、传输与能力）；未命中返回 (nil, false, nil)。
 func (s *OpenAIGatewayService) selectLegacyAccountByPreviousResponse(
 	ctx context.Context,
 	groupID *int64,
@@ -2256,6 +2285,7 @@ func (s *OpenAIGatewayService) selectLegacyAccountByPreviousResponse(
 	requiredImageCapability OpenAIImagesCapability,
 	requireCompact bool,
 	platform string,
+	shardScope *GroupShardAccountScope,
 ) (*AccountSelectionResult, bool, error) {
 	if strings.TrimSpace(previousResponseID) == "" || platform != PlatformOpenAI {
 		return nil, false, nil
@@ -2283,7 +2313,13 @@ func (s *OpenAIGatewayService) selectLegacyAccountByPreviousResponse(
 		ExcludedIDs:             excludedIDs,
 		RequirePrivacySet:       s.openAIGroupRequiresPrivacySet(ctx, groupID),
 	})
-	if !s.openAIAccountMatchesSchedulingGroup(account, groupID) || !compatible || !scheduler.isAccountTransportCompatible(account, requiredTransport) {
+	shardCompatible := openAIAccountAllowedByShardScope(account.ID, shardScope)
+	if !shardCompatible {
+		if store := s.getOpenAIWSStateStore(); store != nil {
+			_ = store.DeleteResponseAccount(ctx, derefGroupID(groupID), strings.TrimSpace(previousResponseID))
+		}
+	}
+	if !shardCompatible || !s.openAIAccountMatchesSchedulingGroup(account, groupID) || !compatible || !scheduler.isAccountTransportCompatible(account, requiredTransport) {
 		if selection.ReleaseFunc != nil {
 			selection.ReleaseFunc()
 		}
@@ -2323,6 +2359,18 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 	}
 	platform = NormalizeOpenAICompatiblePlatform(platform)
 	decision := OpenAIAccountScheduleDecision{}
+	var group *Group
+	if s.groupShardRepo != nil {
+		var err error
+		group, err = s.resolveOpenAIGroupForScheduling(ctx, groupID)
+		if err != nil {
+			return nil, decision, err
+		}
+	}
+	shardScope, err := s.resolveOpenAIShardAccountScope(ctx, groupID, group, 0, platform)
+	if err != nil {
+		return nil, decision, err
+	}
 	preserveGuardianParentBinding := preserveOpenAIGuardianParentBinding(ctx, sessionHash)
 	guardianParentAccountID := int64(0)
 	if strings.TrimSpace(previousResponseID) == "" {
@@ -2331,7 +2379,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 	scheduler := s.getOpenAIAccountScheduler(ctx)
 	if scheduler == nil {
 		decision.Layer = openAIAccountScheduleLayerLoadBalance
-		if selection, hit, err := s.selectLegacyAccountByPreviousResponse(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform); err != nil {
+		if selection, hit, err := s.selectLegacyAccountByPreviousResponse(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, shardScope); err != nil {
 			return nil, decision, err
 		} else if hit {
 			decision.Layer = openAIAccountScheduleLayerPreviousResponse
@@ -2357,6 +2405,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 				RequiredImageCapability: requiredImageCapability,
 				RequireCompact:          requireCompact,
 				ExcludedIDs:             excludedIDs,
+				ShardScope:              shardScope,
 				RequirePrivacySet:       s.openAIGroupRequiresPrivacySet(ctx, groupID),
 			})
 			if err != nil {
@@ -2441,11 +2490,18 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 			stickyAccountID = accountID
 		}
 	}
+	if stickyAccountID > 0 && !openAIAccountAllowedByShardScope(stickyAccountID, shardScope) {
+		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+		stickyAccountID = 0
+	}
 	stickyWeighted := s.isOpenAIAdvancedSchedulerStickyWeightedEnabled(ctx)
 	subscriptionPriority := s.isOpenAIAdvancedSchedulerSubscriptionPriorityEnabled(ctx)
 	stickyPreviousAccountID := int64(0)
 	if stickyWeighted && previousResponseCanMove && strings.TrimSpace(previousResponseID) != "" && platform == PlatformOpenAI {
 		stickyPreviousAccountID = s.ResolveAccountIDByPreviousResponseIDForScheduler(ctx, groupID, previousResponseID, requestedModel, excludedIDs, requiredCapability, requireCompact)
+		if stickyPreviousAccountID > 0 && !openAIAccountAllowedByShardScope(stickyPreviousAccountID, shardScope) {
+			stickyPreviousAccountID = 0
+		}
 	}
 
 	return scheduler.Select(ctx, OpenAIAccountScheduleRequest{
@@ -2458,6 +2514,7 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerOnce(
 		StickyWeighted:          stickyWeighted,
 		SubscriptionPriority:    subscriptionPriority,
 		PreserveStickyBinding:   preserveGuardianParentBinding,
+		ShardScope:              shardScope,
 		RequirePrivacySet:       s.openAIGroupRequiresPrivacySet(ctx, groupID),
 		PreviousResponseID:      previousResponseID,
 		PreviousResponseCanMove: previousResponseCanMove,

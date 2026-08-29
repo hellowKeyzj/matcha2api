@@ -1,8 +1,7 @@
 package service
 
-// 本文件由 gateway_service.go 纯移动拆分而来：账号选择与负载感知调度、窗口费用
-// 与 RPM 预取、候选排序/过滤、混合平台调度与选择失败诊断。仅做代码搬迁，
-// 无任何行为变更。
+// 本文件包含账号选择与负载感知调度、窗口费用/RPM 预取、候选排序/过滤、
+// 分组 shard 候选池约束、混合平台调度与选择失败诊断。
 
 import (
 	"context"
@@ -98,6 +97,9 @@ func (s *GatewayService) SelectAccountForModelWithExclusions(ctx context.Context
 // metadataUserID: 用于客户端亲和调度，从中提取客户端 ID
 // sub2apiUserID: 系统用户 ID，用于二维亲和调度
 func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, metadataUserID string, sub2apiUserID int64) (*AccountSelectionResult, error) {
+	if sub2apiUserID > 0 {
+		ctx = context.WithValue(ctx, ctxkey.UserID, sub2apiUserID)
+	}
 	// 调试日志：记录调度入口参数
 	excludedIDsList := make([]int64, 0, len(excludedIDs))
 	for id := range excludedIDs {
@@ -224,6 +226,17 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 	if err != nil {
 		return nil, err
 	}
+	shardScope, err := s.resolveGatewayShardAccountScope(ctx, groupID, group, sub2apiUserID, platform, useMixed)
+	if err != nil {
+		return nil, err
+	}
+	if stickyAccountID > 0 && !shardScope.Allows(stickyAccountID) {
+		if sessionHash != "" && s.cache != nil {
+			_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+		}
+		stickyAccountID = 0
+	}
+	accounts = filterGatewayAccountsByShardScope(accounts, shardScope)
 	if len(accounts) == 0 {
 		return nil, ErrNoAvailableAccounts
 	}
@@ -859,6 +872,57 @@ func (s *GatewayService) resolveGroupByID(ctx context.Context, groupID int64) (*
 		return nil, fmt.Errorf("get group failed: %w", err)
 	}
 	return group, nil
+}
+
+func gatewayShardUserID(ctx context.Context, explicitUserID int64) int64 {
+	if explicitUserID > 0 {
+		return explicitUserID
+	}
+	if userID, ok := ctx.Value(ctxkey.UserID).(int64); ok && userID > 0 {
+		return userID
+	}
+	return 0
+}
+
+func gatewayShardScopePlatform(group *Group, platform string, useMixed bool) string {
+	platform = strings.TrimSpace(platform)
+	if group != nil && group.Platform == PlatformComposite {
+		return platform
+	}
+	if useMixed {
+		return ""
+	}
+	return platform
+}
+
+func (s *GatewayService) resolveGatewayShardAccountScope(ctx context.Context, groupID *int64, group *Group, userID int64, platform string, useMixed bool) (*GroupShardAccountScope, error) {
+	if s == nil || s.groupShardRepo == nil || groupID == nil || *groupID <= 0 {
+		return &GroupShardAccountScope{Enabled: false}, nil
+	}
+	if group == nil || group.ID != *groupID {
+		loaded, err := s.resolveGroupByID(ctx, *groupID)
+		if err != nil {
+			return nil, err
+		}
+		group = loaded
+	}
+	if group == nil || !group.ShardEnabled {
+		return &GroupShardAccountScope{Enabled: false}, nil
+	}
+	return s.groupShardRepo.ListAccountIDsForUserShard(ctx, group, gatewayShardUserID(ctx, userID), gatewayShardScopePlatform(group, platform, useMixed))
+}
+
+func filterGatewayAccountsByShardScope(accounts []Account, scope *GroupShardAccountScope) []Account {
+	if scope == nil || !scope.Enabled {
+		return accounts
+	}
+	filtered := accounts[:0]
+	for _, account := range accounts {
+		if scope.Allows(account.ID) {
+			filtered = append(filtered, account)
+		}
+	}
+	return filtered
 }
 
 func (s *GatewayService) ResolveGroupByID(ctx context.Context, groupID int64) (*Group, error) {
@@ -1892,6 +1956,13 @@ func shuffleWithinPriority(accounts []*Account) {
 func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, platform string) (*Account, error) {
 	preferOAuth := platform == PlatformGemini
 	routingAccountIDs := s.routingAccountIDsForRequest(ctx, groupID, requestedModel, platform)
+	shardScope, err := s.resolveGatewayShardAccountScope(ctx, groupID, nil, 0, platform, false)
+	if err != nil {
+		return nil, err
+	}
+	if shardScope.IsEmpty() {
+		return nil, ErrNoAvailableAccounts
+	}
 
 	// require_privacy_set: 获取分组配置。GetByID 会聚合账号计数，旧选号路径不能用它。
 	var schedGroup *Group
@@ -1914,7 +1985,9 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 		if sessionHash != "" && s.cache != nil {
 			accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 			if err == nil && accountID > 0 && containsInt64(routingAccountIDs, accountID) {
-				if _, excluded := excludedIDs[accountID]; !excluded {
+				if !shardScope.Allows(accountID) {
+					_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+				} else if _, excluded := excludedIDs[accountID]; !excluded {
 					account, err := s.getSchedulableAccount(ctx, accountID)
 					// 检查账号分组归属和平台匹配（确保粘性会话不会跨分组或跨平台）
 					if err == nil {
@@ -1942,6 +2015,10 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 		accounts, _, err = s.listSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
 		if err != nil {
 			return nil, fmt.Errorf("query accounts failed: %w", err)
+		}
+		accounts = filterGatewayAccountsByShardScope(accounts, shardScope)
+		if len(accounts) == 0 {
+			return nil, ErrNoAvailableAccounts
 		}
 		accountsLoaded = true
 
@@ -2036,7 +2113,9 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 	if sessionHash != "" && s.cache != nil {
 		accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 		if err == nil && accountID > 0 {
-			if _, excluded := excludedIDs[accountID]; !excluded {
+			if !shardScope.Allows(accountID) {
+				_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+			} else if _, excluded := excludedIDs[accountID]; !excluded {
 				account, err := s.getSchedulableAccount(ctx, accountID)
 				// 检查账号分组归属和平台匹配（确保粘性会话不会跨分组或跨平台）
 				if err == nil {
@@ -2062,6 +2141,10 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 		accounts, _, err = s.listSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
 		if err != nil {
 			return nil, fmt.Errorf("query accounts failed: %w", err)
+		}
+		accounts = filterGatewayAccountsByShardScope(accounts, shardScope)
+		if len(accounts) == 0 {
+			return nil, ErrNoAvailableAccounts
 		}
 	}
 
@@ -2158,6 +2241,13 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, nativePlatform string) (*Account, error) {
 	preferOAuth := nativePlatform == PlatformGemini
 	routingAccountIDs := s.routingAccountIDsForRequest(ctx, groupID, requestedModel, nativePlatform)
+	shardScope, err := s.resolveGatewayShardAccountScope(ctx, groupID, nil, 0, nativePlatform, true)
+	if err != nil {
+		return nil, err
+	}
+	if shardScope.IsEmpty() {
+		return nil, ErrNoAvailableAccounts
+	}
 
 	// require_privacy_set: 获取分组配置。GetByID 会聚合账号计数，旧选号路径不能用它。
 	var schedGroup *Group
@@ -2178,7 +2268,9 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 		if sessionHash != "" && s.cache != nil {
 			accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 			if err == nil && accountID > 0 && containsInt64(routingAccountIDs, accountID) {
-				if _, excluded := excludedIDs[accountID]; !excluded {
+				if !shardScope.Allows(accountID) {
+					_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+				} else if _, excluded := excludedIDs[accountID]; !excluded {
 					account, err := s.getSchedulableAccount(ctx, accountID)
 					// 检查账号分组归属和有效性：原生平台直接匹配，antigravity 需要启用混合调度
 					if err == nil {
@@ -2204,6 +2296,10 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 		accounts, _, err = s.listSchedulableAccounts(ctx, groupID, nativePlatform, false)
 		if err != nil {
 			return nil, fmt.Errorf("query accounts failed: %w", err)
+		}
+		accounts = filterGatewayAccountsByShardScope(accounts, shardScope)
+		if len(accounts) == 0 {
+			return nil, ErrNoAvailableAccounts
 		}
 		accountsLoaded = true
 
@@ -2302,7 +2398,9 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 	if sessionHash != "" && s.cache != nil {
 		accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
 		if err == nil && accountID > 0 {
-			if _, excluded := excludedIDs[accountID]; !excluded {
+			if !shardScope.Allows(accountID) {
+				_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+			} else if _, excluded := excludedIDs[accountID]; !excluded {
 				account, err := s.getSchedulableAccount(ctx, accountID)
 				// 检查账号分组归属和有效性：原生平台直接匹配，antigravity 需要启用混合调度
 				if err == nil {
@@ -2326,6 +2424,10 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 		accounts, _, err = s.listSchedulableAccounts(ctx, groupID, nativePlatform, false)
 		if err != nil {
 			return nil, fmt.Errorf("query accounts failed: %w", err)
+		}
+		accounts = filterGatewayAccountsByShardScope(accounts, shardScope)
+		if len(accounts) == 0 {
+			return nil, ErrNoAvailableAccounts
 		}
 	}
 

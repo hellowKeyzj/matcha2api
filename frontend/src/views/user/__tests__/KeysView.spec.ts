@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import type { ApiKey } from '@/types'
+import type { ApiKey, Group } from '@/types'
 import { keysAPI } from '@/api'
 import KeysView from '../KeysView.vue'
+
+enableAutoUnmount(afterEach)
 
 const {
   listKeys,
@@ -13,6 +15,7 @@ const {
   getDashboardApiKeysUsage,
   getAvailableGroups,
   getUserGroupRates,
+  rotateKey,
   showError,
   showSuccess,
   copyToClipboard,
@@ -25,6 +28,7 @@ const {
   getDashboardApiKeysUsage: vi.fn(),
   getAvailableGroups: vi.fn(),
   getUserGroupRates: vi.fn(),
+  rotateKey: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
   copyToClipboard: vi.fn(),
@@ -34,6 +38,7 @@ const {
 
 const messages: Record<string, string> = {
   'common.actions': 'Actions',
+  'common.edit': 'Edit',
   'common.name': 'Name',
   'common.refresh': 'Refresh',
   'common.status': 'Status',
@@ -42,6 +47,8 @@ const messages: Record<string, string> = {
   'keys.allStatus': 'All Status',
   'keys.columnSettings': 'Column Settings',
   'keys.createKey': 'Create API Key',
+  'keys.deleteKey': 'Delete API Key',
+  'common.delete': 'Delete API Key',
   'keys.created': 'Created',
   'keys.expiresAt': 'Expires',
   'keys.group': 'Group',
@@ -50,6 +57,16 @@ const messages: Record<string, string> = {
   'keys.lastUsedAt': 'Last Used',
   'keys.lastUsedIP': 'Last Used IP',
   'keys.rateLimitColumn': 'Rate Limit',
+  'keys.rotate': 'Rotate',
+  'keys.rotateKey': 'Rotate API Key',
+  'keys.rotateConfirmMessage': 'Rotate this key?',
+  'keys.keyRotatedSuccess': 'Rotated',
+  'keys.failedToRotate': 'Failed to rotate',
+  'keys.useKey': 'Use Key',
+  'keys.importToCcSwitch': 'Import to CCS',
+  'keys.enable': 'Enable',
+  'keys.disable': 'Disable',
+  'keys.defaultKeyProvisioningHint': 'Default keys are issued automatically.',
   'keys.searchPlaceholder': 'Search name or key...',
   'keys.status.active': 'Active',
   'keys.status.expired': 'Expired',
@@ -63,8 +80,10 @@ vi.mock('@/api', () => ({
     list: listKeys,
     create: vi.fn(),
     update: updateKey,
+    bulkUpdate: vi.fn(),
     delete: vi.fn(),
     toggleStatus: vi.fn(),
+    rotate: rotateKey,
   },
   authAPI: {
     getPublicSettings,
@@ -173,9 +192,14 @@ const DataTableStub = {
           <slot name="cell-id" :value="row.id" :row="row" />
         </div>
         <slot name="cell-name" :value="row.name" :row="row" />
-        <slot name="cell-actions" :row="row" />
         <div data-test="current-concurrency">
           <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
+        </div>
+        <div data-test="group-cell">
+          <slot name="cell-group" :value="row.group" :row="row" />
+        </div>
+        <div data-test="actions-cell">
+          <slot name="cell-actions" :row="row" />
         </div>
         <div
           v-if="columns.some((col) => col.key === 'last_used_ip')"
@@ -185,6 +209,19 @@ const DataTableStub = {
         </div>
       </div>
       <slot name="empty" />
+    </div>
+  `,
+}
+
+const ConfirmDialogStub = {
+  name: 'ConfirmDialog',
+  props: ['show', 'title', 'message', 'confirmText'],
+  emits: ['confirm', 'cancel'],
+  template: `
+    <div v-if="show" data-test="confirm-dialog">
+      <div data-test="confirm-title">{{ title }}</div>
+      <div data-test="confirm-message">{{ message }}</div>
+      <button data-test="confirm-action" @click="$emit('confirm')">{{ confirmText }}</button>
     </div>
   `,
 }
@@ -220,7 +257,7 @@ const IconStub = {
   template: '<span data-test="icon">{{ name }}</span>',
 }
 
-const mountView = async () => {
+const mountView = async ({ realBulkEdit = false, realUseKey = false } = {}) => {
   const wrapper = mount(KeysView, {
     global: {
       stubs: {
@@ -233,13 +270,13 @@ const mountView = async () => {
           emits: ['close'],
           template: '<div v-if="show" role="dialog"><button data-test="close-dialog" @click="$emit(\'close\')">Close</button><slot /><slot name="footer" /></div>',
         },
-        ConfirmDialog: true,
+        ConfirmDialog: ConfirmDialogStub,
         EmptyState: true,
         Select: SelectStub,
         SearchInput: SearchInputStub,
         Icon: IconStub,
-        UseKeyModal: true,
-        BulkEditKeysModal: true,
+        UseKeyModal: !realUseKey,
+        BulkEditKeysModal: !realBulkEdit,
         EndpointPopover: true,
         GroupBadge: true,
         GroupOptionItem: true,
@@ -273,10 +310,14 @@ describe('user KeysView column settings', () => {
     listKeys.mockReset()
     updateKey.mockReset()
     vi.mocked(keysAPI.create).mockReset()
+    vi.mocked(keysAPI.delete).mockReset()
+    vi.mocked(keysAPI.bulkUpdate).mockReset()
+    vi.mocked(keysAPI.bulkUpdate).mockResolvedValue({ succeededIds: [1], failures: [] })
     getPublicSettings.mockReset()
     getDashboardApiKeysUsage.mockReset()
     getAvailableGroups.mockReset()
     getUserGroupRates.mockReset()
+    rotateKey.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
     copyToClipboard.mockReset()
@@ -309,7 +350,7 @@ describe('user KeysView column settings', () => {
     listKeys.mockResolvedValueOnce({ items: [key], total: 1, page: 1, page_size: 20, pages: 1 })
     updateKey.mockResolvedValue({ ...key, status, quota_used: 0 })
     const wrapper = await mountView()
-    await getButtonByText(wrapper, 'common.edit').trigger('click')
+    await getButtonByText(wrapper, 'Edit').trigger('click')
     await wrapper.get('[data-tour="key-form-name"]').setValue('Unsaved name')
     const statusSelect = wrapper.findAllComponents({ name: 'Select' })
       .find((select) => select.props('options').length === 2 &&
@@ -512,6 +553,52 @@ describe('user KeysView column settings', () => {
     expect(currentConcurrencyColumn?.sortable).toBe(true)
   })
 
+  it('shows managed key actions without create, delete or rebind entry points', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-tour="keys-create-btn"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Create API Key')
+    expect(wrapper.text()).not.toContain('Delete API Key')
+    expect(wrapper.get('[data-test="group-cell"]').find('button').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Rotate')
+    expect(keysAPI.create).not.toHaveBeenCalled()
+    expect(keysAPI.delete).not.toHaveBeenCalled()
+  })
+
+  it('rotates a managed key only after confirmation and refreshes the credential', async () => {
+    const rotated = { ...createApiKey(), key: 'sk-rotated' }
+    rotateKey.mockResolvedValueOnce(rotated)
+    const wrapper = await mountView()
+    listKeys.mockResolvedValueOnce({ items: [rotated], total: 1, pages: 1 })
+
+    await getButtonByText(wrapper, 'Rotate').trigger('click')
+    expect(rotateKey).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-test="confirm-title"]').text()).toBe('Rotate API Key')
+
+    await wrapper.get('[data-test="confirm-action"]').trigger('click')
+    await flushPromises()
+
+    expect(rotateKey).toHaveBeenCalledOnce()
+    expect(rotateKey).toHaveBeenCalledWith(1)
+    expect(showSuccess).toHaveBeenCalledWith('Rotated')
+    expect(wrapper.find('[data-test="confirm-dialog"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('data')[0].key).toBe('sk-rotated')
+  })
+
+  it('keeps the old credential and confirmation available when rotation fails', async () => {
+    rotateKey.mockRejectedValueOnce(new Error('rotation failed'))
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'Rotate').trigger('click')
+    await wrapper.get('[data-test="confirm-action"]').trigger('click')
+    await flushPromises()
+
+    expect(showError).toHaveBeenCalledWith('Failed to rotate')
+    expect(showSuccess).not.toHaveBeenCalled()
+    expect(listKeys).toHaveBeenCalledOnce()
+    expect(wrapper.find('[data-test="confirm-dialog"]').exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('data')[0].key).toBe('sk-test-key')
+  })
+
   it.each([
     { key: 'current_concurrency', order: 'asc' },
     { key: 'group', order: 'asc' },
@@ -560,98 +647,147 @@ describe('user KeysView column settings', () => {
     )
   })
 
-  describe('create provider selection', () => {
-    const platforms = ['anthropic', 'openai', 'kimi', 'zhipu', 'deepseek', 'minimax', 'gemini', 'grok', 'antigravity', 'composite', 'opencode_go', 'typesafe']
+  describe('managed provider binding', () => {
+    const platforms = ['anthropic', 'openai', 'kimi', 'zhipu', 'deepseek', 'minimax', 'gemini', 'grok', 'antigravity', 'composite', 'opencode_go', 'typesafe'] as const
     const availableGroups = platforms.map((platform, index) => ({
       id: index + 1,
-      // Deliberately ambiguous names: classification must follow the platform.
+      // Ambiguous names ensure the Use Key flow follows the assigned platform.
       name: `Shared group ${index + 1}`,
       platform,
       rate_multiplier: 1,
       subscription_type: 'standard',
-    }))
-    const groupSelect = (wrapper: VueWrapper) => wrapper.findComponent('[data-tour="key-form-group"]')
-    const optionIds = (wrapper: VueWrapper) => groupSelect(wrapper).props('options').map((option: { value: number }) => option.value)
-    const chooseProvider = (wrapper: VueWrapper, value: string) => wrapper.get(`input[name="key-provider"][value="${value}"]`).setValue()
-    const openCreate = async () => {
-      const wrapper = await mountView()
-      await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
-      return wrapper
-    }
+    } as Group))
 
     beforeEach(() => {
       getAvailableGroups.mockResolvedValue(availableGroups)
     })
 
-    it('classifies all configured platforms and retains the complete table filter', async () => {
-      const wrapper = await openCreate()
-      expect(wrapper.findAll('input[name="key-provider"]')).toHaveLength(4)
-      expect(optionIds(wrapper)).toEqual([1])
-      await chooseProvider(wrapper, 'openai')
-      expect(optionIds(wrapper)).toEqual([2])
-      await chooseProvider(wrapper, 'domestic')
-      expect(optionIds(wrapper)).toEqual([3, 4, 5, 6])
-      await chooseProvider(wrapper, 'other')
-      expect(optionIds(wrapper)).toEqual([7, 8, 9, 10, 11, 12])
-      expect(wrapper.findAllComponents({ name: 'Select' })[0].props('options')).toHaveLength(14)
+    it('retains every configured platform in the table filter without offering provider creation', async () => {
+      const wrapper = await mountView()
+      const options = wrapper.findAllComponents({ name: 'Select' })[0].props('options')
+      expect(options.map((option: { value: string | number }) => option.value)).toEqual([
+        '', 0, ...availableGroups.map((group) => group.id),
+      ])
+      expect(wrapper.find('[data-tour="keys-create-btn"]').exists()).toBe(false)
+      expect(wrapper.find('input[name="key-provider"]').exists()).toBe(false)
     })
 
-    it('clears the previous group on provider change and submits only the newly selected group', async () => {
-      const wrapper = await openCreate()
-      await wrapper.get('[data-tour="key-form-name"]').setValue('My key')
-      await groupSelect(wrapper).vm.$emit('update:modelValue', 1)
-      await chooseProvider(wrapper, 'domestic')
-      expect(groupSelect(wrapper).props('modelValue')).toBeNull()
-      await wrapper.get('#key-form').trigger('submit')
-      expect(keysAPI.create).not.toHaveBeenCalled()
-      expect(showError).toHaveBeenCalledWith('keys.groupRequired')
+    it.each(platforms)('keeps the %s binding read-only and passes its platform to Use Key', async (platform) => {
+      const group = availableGroups.find((item) => item.platform === platform)!
+      const key = { ...createApiKey(), group_id: group.id, group }
+      listKeys.mockResolvedValue({ items: [key], total: 1, pages: 1 })
+      const wrapper = await mountView()
+      await getButtonByText(wrapper, 'Use Key').trigger('click')
+      expect(wrapper.findComponent({ name: 'UseKeyModal' }).props()).toMatchObject({
+        show: true, apiKey: key.key, platform,
+      })
+      wrapper.findComponent({ name: 'UseKeyModal' }).vm.$emit('close')
+      await nextTick()
 
-      await groupSelect(wrapper).vm.$emit('update:modelValue', 5)
-      vi.mocked(keysAPI.create).mockResolvedValue({ ...createApiKey(), group_id: 5 })
-      await wrapper.get('#key-form').trigger('submit')
-      await flushPromises()
-      expect(keysAPI.create).toHaveBeenCalledOnce()
-      expect(vi.mocked(keysAPI.create).mock.calls[0].slice(0, 2)).toEqual(['My key', 5])
-    })
-
-    it('defaults to a provider with available groups and disables empty categories', async () => {
-      getAvailableGroups.mockResolvedValue([availableGroups[5]])
-      const wrapper = await openCreate()
-      expect(wrapper.get<HTMLInputElement>('input[value="domestic"]').element.checked).toBe(true)
-      expect(wrapper.get<HTMLInputElement>('input[value="anthropic"]').element.disabled).toBe(true)
-      expect(optionIds(wrapper)).toEqual([6])
-    })
-
-    it('shows the empty state when no groups are available', async () => {
-      getAvailableGroups.mockResolvedValue([])
-      const wrapper = await openCreate()
-      expect(wrapper.get('[data-tour="key-form-provider"]').text()).toContain('common.noGroupsAvailable')
-      expect(optionIds(wrapper)).toEqual([])
-      expect(wrapper.findAll<HTMLInputElement>('input[name="key-provider"]').every((input) => input.element.disabled)).toBe(true)
-    })
-
-    it('selects an available provider when groups arrive after opening', async () => {
-      let resolveGroups!: (value: typeof availableGroups) => void
-      getAvailableGroups.mockReturnValue(new Promise((resolve) => { resolveGroups = resolve }))
-      const wrapper = await openCreate()
-      resolveGroups([availableGroups[1]])
-      await flushPromises()
-      expect(wrapper.get<HTMLInputElement>('input[value="openai"]').element.checked).toBe(true)
-      expect(optionIds(wrapper)).toEqual([2])
-    })
-
-    it('resets provider and group when reopening create, and preserves edit options', async () => {
-      const wrapper = await openCreate()
-      await chooseProvider(wrapper, 'domestic')
-      await groupSelect(wrapper).vm.$emit('update:modelValue', 5)
-      await wrapper.get('[data-test="close-dialog"]').trigger('click')
-      await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
-      expect(optionIds(wrapper)).toEqual([1])
-      expect(groupSelect(wrapper).props('modelValue')).toBeNull()
-      await wrapper.get('[data-test="close-dialog"]').trigger('click')
-      await getButtonByText(wrapper, 'common.edit').trigger('click')
+      await getButtonByText(wrapper, 'Edit').trigger('click')
+      expect(wrapper.find('[data-tour="key-form-group"]').exists()).toBe(false)
       expect(wrapper.find('[data-tour="key-form-provider"]').exists()).toBe(false)
-      expect(optionIds(wrapper)).toHaveLength(12)
+      expect(wrapper.findAllComponents({ name: 'GroupBadge' })[1].props()).toMatchObject({
+        name: group.name, platform,
+      })
+      await wrapper.get('[data-tour="key-form-name"]').setValue('Renamed managed key')
+      await wrapper.get('#key-form').trigger('submit')
+      await flushPromises()
+      expect(updateKey).toHaveBeenCalledOnce()
+      expect(updateKey).toHaveBeenCalledWith(key.id, expect.objectContaining({ name: 'Renamed managed key' }))
+      expect(updateKey.mock.calls[0][1]).not.toHaveProperty('group_id')
+      expect(keysAPI.create).not.toHaveBeenCalled()
+      expect(keysAPI.delete).not.toHaveBeenCalled()
+    })
+
+    it('shows SystemOne instructions for a managed typesafe key', async () => {
+      const group = availableGroups.find((item) => item.platform === 'typesafe')!
+      listKeys.mockResolvedValue({ items: [{ ...createApiKey(), group_id: group.id, group }], total: 1, pages: 1 })
+      getPublicSettings.mockResolvedValue({ api_base_url: 'https://gateway.example' })
+      const wrapper = await mountView({ realUseKey: true })
+      await getButtonByText(wrapper, 'Use Key').trigger('click')
+      const modal = wrapper.findComponent({ name: 'UseKeyModal' })
+      expect(modal.get('nav[aria-label="Client"]').text()).toContain('keys.useKeyModal.cliTabs.systemOne')
+      expect(modal.get('pre code').text()).toContain('https://gateway.example/v1/systemone')
+      expect(modal.get('pre code').text()).toContain('Bearer sk-test-key')
+    })
+
+    it('updates late-arriving group filters without changing the managed binding', async () => {
+      let resolveGroups!: (value: Group[]) => void
+      getAvailableGroups.mockReturnValue(new Promise((resolve) => { resolveGroups = resolve }))
+      const group = availableGroups[11]
+      listKeys.mockResolvedValue({ items: [{ ...createApiKey(), group_id: group.id, group }], total: 1, pages: 1 })
+      const wrapper = await mountView()
+      await getButtonByText(wrapper, 'Edit').trigger('click')
+      const filter = wrapper.findAllComponents({ name: 'Select' })[0]
+      expect(filter.props('options')).toHaveLength(2)
+      resolveGroups(availableGroups)
+      await flushPromises()
+      expect(filter.props('options')).toHaveLength(14)
+      expect(wrapper.findAllComponents({ name: 'GroupBadge' })[1].props('platform')).toBe('typesafe')
+      expect(wrapper.find('[data-tour="key-form-group"]').exists()).toBe(false)
+    })
+
+    it('allows editing an existing managed key without any available groups', async () => {
+      getAvailableGroups.mockResolvedValue([])
+      const wrapper = await mountView()
+      await getButtonByText(wrapper, 'Edit').trigger('click')
+      await wrapper.get('#key-form').trigger('submit')
+      await flushPromises()
+      expect(updateKey).toHaveBeenCalledOnce()
+      expect(updateKey.mock.calls[0][1]).not.toHaveProperty('group_id')
+      expect(showError).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('managed bulk limits', () => {
+    const openBulkEdit = async () => {
+      const wrapper = await mountView({ realBulkEdit: true })
+      wrapper.findComponent({ name: 'DataTable' }).vm.$emit('update:selectedKeys', [1])
+      await nextTick()
+      await wrapper.get('[data-test="bulk-edit-keys"]').trigger('click')
+      return wrapper
+    }
+
+    it.each(['quota', 'rate_limit_5h', 'rate_limit_1d', 'rate_limit_7d'])('validates %s before updating a managed key', async (field) => {
+      const wrapper = await openBulkEdit()
+      await wrapper.get(`[data-test="enable-${field}"]`).setValue(true)
+      for (const value of ['', '-1', 'not-a-number']) {
+        await wrapper.get(`[data-test="${field}-input"]`).setValue(value)
+        await wrapper.get('#bulk-edit-keys-form').trigger('submit')
+        expect(keysAPI.bulkUpdate).not.toHaveBeenCalled()
+        expect(wrapper.get('[data-test="submit"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.get('[role="alert"]').text()).toContain('keys.bulkEdit.invalidLimit')
+      }
+      await wrapper.get(`[data-test="${field}-input"]`).setValue('0')
+      await wrapper.get('#bulk-edit-keys-form').trigger('submit')
+      await flushPromises()
+      expect(keysAPI.bulkUpdate).toHaveBeenCalledOnce()
+      expect(keysAPI.bulkUpdate).toHaveBeenCalledWith([1], { [field]: 0 })
+      expect(keysAPI.create).not.toHaveBeenCalled()
+      expect(keysAPI.delete).not.toHaveBeenCalled()
+    })
+
+    it('prevents duplicate bulk updates and closing while a limit update is in flight', async () => {
+      let finish!: (result: { succeededIds: number[]; failures: [] }) => void
+      vi.mocked(keysAPI.bulkUpdate).mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+      const wrapper = await openBulkEdit()
+      await wrapper.get('[data-test="enable-rate_limit_1d"]').setValue(true)
+      await wrapper.get('[data-test="rate_limit_1d-input"]').setValue('25.5')
+      await wrapper.get('#bulk-edit-keys-form').trigger('submit')
+      await wrapper.get('#bulk-edit-keys-form').trigger('submit')
+      await wrapper.get('[data-test="close-dialog"]').trigger('click')
+      const modal = wrapper.findComponent({ name: 'BulkEditKeysModal' })
+      expect(modal.props('show')).toBe(true)
+      expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="submit"]').attributes('disabled')).toBeDefined()
+      expect(keysAPI.bulkUpdate).toHaveBeenCalledOnce()
+      expect(keysAPI.bulkUpdate).toHaveBeenCalledWith([1], { rate_limit_1d: 25.5 })
+      finish({ succeededIds: [1], failures: [] })
+      await flushPromises()
+      expect(modal.props('show')).toBe(false)
+      expect(wrapper.findComponent({ name: 'DataTable' }).props('selectedKeys')).toEqual([])
+      expect(listKeys).toHaveBeenCalledTimes(2)
     })
   })
 })

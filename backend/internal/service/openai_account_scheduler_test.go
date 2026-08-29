@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/stretchr/testify/require"
 )
 
@@ -4048,4 +4049,359 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LegacyAccountModelRoute
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()
 	}
+}
+
+type openAISchedulerShardRepoStub struct {
+	scope          *GroupShardAccountScope
+	lastGroupID    int64
+	lastUserID     int64
+	lastPlatform   string
+	listScopeCalls int
+	err            error
+}
+
+func (r *openAISchedulerShardRepoStub) ListByGroup(ctx context.Context, groupID int64) ([]GroupShard, error) {
+	return nil, nil
+}
+func (r *openAISchedulerShardRepoStub) GetByID(ctx context.Context, groupID, shardID int64) (*GroupShard, error) {
+	return nil, nil
+}
+func (r *openAISchedulerShardRepoStub) Create(ctx context.Context, shard *GroupShard) error {
+	return nil
+}
+func (r *openAISchedulerShardRepoStub) Update(ctx context.Context, shard *GroupShard) error {
+	return nil
+}
+func (r *openAISchedulerShardRepoStub) Delete(ctx context.Context, groupID, shardID int64) error {
+	return nil
+}
+func (r *openAISchedulerShardRepoStub) ListUsers(ctx context.Context, groupID, shardID int64) ([]GroupShardUser, error) {
+	return nil, nil
+}
+func (r *openAISchedulerShardRepoStub) AssignUser(ctx context.Context, groupID, shardID, userID int64, maxUsers int) error {
+	return nil
+}
+func (r *openAISchedulerShardRepoStub) RemoveUser(ctx context.Context, groupID, shardID, userID int64) error {
+	return nil
+}
+func (r *openAISchedulerShardRepoStub) ListAccounts(ctx context.Context, groupID, shardID int64) ([]GroupShardAccount, error) {
+	return nil, nil
+}
+func (r *openAISchedulerShardRepoStub) SetAccounts(ctx context.Context, groupID, shardID int64, accounts []GroupShardAccount) error {
+	return nil
+}
+func (r *openAISchedulerShardRepoStub) EnsureUserShard(ctx context.Context, group *Group, userID int64) (*GroupShard, error) {
+	return nil, nil
+}
+func (r *openAISchedulerShardRepoStub) ListAccountIDsForUserShard(ctx context.Context, group *Group, userID int64, platform string) (*GroupShardAccountScope, error) {
+	r.listScopeCalls++
+	if group != nil {
+		r.lastGroupID = group.ID
+	}
+	r.lastUserID = userID
+	r.lastPlatform = platform
+	if r.err != nil {
+		return nil, r.err
+	}
+	return cloneOpenAISchedulerShardScope(r.scope), nil
+}
+func (r *openAISchedulerShardRepoStub) AccountBelongsToUserShard(ctx context.Context, groupID, userID, accountID int64) (bool, error) {
+	return cloneOpenAISchedulerShardScope(r.scope).Allows(accountID), nil
+}
+
+var _ GroupShardRepository = (*openAISchedulerShardRepoStub)(nil)
+
+func cloneOpenAISchedulerShardScope(scope *GroupShardAccountScope) *GroupShardAccountScope {
+	if scope == nil {
+		return &GroupShardAccountScope{Enabled: false}
+	}
+	cloned := &GroupShardAccountScope{Enabled: scope.Enabled, ShardID: scope.ShardID}
+	if scope.AccountIDs != nil {
+		cloned.AccountIDs = make(map[int64]struct{}, len(scope.AccountIDs))
+		for id := range scope.AccountIDs {
+			cloned.AccountIDs[id] = struct{}{}
+		}
+	}
+	return cloned
+}
+
+func openAIShardSchedulingTestContext(group *Group, userID int64) context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, ctxkey.Group, group)
+	ctx = context.WithValue(ctx, ctxkey.UserID, userID)
+	return ctx
+}
+
+func openAIShardSchedulingAccount(id, groupID int64, priority int) Account {
+	return Account{
+		ID:          id,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Concurrency: 1,
+		Priority:    priority,
+		GroupIDs:    []int64{groupID},
+		Extra: map[string]any{
+			"openai_apikey_responses_websockets_v2_enabled": true,
+		},
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_ShardInvalidatesPreviousResponseBinding(t *testing.T) {
+	groupID := int64(39001)
+	userID := int64(49001)
+	outside := openAIShardSchedulingAccount(39011, groupID, 0)
+	allowed := openAIShardSchedulingAccount(39012, groupID, 9)
+	cache := &schedulerTestGatewayCache{}
+	store := NewOpenAIWSStateStore(cache)
+	acquiredIDs := []int64{}
+	releasedIDs := []int64{}
+	shardRepo := &openAISchedulerShardRepoStub{scope: &GroupShardAccountScope{Enabled: true, ShardID: 7, AccountIDs: map[int64]struct{}{allowed.ID: {}}}}
+	group := &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	ctx := openAIShardSchedulingTestContext(group, userID)
+	cfg := newSchedulerTestOpenAIWSV2Config()
+	cfg.Gateway.OpenAIWS.StickySessionTTLSeconds = 1800
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{outside, allowed}}},
+		cache:              cache,
+		cfg:                cfg,
+		groupShardRepo:     shardRepo,
+		openaiWSStateStore: store,
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{outside.ID: true, allowed.ID: true}, acquiredIDs: &acquiredIDs, releasedIDs: &releasedIDs}),
+	}
+	require.NoError(t, store.BindResponseAccount(ctx, groupID, "resp_shard_outside", outside.ID, time.Hour))
+
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "resp_shard_outside", "session_shard_prev", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, allowed.ID, selection.Account.ID)
+	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+	require.Equal(t, []int64{outside.ID, allowed.ID}, acquiredIDs)
+	require.Equal(t, []int64{outside.ID}, releasedIDs)
+	bound, err := store.GetResponseAccount(ctx, groupID, "resp_shard_outside")
+	require.NoError(t, err)
+	require.Zero(t, bound)
+	require.Equal(t, userID, shardRepo.lastUserID)
+	require.Equal(t, PlatformOpenAI, shardRepo.lastPlatform)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_LegacyPreviousResponseShardScope(t *testing.T) {
+	groupID := int64(39007)
+	userID := int64(49007)
+	owner := openAIShardSchedulingAccount(39071, groupID, 0)
+	fallback := openAIShardSchedulingAccount(39072, groupID, 9)
+	for _, tt := range []struct {
+		name            string
+		accountIDs      map[int64]struct{}
+		selectedID      int64
+		responseBoundID int64
+	}{
+		{name: "out of shard owner", accountIDs: map[int64]struct{}{fallback.ID: {}}, selectedID: fallback.ID},
+		{name: "empty shard", accountIDs: map[int64]struct{}{}},
+		{name: "in shard owner", accountIDs: map[int64]struct{}{owner.ID: {}, fallback.ID: {}}, selectedID: owner.ID, responseBoundID: owner.ID},
+	} {
+		for _, loadBatch := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/load_batch=%t", tt.name, loadBatch), func(t *testing.T) {
+				resetOpenAIAdvancedSchedulerSettingCacheForTest()
+				group := &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+				ctx := openAIShardSchedulingTestContext(group, userID)
+				cache := &schedulerTestGatewayCache{}
+				store := NewOpenAIWSStateStore(cache)
+				acquiredIDs, releasedIDs := []int64{}, []int64{}
+				cfg := newSchedulerTestOpenAIWSV2Config()
+				cfg.Gateway.Scheduling.LoadBatchEnabled = loadBatch
+				svc := &OpenAIGatewayService{
+					accountRepo:        schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{owner, fallback}}},
+					cache:              cache,
+					cfg:                cfg,
+					groupShardRepo:     &openAISchedulerShardRepoStub{scope: &GroupShardAccountScope{Enabled: true, ShardID: 13, AccountIDs: tt.accountIDs}},
+					openaiWSStateStore: store,
+					rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("false"),
+					concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{acquiredIDs: &acquiredIDs, releasedIDs: &releasedIDs}),
+				}
+				require.Nil(t, svc.getOpenAIAccountScheduler(ctx), "test precondition: advanced scheduler disabled")
+				require.NoError(t, store.BindResponseAccount(ctx, groupID, "resp_legacy_shard", owner.ID, time.Hour))
+
+				selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, " resp_legacy_shard ", "session_legacy_shard", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+				if tt.selectedID == 0 {
+					require.ErrorIs(t, err, ErrNoAvailableAccounts)
+					require.ErrorContains(t, err, "group_shard_empty")
+					require.Nil(t, selection)
+				} else {
+					require.NoError(t, err)
+					require.NotNil(t, selection)
+					require.NotNil(t, selection.Account)
+					require.Equal(t, tt.selectedID, selection.Account.ID)
+					if selection.ReleaseFunc != nil {
+						t.Cleanup(selection.ReleaseFunc)
+					}
+				}
+				if tt.responseBoundID > 0 {
+					require.Equal(t, openAIAccountScheduleLayerPreviousResponse, decision.Layer)
+					require.True(t, decision.StickyPreviousHit)
+					require.Equal(t, []int64{owner.ID}, acquiredIDs)
+					require.Empty(t, releasedIDs)
+				} else {
+					require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+					require.False(t, decision.StickyPreviousHit)
+					require.Equal(t, []int64{owner.ID}, releasedIDs, "rejected response owner's acquired slot must be released")
+					expectedAcquired := []int64{owner.ID}
+					if tt.selectedID > 0 {
+						expectedAcquired = append(expectedAcquired, tt.selectedID)
+					}
+					require.Equal(t, expectedAcquired, acquiredIDs)
+				}
+				bound, bindErr := store.GetResponseAccount(ctx, groupID, "resp_legacy_shard")
+				require.NoError(t, bindErr)
+				require.Equal(t, tt.responseBoundID, bound)
+				if tt.selectedID > 0 {
+					stickyID, stickyErr := svc.getStickySessionAccountID(ctx, &groupID, "session_legacy_shard")
+					require.NoError(t, stickyErr)
+					require.Equal(t, tt.selectedID, stickyID, "only an allowed selection may create a session binding")
+				} else {
+					require.Zero(t, cache.sessionBindings["openai:session_legacy_shard"])
+				}
+			})
+		}
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_ShardClearsOutOfScopeSessionSticky(t *testing.T) {
+	groupID := int64(39002)
+	userID := int64(49002)
+	outside := openAIShardSchedulingAccount(39021, groupID, 0)
+	allowed := openAIShardSchedulingAccount(39022, groupID, 9)
+	cache := &schedulerTestGatewayCache{sessionBindings: map[string]int64{"openai:session_shard_sticky": outside.ID}}
+	shardRepo := &openAISchedulerShardRepoStub{scope: &GroupShardAccountScope{Enabled: true, ShardID: 8, AccountIDs: map[int64]struct{}{allowed.ID: {}}}}
+	group := &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	ctx := openAIShardSchedulingTestContext(group, userID)
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{outside, allowed}}},
+		cache:              cache,
+		cfg:                newSchedulerTestOpenAIWSV2Config(),
+		groupShardRepo:     shardRepo,
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{outside.ID: true, allowed.ID: true}}),
+	}
+
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_shard_sticky", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, allowed.ID, selection.Account.ID)
+	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+	require.Equal(t, 1, cache.deletedSessions["openai:session_shard_sticky"])
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_EmptyShardDoesNotFallback(t *testing.T) {
+	groupID := int64(39003)
+	userID := int64(49003)
+	account := openAIShardSchedulingAccount(39031, groupID, 0)
+	shardRepo := &openAISchedulerShardRepoStub{scope: &GroupShardAccountScope{Enabled: true, ShardID: 9, AccountIDs: map[int64]struct{}{}}}
+	group := &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	ctx := openAIShardSchedulingTestContext(group, userID)
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{account}}},
+		cache:              &schedulerTestGatewayCache{},
+		cfg:                newSchedulerTestOpenAIWSV2Config(),
+		groupShardRepo:     shardRepo,
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+	}
+
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.ErrorContains(t, err, "group_shard_empty")
+	require.Nil(t, selection)
+	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+}
+
+func TestDefaultOpenAIAccountScheduler_LoadBalanceOnlyAttemptsShardAllowedAccounts(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(39004)
+	outside := openAIShardSchedulingAccount(39041, groupID, 0)
+	allowed := openAIShardSchedulingAccount(39042, groupID, 9)
+	acquiredIDs := []int64{}
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{outside, allowed}}},
+		cfg:                newSchedulerTestOpenAIWSV2Config(),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{outside.ID: true, allowed.ID: true}, acquiredIDs: &acquiredIDs}),
+	}
+	scheduler := &defaultOpenAIAccountScheduler{service: svc, stats: newOpenAIAccountRuntimeStats()}
+
+	selection, decision, err := scheduler.Select(ctx, OpenAIAccountScheduleRequest{
+		GroupID:           &groupID,
+		Platform:          PlatformOpenAI,
+		RequestedModel:    "gpt-5.1",
+		RequiredTransport: OpenAIUpstreamTransportAny,
+		ShardScope:        &GroupShardAccountScope{Enabled: true, ShardID: 10, AccountIDs: map[int64]struct{}{allowed.ID: {}}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, allowed.ID, selection.Account.ID)
+	require.Equal(t, []int64{allowed.ID}, acquiredIDs)
+	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+	require.Equal(t, 1, decision.CandidateCount)
+	require.Equal(t, 1, decision.TopK)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithLoadAwareness_ShardClearsOutOfScopeSticky(t *testing.T) {
+	groupID := int64(39005)
+	userID := int64(49005)
+	outside := openAIShardSchedulingAccount(39051, groupID, 0)
+	allowed := openAIShardSchedulingAccount(39052, groupID, 9)
+	cache := &schedulerTestGatewayCache{sessionBindings: map[string]int64{"openai:legacy_shard_sticky": outside.ID}}
+	shardRepo := &openAISchedulerShardRepoStub{scope: &GroupShardAccountScope{Enabled: true, ShardID: 11, AccountIDs: map[int64]struct{}{allowed.ID: {}}}}
+	group := &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	ctx := openAIShardSchedulingTestContext(group, userID)
+	svc := &OpenAIGatewayService{
+		accountRepo:    schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{outside, allowed}}},
+		cache:          cache,
+		cfg:            newSchedulerTestOpenAIWSV2Config(),
+		groupShardRepo: shardRepo,
+	}
+
+	selection, err := svc.selectAccountWithLoadAwareness(ctx, &groupID, PlatformOpenAI, "legacy_shard_sticky", "gpt-5.1", nil, false, "", true)
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, allowed.ID, selection.Account.ID)
+	require.Equal(t, 1, cache.deletedSessions["openai:legacy_shard_sticky"])
+	require.Equal(t, userID, shardRepo.lastUserID)
+	if selection.ReleaseFunc != nil {
+		selection.ReleaseFunc()
+	}
+}
+
+func TestOpenAIGatewayService_SelectAccountWithLoadAwareness_EmptyShardDoesNotFallback(t *testing.T) {
+	groupID := int64(39006)
+	userID := int64(49006)
+	account := openAIShardSchedulingAccount(39061, groupID, 0)
+	shardRepo := &openAISchedulerShardRepoStub{scope: &GroupShardAccountScope{Enabled: true, ShardID: 12, AccountIDs: map[int64]struct{}{}}}
+	group := &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	ctx := openAIShardSchedulingTestContext(group, userID)
+	svc := &OpenAIGatewayService{
+		accountRepo:    schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: []Account{account}}},
+		cache:          &schedulerTestGatewayCache{},
+		cfg:            newSchedulerTestOpenAIWSV2Config(),
+		groupShardRepo: shardRepo,
+	}
+
+	selection, err := svc.selectAccountWithLoadAwareness(ctx, &groupID, PlatformOpenAI, "", "gpt-5.1", nil, false, "", true)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.ErrorContains(t, err, "group_shard_empty")
+	require.Nil(t, selection)
 }

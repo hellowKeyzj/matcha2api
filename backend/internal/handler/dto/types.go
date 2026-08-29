@@ -140,6 +140,11 @@ type Group struct {
 	// 无效请求兜底分组
 	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request"`
 
+	// 分组内用户/账号隔离配置
+	ShardEnabled          bool `json:"shard_enabled"`
+	ShardMaxUsersPerShard int  `json:"shard_max_users_per_shard"`
+	ShardAutoCreate       bool `json:"shard_auto_create"`
+
 	// OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
 	// OpenAI Live 接口开关
@@ -202,6 +207,39 @@ type AdminGroup struct {
 
 	// 分组排序
 	SortOrder int `json:"sort_order"`
+}
+
+type GroupShard struct {
+	ID           int64     `json:"id"`
+	GroupID      int64     `json:"group_id"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	Status       string    `json:"status"`
+	UserCount    int64     `json:"user_count"`
+	AccountCount int64     `json:"account_count"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type GroupShardUser struct {
+	GroupShardID int64     `json:"group_shard_id"`
+	GroupID      int64     `json:"group_id"`
+	UserID       int64     `json:"user_id"`
+	Email        string    `json:"email"`
+	Username     string    `json:"username"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type GroupShardAccount struct {
+	GroupShardID int64     `json:"group_shard_id"`
+	GroupID      int64     `json:"group_id"`
+	AccountID    int64     `json:"account_id"`
+	Name         string    `json:"name"`
+	Platform     string    `json:"platform"`
+	Type         string    `json:"type"`
+	Status       string    `json:"status"`
+	Priority     int       `json:"priority"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Account struct {
