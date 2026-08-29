@@ -333,6 +333,121 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestAPIKeyAuthHybridBillingDecisionSetsContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	group := &service.Group{
+		ID:               42,
+		Name:             "hybrid",
+		Status:           service.StatusActive,
+		Platform:         service.PlatformAnthropic,
+		Hydrated:         true,
+		SubscriptionType: service.SubscriptionTypeSubscriptionBalance,
+	}
+	user := &service.User{
+		ID:          7,
+		Role:        service.RoleUser,
+		Status:      service.StatusActive,
+		Balance:     10,
+		Concurrency: 3,
+	}
+	apiKey := &service.APIKey{
+		ID:      100,
+		UserID:  user.ID,
+		Key:     "hybrid-key",
+		Status:  service.StatusActive,
+		User:    user,
+		GroupID: &group.ID,
+		Group:   group,
+	}
+
+	tests := []struct {
+		name           string
+		getActive      func(context.Context, int64, int64) (*service.UserSubscription, error)
+		wantSource     service.BillingSource
+		wantSubInCtx   bool
+		wantSubLookups int
+	}{
+		{
+			name: "active subscription selects subscription",
+			getActive: func(context.Context, int64, int64) (*service.UserSubscription, error) {
+				now := time.Now()
+				return &service.UserSubscription{
+					ID:                 55,
+					UserID:             user.ID,
+					GroupID:            group.ID,
+					Status:             service.SubscriptionStatusActive,
+					ExpiresAt:          now.Add(24 * time.Hour),
+					DailyWindowStart:   &now,
+					WeeklyWindowStart:  &now,
+					MonthlyWindowStart: &now,
+				}, nil
+			},
+			wantSource:     service.BillingSourceSubscription,
+			wantSubInCtx:   true,
+			wantSubLookups: 1,
+		},
+		{
+			name: "missing subscription falls back to balance",
+			getActive: func(context.Context, int64, int64) (*service.UserSubscription, error) {
+				return nil, service.ErrSubscriptionNotFound
+			},
+			wantSource:     service.BillingSourceBalance,
+			wantSubInCtx:   false,
+			wantSubLookups: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiKeyRepo := &stubApiKeyRepo{
+				getByKey: func(context.Context, string) (*service.APIKey, error) {
+					clone := *apiKey
+					return &clone, nil
+				},
+			}
+			cfg := &config.Config{RunMode: config.RunModeStandard}
+			apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+
+			lookups := 0
+			subscriptionRepo := &stubUserSubscriptionRepo{
+				getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+					lookups++
+					require.Equal(t, user.ID, userID)
+					require.Equal(t, group.ID, groupID)
+					return tt.getActive(ctx, userID, groupID)
+				},
+			}
+			subscriptionService := service.NewSubscriptionService(nil, subscriptionRepo, nil, nil, cfg)
+			t.Cleanup(subscriptionService.Stop)
+
+			router := gin.New()
+			router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, subscriptionService, cfg)))
+			router.GET("/t", func(c *gin.Context) {
+				source, ok := GetBillingSourceFromContext(c)
+				require.True(t, ok)
+				subscription, subOK := GetSubscriptionFromContext(c)
+				c.JSON(http.StatusOK, gin.H{
+					"source":           string(source),
+					"has_subscription": subOK && subscription != nil,
+				})
+			})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/t", nil)
+			req.Header.Set("x-api-key", apiKey.Key)
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Equal(t, tt.wantSubLookups, lookups)
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+			require.Equal(t, string(tt.wantSource), body["source"])
+			require.Equal(t, tt.wantSubInCtx, body["has_subscription"])
+		})
+	}
+}
+
 func TestAPIKeyAuthRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
