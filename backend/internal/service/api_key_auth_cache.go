@@ -65,6 +65,9 @@ type APIKeyAuthGroupSnapshot struct {
 	Platform                        string                        `json:"platform"`
 	IsExclusive                     bool                          `json:"is_exclusive"`
 	Status                          string                        `json:"status"`
+	ShardEnabled                    bool                          `json:"shard_enabled"`
+	ShardMaxUsersPerShard            int                           `json:"shard_max_users_per_shard"`
+	ShardAutoCreate                 bool                          `json:"shard_auto_create"`
 	SubscriptionType                string                        `json:"subscription_type"`
 	RateMultiplier                  float64                       `json:"rate_multiplier"`
 	DailyLimitUSD                   *float64                      `json:"daily_limit_usd,omitempty"`

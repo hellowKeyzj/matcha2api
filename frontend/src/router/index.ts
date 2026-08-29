@@ -486,6 +486,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/groups/:id/shards',
+    name: 'AdminGroupShards',
+    component: () => import('@/views/admin/AdminGroupShardsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Group Shards',
+      titleKey: 'admin.groups.shards.title',
+      descriptionKey: 'admin.groups.shards.description'
+    }
+  },
+  {
     path: '/admin/channels',
     redirect: '/admin/channels/pricing'
   },

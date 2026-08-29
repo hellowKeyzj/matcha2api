@@ -77,6 +77,8 @@ const (
 	EdgeAnnouncementReads = "announcement_reads"
 	// EdgeAllowedGroups holds the string denoting the allowed_groups edge name in mutations.
 	EdgeAllowedGroups = "allowed_groups"
+	// EdgeGroupShards holds the string denoting the group_shards edge name in mutations.
+	EdgeGroupShards = "group_shards"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
 	// EdgeAttributeValues holds the string denoting the attribute_values edge name in mutations.
@@ -93,6 +95,8 @@ const (
 	EdgePlatformQuotas = "platform_quotas"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
+	// EdgeGroupShardUsers holds the string denoting the group_shard_users edge name in mutations.
+	EdgeGroupShardUsers = "group_shard_users"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// APIKeysTable is the table that holds the api_keys relation/edge.
@@ -135,6 +139,11 @@ const (
 	// AllowedGroupsInverseTable is the table name for the Group entity.
 	// It exists in this package in order to avoid circular dependency with the "group" package.
 	AllowedGroupsInverseTable = "groups"
+	// GroupShardsTable is the table that holds the group_shards relation/edge. The primary key declared below.
+	GroupShardsTable = "group_shard_users"
+	// GroupShardsInverseTable is the table name for the GroupShard entity.
+	// It exists in this package in order to avoid circular dependency with the "groupshard" package.
+	GroupShardsInverseTable = "group_shards"
 	// UsageLogsTable is the table that holds the usage_logs relation/edge.
 	UsageLogsTable = "usage_logs"
 	// UsageLogsInverseTable is the table name for the UsageLog entity.
@@ -191,6 +200,13 @@ const (
 	UserAllowedGroupsInverseTable = "user_allowed_groups"
 	// UserAllowedGroupsColumn is the table column denoting the user_allowed_groups relation/edge.
 	UserAllowedGroupsColumn = "user_id"
+	// GroupShardUsersTable is the table that holds the group_shard_users relation/edge.
+	GroupShardUsersTable = "group_shard_users"
+	// GroupShardUsersInverseTable is the table name for the GroupShardUser entity.
+	// It exists in this package in order to avoid circular dependency with the "groupsharduser" package.
+	GroupShardUsersInverseTable = "group_shard_users"
+	// GroupShardUsersColumn is the table column denoting the group_shard_users relation/edge.
+	GroupShardUsersColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -227,6 +243,9 @@ var (
 	// AllowedGroupsPrimaryKey and AllowedGroupsColumn2 are the table columns denoting the
 	// primary key for the allowed_groups relation (M2M).
 	AllowedGroupsPrimaryKey = []string{"user_id", "group_id"}
+	// GroupShardsPrimaryKey and GroupShardsColumn2 are the table columns denoting the
+	// primary key for the group_shards relation (M2M).
+	GroupShardsPrimaryKey = []string{"user_id", "group_shard_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -514,6 +533,20 @@ func ByAllowedGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByGroupShardsCount orders the results by group_shards count.
+func ByGroupShardsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newGroupShardsStep(), opts...)
+	}
+}
+
+// ByGroupShards orders the results by group_shards terms.
+func ByGroupShards(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newGroupShardsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUsageLogsCount orders the results by usage_logs count.
 func ByUsageLogsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -625,6 +658,20 @@ func ByUserAllowedGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption
 		sqlgraph.OrderByNeighborTerms(s, newUserAllowedGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByGroupShardUsersCount orders the results by group_shard_users count.
+func ByGroupShardUsersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newGroupShardUsersStep(), opts...)
+	}
+}
+
+// ByGroupShardUsers orders the results by group_shard_users terms.
+func ByGroupShardUsers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newGroupShardUsersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newAPIKeysStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -665,6 +712,13 @@ func newAllowedGroupsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AllowedGroupsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, AllowedGroupsTable, AllowedGroupsPrimaryKey...),
+	)
+}
+func newGroupShardsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(GroupShardsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, GroupShardsTable, GroupShardsPrimaryKey...),
 	)
 }
 func newUsageLogsStep() *sqlgraph.Step {
@@ -721,5 +775,12 @@ func newUserAllowedGroupsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UserAllowedGroupsInverseTable, UserAllowedGroupsColumn),
 		sqlgraph.Edge(sqlgraph.O2M, true, UserAllowedGroupsTable, UserAllowedGroupsColumn),
+	)
+}
+func newGroupShardUsersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(GroupShardUsersInverseTable, GroupShardUsersColumn),
+		sqlgraph.Edge(sqlgraph.O2M, true, GroupShardUsersTable, GroupShardUsersColumn),
 	)
 }

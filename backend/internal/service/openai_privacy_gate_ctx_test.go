@@ -39,6 +39,7 @@ func TestOpenAIGatewayService_PrivacyGateReadsAuthGroupFromContext(t *testing.T)
 			repo := &guardianAffinityAccountRepo{schedulerGroupAwareOpenAIAccountRepo: schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: accounts}}}
 			// The repository disagrees with ctx; reading it would admit 39111.
 			groupRepo := &countingPrivacyGroupRepo{group: &Group{ID: groupID, Name: "stale", RequirePrivacySet: false}}
+			shardRepo := &openAISchedulerShardRepoStub{}
 			svc := &OpenAIGatewayService{
 				accountRepo:        repo,
 				cache:              &schedulerTestGatewayCache{},
@@ -46,6 +47,7 @@ func TestOpenAIGatewayService_PrivacyGateReadsAuthGroupFromContext(t *testing.T)
 				rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService(advanced),
 				concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{39111: true, 39112: true}}),
 				schedulerSnapshot:  &SchedulerSnapshotService{accountRepo: repo, groupRepo: groupRepo},
+				groupShardRepo:     shardRepo,
 			}
 			ctx := context.WithValue(context.Background(), ctxkey.Group, &Group{
 				ID: groupID, Name: "privacy", Platform: PlatformOpenAI, Status: StatusActive,
@@ -57,6 +59,7 @@ func TestOpenAIGatewayService_PrivacyGateReadsAuthGroupFromContext(t *testing.T)
 			require.NotNil(t, selection)
 			require.Equal(t, int64(39112), selection.Account.ID)
 			require.Zero(t, groupRepo.calls.Load(), "privacy gate must not read the group table for the auth group")
+			require.Zero(t, shardRepo.listScopeCalls, "ordinary groups must not query shard membership")
 			if selection.ReleaseFunc != nil {
 				selection.ReleaseFunc()
 			}

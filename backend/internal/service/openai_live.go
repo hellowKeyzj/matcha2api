@@ -485,6 +485,13 @@ func (s *OpenAIGatewayService) GetLiveCallForIdentity(
 	if record.Controller == LiveControllerClosed {
 		return nil, ErrLiveCallNotFound
 	}
+	scope, err := s.resolveOpenAIShardAccountScope(ctx, identity.GroupID, nil, identity.UserID, PlatformOpenAI)
+	if err != nil {
+		return nil, err
+	}
+	if !scope.Allows(record.AccountID) {
+		return nil, ErrLiveIdentityMismatch
+	}
 	return record, nil
 }
 

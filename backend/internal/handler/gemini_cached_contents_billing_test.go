@@ -310,6 +310,10 @@ type cachedBillingEnv struct {
 }
 
 func newCachedBillingEnv(t *testing.T, balance float64, accountIDs ...int64) *cachedBillingEnv {
+	return newCachedBillingEnvWithShard(t, balance, nil, accountIDs...)
+}
+
+func newCachedBillingEnvWithShard(t *testing.T, balance float64, shards service.GroupShardRepository, accountIDs ...int64) *cachedBillingEnv {
 	t.Helper()
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "model_pricing.json"), []byte(fmt.Sprintf(`{"gemini-2.5-pro":{
@@ -342,7 +346,7 @@ func newCachedBillingEnv(t *testing.T, balance float64, accountIDs ...int64) *ca
 	bcs := service.NewBillingCacheService(nil, userRepo, nil, nil, nil, nil, cfg, nil)
 	t.Cleanup(bcs.Stop)
 	snapshot := service.NewSchedulerSnapshotService(&fakeSchedulerCache{accounts: scheduled}, nil, nil, nil, nil)
-	gw := service.NewGatewayService(nil, &fakeGroupRepo{group: group}, usage, nil, userRepo, nil, nil, nil, cfg, snapshot, nil,
+	gw := service.NewGatewayService(nil, &fakeGroupRepo{group: group}, shards, usage, nil, userRepo, nil, nil, nil, cfg, snapshot, nil,
 		billing, nil, &service.BillingCacheService{}, nil, nil, &service.DeferredService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	upstream := &cachedBillingUpstream{}
 	compat := service.NewGeminiMessagesCompatService(&cachedBillingAccountRepo{accounts: accounts}, nil, nil, nil, nil, nil, upstream, nil, cfg)

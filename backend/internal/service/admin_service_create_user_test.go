@@ -146,3 +146,72 @@ func TestAdminService_CreateUser_AssignsDefaultSubscriptions(t *testing.T) {
 	require.Equal(t, int64(5), assigner.calls[0].GroupID)
 	require.Equal(t, 30, assigner.calls[0].ValidityDays)
 }
+
+type adminDefaultGatewayAccessStub struct {
+	requireCalls int
+	provisionIDs []int64
+	requireErr   error
+	provisionErr error
+}
+
+func (s *adminDefaultGatewayAccessStub) RequireDefaultShardGroup(context.Context) (*Group, error) {
+	s.requireCalls++
+	if s.requireErr != nil {
+		return nil, s.requireErr
+	}
+	return &Group{ID: 5, Status: StatusActive, ShardEnabled: true, ShardMaxUsersPerShard: 2}, nil
+}
+
+func (s *adminDefaultGatewayAccessStub) ProvisionDefaultGatewayAccess(_ context.Context, userID int64) (*DefaultGatewayAccess, error) {
+	s.provisionIDs = append(s.provisionIDs, userID)
+	if s.provisionErr != nil {
+		return nil, s.provisionErr
+	}
+	return &DefaultGatewayAccess{GroupID: 5, ShardID: 9, APIKeyID: 11}, nil
+}
+
+func TestAdminService_CreateUser_ProvisionsDefaultGatewayAccessForOrdinaryUser(t *testing.T) {
+	repo := &userRepoStub{nextID: 31}
+	access := &adminDefaultGatewayAccessStub{}
+	svc := &adminServiceImpl{userRepo: repo, defaultGatewayAccess: access}
+
+	user, err := svc.CreateUser(context.Background(), &CreateUserInput{
+		Email:    "ordinary@test.com",
+		Password: "password",
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(31), user.ID)
+	require.Equal(t, 1, access.requireCalls)
+	require.Equal(t, []int64{31}, access.provisionIDs)
+	require.Empty(t, repo.deletedIDs)
+}
+
+func TestAdminService_CreateUser_SkipsDefaultGatewayAccessForAdminUser(t *testing.T) {
+	repo := &userRepoStub{nextID: 32}
+	access := &adminDefaultGatewayAccessStub{}
+	svc := &adminServiceImpl{userRepo: repo, defaultGatewayAccess: access}
+
+	user, err := svc.CreateUser(context.Background(), &CreateUserInput{
+		Email:    "admin@test.com",
+		Password: "password",
+		Role:     RoleAdmin,
+	})
+	require.NoError(t, err)
+	require.Equal(t, RoleAdmin, user.Role)
+	require.Zero(t, access.requireCalls)
+	require.Empty(t, access.provisionIDs)
+}
+
+func TestAdminService_CreateUser_RollsBackUserWhenDefaultGatewayProvisionFails(t *testing.T) {
+	repo := &userRepoStub{nextID: 33}
+	provisionErr := errors.New("provision failed")
+	access := &adminDefaultGatewayAccessStub{provisionErr: provisionErr}
+	svc := &adminServiceImpl{userRepo: repo, defaultGatewayAccess: access}
+
+	_, err := svc.CreateUser(context.Background(), &CreateUserInput{
+		Email:    "rollback@test.com",
+		Password: "password",
+	})
+	require.ErrorIs(t, err, provisionErr)
+	require.Equal(t, []int64{33}, repo.deletedIDs)
+}

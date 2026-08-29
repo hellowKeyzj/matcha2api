@@ -14,7 +14,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const apiKeyAuthSnapshotVersion = 28 // v28: group force_openai_ultrafast (OpenAI gateway reads it from ctx)
+const apiKeyAuthSnapshotVersion = 29 // v29: both shard scheduling and force_openai_ultrafast fields
 
 type apiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -385,6 +385,9 @@ func (s *APIKeyService) snapshotFromAPIKey(ctx context.Context, apiKey *APIKey) 
 			Platform:                        apiKey.Group.Platform,
 			IsExclusive:                     apiKey.Group.IsExclusive,
 			Status:                          apiKey.Group.Status,
+			ShardEnabled:                    apiKey.Group.ShardEnabled,
+			ShardMaxUsersPerShard:           apiKey.Group.ShardMaxUsersPerShard,
+			ShardAutoCreate:                 apiKey.Group.ShardAutoCreate,
 			SubscriptionType:                apiKey.Group.SubscriptionType,
 			RateMultiplier:                  apiKey.Group.RateMultiplier,
 			DailyLimitUSD:                   apiKey.Group.DailyLimitUSD,
@@ -490,6 +493,9 @@ func (s *APIKeyService) snapshotToAPIKey(key string, snapshot *APIKeyAuthSnapsho
 			Platform:                        snapshot.Group.Platform,
 			IsExclusive:                     snapshot.Group.IsExclusive,
 			Status:                          snapshot.Group.Status,
+			ShardEnabled:                    snapshot.Group.ShardEnabled,
+			ShardMaxUsersPerShard:           snapshot.Group.ShardMaxUsersPerShard,
+			ShardAutoCreate:                 snapshot.Group.ShardAutoCreate,
 			Hydrated:                        true,
 			SubscriptionType:                snapshot.Group.SubscriptionType,
 			RateMultiplier:                  snapshot.Group.RateMultiplier,

@@ -88,7 +88,7 @@ func TestGatewayCompatibilityHandlersReasoningEffortPolicy(t *testing.T) {
 						billingCache := service.NewBillingCacheService(newHandlerInflightCache(100), nil, nil, nil, nil, nil, cfg, nil)
 						t.Cleanup(billingCache.Stop)
 						gateway := service.NewGatewayService(
-							nil, &fakeGroupRepo{group: group}, usageRepo, billingRepo, nil, nil, nil, nil, cfg,
+							nil, &fakeGroupRepo{group: group}, nil, usageRepo, billingRepo, nil, nil, nil, nil, cfg,
 							snapshot, nil, service.NewBillingService(cfg, nil), nil, nil, nil, upstream,
 							&service.DeferredService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 						)

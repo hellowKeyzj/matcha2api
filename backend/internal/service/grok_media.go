@@ -354,11 +354,16 @@ func (s *OpenAIGatewayService) SelectMediaVideoRequestAccount(
 		return nil, decision, ErrNoAvailableAccounts
 	}
 	ctx = s.withOpenAIGroupPrivacyRequirement(WithOpenAIProfitControlSuppressed(ctx), groupID)
+	shardScope, err := s.resolveOpenAIShardAccountScope(ctx, groupID, nil, 0, platform)
+	if err != nil {
+		return nil, decision, err
+	}
 	scheduler := &defaultOpenAIAccountScheduler{service: s}
 	selection, _, err := scheduler.selectBySessionHash(ctx, OpenAIAccountScheduleRequest{
 		GroupID: groupID, Platform: platform, SessionHash: sessionHash,
 		StickyAccountID: accountID, PreserveStickyBinding: true, DisableStickyEscape: true,
 		RequestedModel: requestedModel, RequiredTransport: OpenAIUpstreamTransportHTTPSSE,
+		ShardScope:        shardScope,
 		RequirePrivacySet: s.openAIGroupRequiresPrivacySet(ctx, groupID),
 	})
 	if err != nil {

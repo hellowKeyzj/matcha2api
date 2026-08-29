@@ -9,9 +9,11 @@ import (
 )
 
 var (
-	ErrGroupNotFound = infraerrors.NotFound("GROUP_NOT_FOUND", "group not found")
-	ErrGroupExists   = infraerrors.Conflict("GROUP_EXISTS", "group name already exists")
-	ErrGroupNotEmpty = infraerrors.Conflict("GROUP_NOT_EMPTY", "group contains accounts")
+	ErrGroupNotFound                    = infraerrors.NotFound("GROUP_NOT_FOUND", "group not found")
+	ErrGroupExists                      = infraerrors.Conflict("GROUP_EXISTS", "group name already exists")
+	ErrGroupNotEmpty                    = infraerrors.Conflict("GROUP_NOT_EMPTY", "group contains accounts")
+	ErrDefaultShardGroupNotConfigured   = infraerrors.Conflict("DEFAULT_SHARD_GROUP_NOT_CONFIGURED", "default shard group is not configured")
+	ErrDefaultShardGroupAlreadyAssigned = infraerrors.Conflict("DEFAULT_SHARD_GROUP_ALREADY_ASSIGNED", "another default shard group is already configured")
 )
 
 type GroupRepository interface {
@@ -26,6 +28,7 @@ type GroupRepository interface {
 	ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, status, search string, isExclusive *bool) ([]Group, *pagination.PaginationResult, error)
 	ListActive(ctx context.Context) ([]Group, error)
 	ListActiveByPlatform(ctx context.Context, platform string) ([]Group, error)
+	GetDefaultShardGroup(ctx context.Context) (*Group, error)
 
 	ExistsByName(ctx context.Context, name string) (bool, error)
 	GetAccountCount(ctx context.Context, groupID int64) (total int64, active int64, err error)

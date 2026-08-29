@@ -27,14 +27,14 @@ var errGeminiModelsUpstreamStatus = errors.New("upstream model list returned non
 // DeclaredModelIDs 在分组内每个可调度 Gemini 账号都有生效的 model_mapping（含 Google One 的默认映射）时，
 // 返回这些映射键的并集（去重排序，通配符键原样保留）。有账号未配置映射时该账号接受任意模型，返回空，
 // 模型接口由选中账号的上游应答。
-func (s *GeminiMessagesCompatService) DeclaredModelIDs(ctx context.Context, groupID *int64) ([]string, error) {
+func (s *GeminiMessagesCompatService) DeclaredModelIDs(ctx context.Context, groupID *int64, scope *GroupShardAccountScope) ([]string, error) {
 	accounts, err := s.listSchedulableAccountsOnce(ctx, groupID, PlatformGemini, true)
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
 	}
 	seen := make(map[string]struct{})
 	for i := range accounts {
-		if accounts[i].Platform != PlatformGemini {
+		if accounts[i].Platform != PlatformGemini || !scope.Allows(accounts[i].ID) {
 			continue
 		}
 		mapping := accounts[i].GetModelMapping()
@@ -78,7 +78,7 @@ func DeclaredModelsCover(declared []string, model string) bool {
 //
 // Vertex 账号排在所有 AI Studio 兼容账号之后，混合分组始终由 AI Studio 兼容账号应答。
 // 同级账号按 priority、最近使用时间挑选。DeclaredModelIDs 非空时模型接口按声明的模型应答，不经过选号。
-func (s *GeminiMessagesCompatService) SelectAccountForModelsEndpoints(ctx context.Context, groupID *int64) (*Account, error) {
+func (s *GeminiMessagesCompatService) SelectAccountForModelsEndpoints(ctx context.Context, groupID *int64, scope *GroupShardAccountScope) (*Account, error) {
 	accounts, err := s.listSchedulableAccountsOnce(ctx, groupID, PlatformGemini, true)
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
@@ -90,6 +90,9 @@ func (s *GeminiMessagesCompatService) SelectAccountForModelsEndpoints(ctx contex
 	var selected *Account
 	for i := range accounts {
 		acc := &accounts[i]
+		if !scope.Allows(acc.ID) {
+			continue
+		}
 		if selected == nil {
 			selected = acc
 			continue

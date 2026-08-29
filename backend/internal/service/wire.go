@@ -72,6 +72,7 @@ func ProvideAuthService(
 	affiliateService *AffiliateService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
 	mcpOAuthService *MCPOAuthService,
+	defaultGatewayAccess DefaultGatewayAccessProvisioner,
 ) *AuthService {
 	svc := NewAuthService(
 		entClient,
@@ -93,6 +94,7 @@ func ProvideAuthService(
 	if mcpOAuthService != nil {
 		svc.SetMCPGrantRevoker(mcpOAuthService)
 	}
+	svc.SetDefaultGatewayAccessProvisioner(defaultGatewayAccess)
 	return svc
 }
 
@@ -867,6 +869,8 @@ var ProviderSet = wire.NewSet(
 	NewUserService,
 	NewMCPOAuthService,
 	ProvideAPIKeyService,
+	NewDefaultGatewayAccessService,
+	wire.Bind(new(DefaultGatewayAccessProvisioner), new(*DefaultGatewayAccessService)),
 	ProvideAPIKeyAuthCacheInvalidator,
 	ProvideAuthCacheInvalidationWorker,
 	NewGroupService,

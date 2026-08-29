@@ -6,9 +6,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
-	"os/exec"
-	"regexp"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -449,16 +446,7 @@ func attachInflightSnapshot(svc *GatewayService, snap *inflightSnapshotCacheStub
 func TestInflightEstimate_AccountMappingNoDBAndBoundedMemory(t *testing.T) {
 	// HeapAlloc is process-wide: unrelated background work in other service
 	// tests must not be counted as memory retained by this estimate path.
-	const childEnv = "SUB2API_BILLING_HEAP_TEST_CHILD"
-	if os.Getenv(childEnv) != "1" {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		executable, err := os.Executable()
-		require.NoError(t, err)
-		cmd := exec.CommandContext(ctx, executable, "-test.run=^"+regexp.QuoteMeta(t.Name())+"$", "-test.count=1")
-		cmd.Env = append(os.Environ(), childEnv+"=1")
-		output, err := cmd.CombinedOutput()
-		require.NoError(t, err, "isolated heap test failed:\n%s", output)
+	if runAllocationTestSubprocess(t) {
 		return
 	}
 
