@@ -131,6 +131,12 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 		return nil, err
 	}
 
+	if role == RoleUser && s.defaultGatewayAccess != nil {
+		if _, err := s.defaultGatewayAccess.RequireDefaultShardGroup(ctx); err != nil {
+			return nil, err
+		}
+	}
+
 	user := &User{
 		Email:         input.Email,
 		Username:      input.Username,
@@ -149,6 +155,14 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 	}
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, err
+	}
+	if user.Role == RoleUser && s.defaultGatewayAccess != nil {
+		if _, err := s.defaultGatewayAccess.ProvisionDefaultGatewayAccess(ctx, user.ID); err != nil {
+			if rollbackErr := s.userRepo.Delete(ctx, user.ID); rollbackErr != nil {
+				logger.LegacyPrintf("service.admin", "failed to rollback user after default gateway access provisioning failure: user_id=%d err=%v", user.ID, rollbackErr)
+			}
+			return nil, fmt.Errorf("provision default gateway access: %w", err)
+		}
 	}
 	// 创建管理员属权限敏感操作，落审计日志（含操作者），便于事后追溯。
 	if user.Role == RoleAdmin {

@@ -13,6 +13,11 @@ import type {
   CompositeRouteDecision,
   CreateGroupRequest,
   UpdateGroupRequest,
+  GroupShard,
+  GroupShardAccount,
+  GroupShardAccountInput,
+  GroupShardInput,
+  GroupShardUser,
   PaginatedResponse
 } from '@/types'
 
@@ -327,6 +332,68 @@ export async function previewCompositeRoute(
   return data
 }
 
+export async function listShards(groupId: number): Promise<GroupShard[]> {
+  const { data } = await apiClient.get<GroupShard[]>(`/admin/groups/${groupId}/shards`)
+  return data
+}
+
+export async function getShard(groupId: number, shardId: number): Promise<GroupShard> {
+  const { data } = await apiClient.get<GroupShard>(`/admin/groups/${groupId}/shards/${shardId}`)
+  return data
+}
+
+export async function createShard(groupId: number, payload: GroupShardInput): Promise<GroupShard> {
+  const { data } = await apiClient.post<GroupShard>(`/admin/groups/${groupId}/shards`, payload)
+  return data
+}
+
+export async function updateShard(groupId: number, shardId: number, payload: Partial<GroupShardInput>): Promise<GroupShard> {
+  const { data } = await apiClient.put<GroupShard>(`/admin/groups/${groupId}/shards/${shardId}`, payload)
+  return data
+}
+
+export async function deleteShard(groupId: number, shardId: number): Promise<{ message: string }> {
+  const { data } = await apiClient.delete<{ message: string }>(`/admin/groups/${groupId}/shards/${shardId}`)
+  return data
+}
+
+export async function listShardUsers(
+  groupId: number,
+  shardId: number,
+  options?: { signal?: AbortSignal }
+): Promise<GroupShardUser[]> {
+  const { data } = await apiClient.get<GroupShardUser[]>(`/admin/groups/${groupId}/shards/${shardId}/users`, {
+    signal: options?.signal
+  })
+  return data
+}
+
+export async function assignShardUser(groupId: number, shardId: number, userId: number): Promise<GroupShardUser> {
+  const { data } = await apiClient.post<GroupShardUser>(`/admin/groups/${groupId}/shards/${shardId}/users`, { user_id: userId })
+  return data
+}
+
+export async function removeShardUser(groupId: number, shardId: number, userId: number): Promise<{ message: string }> {
+  const { data } = await apiClient.delete<{ message: string }>(`/admin/groups/${groupId}/shards/${shardId}/users/${userId}`)
+  return data
+}
+
+export async function listShardAccounts(
+  groupId: number,
+  shardId: number,
+  options?: { signal?: AbortSignal }
+): Promise<GroupShardAccount[]> {
+  const { data } = await apiClient.get<GroupShardAccount[]>(`/admin/groups/${groupId}/shards/${shardId}/accounts`, {
+    signal: options?.signal
+  })
+  return data
+}
+
+export async function setShardAccounts(groupId: number, shardId: number, accounts: GroupShardAccountInput[]): Promise<GroupShardAccount[]> {
+  const { data } = await apiClient.put<GroupShardAccount[]>(`/admin/groups/${groupId}/shards/${shardId}/accounts`, { accounts })
+  return data
+}
+
 /**
  * Rate multiplier entry for a user in a group
  */
@@ -490,6 +557,16 @@ export const groupsAPI = {
   updateCompositeRoute,
   deleteCompositeRoute,
   previewCompositeRoute,
+  listShards,
+  getShard,
+  createShard,
+  updateShard,
+  deleteShard,
+  listShardUsers,
+  assignShardUser,
+  removeShardUser,
+  listShardAccounts,
+  setShardAccounts,
   getGroupRateMultipliers,
   clearGroupRateMultipliers,
   batchSetGroupRateMultipliers,

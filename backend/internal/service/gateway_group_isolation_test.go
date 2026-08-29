@@ -361,3 +361,189 @@ func TestGroupIsolation_SimpleMode_GroupedAccountAlsoSchedulable(t *testing.T) {
 	require.NotNil(t, acc)
 	require.Equal(t, int64(1), acc.ID, "SimpleMode 应能调度已分组账号")
 }
+
+type testGroupShardRepo struct {
+	scope            *GroupShardAccountScope
+	scopesByPlatform map[string]*GroupShardAccountScope
+	lastGroupID      int64
+	lastUserID       int64
+	lastPlatform     string
+	listScopeCalls   int
+	err              error
+}
+
+func (r *testGroupShardRepo) ListByGroup(ctx context.Context, groupID int64) ([]GroupShard, error) {
+	return nil, nil
+}
+func (r *testGroupShardRepo) GetByID(ctx context.Context, groupID, shardID int64) (*GroupShard, error) {
+	return nil, nil
+}
+func (r *testGroupShardRepo) Create(ctx context.Context, shard *GroupShard) error      { return nil }
+func (r *testGroupShardRepo) Update(ctx context.Context, shard *GroupShard) error      { return nil }
+func (r *testGroupShardRepo) Delete(ctx context.Context, groupID, shardID int64) error { return nil }
+func (r *testGroupShardRepo) ListUsers(ctx context.Context, groupID, shardID int64) ([]GroupShardUser, error) {
+	return nil, nil
+}
+func (r *testGroupShardRepo) AssignUser(ctx context.Context, groupID, shardID, userID int64, maxUsers int) error {
+	return nil
+}
+func (r *testGroupShardRepo) RemoveUser(ctx context.Context, groupID, shardID, userID int64) error {
+	return nil
+}
+func (r *testGroupShardRepo) ListAccounts(ctx context.Context, groupID, shardID int64) ([]GroupShardAccount, error) {
+	return nil, nil
+}
+func (r *testGroupShardRepo) SetAccounts(ctx context.Context, groupID, shardID int64, accounts []GroupShardAccount) error {
+	return nil
+}
+func (r *testGroupShardRepo) EnsureUserShard(ctx context.Context, group *Group, userID int64) (*GroupShard, error) {
+	return nil, nil
+}
+func (r *testGroupShardRepo) ListAccountIDsForUserShard(ctx context.Context, group *Group, userID int64, platform string) (*GroupShardAccountScope, error) {
+	r.listScopeCalls++
+	if group != nil {
+		r.lastGroupID = group.ID
+	}
+	r.lastUserID = userID
+	r.lastPlatform = platform
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.scopesByPlatform != nil {
+		if scope, ok := r.scopesByPlatform[platform]; ok {
+			return cloneTestShardScope(scope), nil
+		}
+	}
+	return cloneTestShardScope(r.scope), nil
+}
+func (r *testGroupShardRepo) AccountBelongsToUserShard(ctx context.Context, groupID, userID, accountID int64) (bool, error) {
+	return r.scope.Allows(accountID), nil
+}
+
+func cloneTestShardScope(scope *GroupShardAccountScope) *GroupShardAccountScope {
+	if scope == nil {
+		return &GroupShardAccountScope{Enabled: false}
+	}
+	cloned := &GroupShardAccountScope{Enabled: scope.Enabled, ShardID: scope.ShardID}
+	if scope.AccountIDs != nil {
+		cloned.AccountIDs = make(map[int64]struct{}, len(scope.AccountIDs))
+		for id := range scope.AccountIDs {
+			cloned.AccountIDs[id] = struct{}{}
+		}
+	}
+	return cloned
+}
+
+var _ GroupShardRepository = (*testGroupShardRepo)(nil)
+
+func TestGroupShardAccountScope_AllowsAndEmpty(t *testing.T) {
+	require.True(t, (*GroupShardAccountScope)(nil).Allows(1))
+	require.False(t, (*GroupShardAccountScope)(nil).IsEmpty())
+
+	disabled := &GroupShardAccountScope{Enabled: false, AccountIDs: map[int64]struct{}{}}
+	require.True(t, disabled.Allows(1))
+	require.False(t, disabled.IsEmpty())
+
+	empty := &GroupShardAccountScope{Enabled: true, ShardID: 9, AccountIDs: map[int64]struct{}{}}
+	require.False(t, empty.Allows(1))
+	require.True(t, empty.IsEmpty())
+
+	scoped := &GroupShardAccountScope{Enabled: true, ShardID: 9, AccountIDs: map[int64]struct{}{7: {}}}
+	require.True(t, scoped.Allows(7))
+	require.False(t, scoped.Allows(8))
+	require.False(t, scoped.IsEmpty())
+}
+
+func TestGroupShardScheduling_LoadAwareFiltersAccountsAndClearsInvalidSticky(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(4100)
+	userID := int64(5100)
+	accounts := []Account{
+		{ID: 11, Platform: PlatformAnthropic, Priority: 1, Status: StatusActive, Schedulable: true, Concurrency: 5, AccountGroups: []AccountGroup{{GroupID: groupID}}},
+		{ID: 22, Platform: PlatformAnthropic, Priority: 2, Status: StatusActive, Schedulable: true, Concurrency: 5, AccountGroups: []AccountGroup{{GroupID: groupID}}},
+	}
+	cache := &mockGatewayCacheForPlatform{sessionBindings: map[string]int64{"sticky": 11}}
+	concurrencyCache := &mockConcurrencyCache{}
+	shardRepo := &testGroupShardRepo{scope: &GroupShardAccountScope{Enabled: true, ShardID: 3, AccountIDs: map[int64]struct{}{22: {}}}}
+	group := &Group{ID: groupID, Platform: PlatformAnthropic, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	svc := &GatewayService{
+		accountRepo:        newGroupAwareMockRepo(accounts),
+		groupRepo:          &mockGroupRepoForGateway{groups: map[int64]*Group{groupID: group}},
+		groupShardRepo:     shardRepo,
+		cache:              cache,
+		cfg:                testConfig(),
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "sticky", "claude-3-5-sonnet-20241022", nil, "", userID)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotNil(t, result.Account)
+	require.Equal(t, int64(22), result.Account.ID)
+	require.Equal(t, 1, cache.deletedSessions["sticky"])
+	require.Equal(t, int64(22), cache.sessionBindings["sticky"])
+	require.Equal(t, userID, shardRepo.lastUserID)
+	require.Equal(t, "", shardRepo.lastPlatform)
+}
+
+func TestGroupShardScheduling_LoadAwareEmptyShardDoesNotFallbackToParentGroup(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(4101)
+	userID := int64(5101)
+	accounts := []Account{
+		{ID: 11, Platform: PlatformAnthropic, Priority: 1, Status: StatusActive, Schedulable: true, Concurrency: 5, AccountGroups: []AccountGroup{{GroupID: groupID}}},
+	}
+	concurrencyCache := &mockConcurrencyCache{}
+	group := &Group{ID: groupID, Platform: PlatformAnthropic, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	svc := &GatewayService{
+		accountRepo:        newGroupAwareMockRepo(accounts),
+		groupRepo:          &mockGroupRepoForGateway{groups: map[int64]*Group{groupID: group}},
+		groupShardRepo:     &testGroupShardRepo{scope: &GroupShardAccountScope{Enabled: true, ShardID: 4, AccountIDs: map[int64]struct{}{}}},
+		cache:              &mockGatewayCacheForPlatform{},
+		cfg:                testConfig(),
+		concurrencyService: NewConcurrencyService(concurrencyCache),
+	}
+
+	result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil, "", userID)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.Nil(t, result)
+	require.Equal(t, 0, concurrencyCache.loadBatchCalls)
+}
+
+func TestGroupShardScheduling_CompositeUsesResolvedProviderForScope(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(4102)
+	userID := int64(5102)
+	accounts := []Account{
+		{ID: 31, Platform: PlatformAntigravity, Priority: 1, Status: StatusActive, Schedulable: true, Concurrency: 5, Extra: map[string]any{"mixed_scheduling": true}, AccountGroups: []AccountGroup{{GroupID: groupID}}},
+		{ID: 32, Platform: PlatformAnthropic, Priority: 2, Status: StatusActive, Schedulable: true, Concurrency: 5, AccountGroups: []AccountGroup{{GroupID: groupID}}},
+	}
+	shardRepo := &testGroupShardRepo{scopesByPlatform: map[string]*GroupShardAccountScope{
+		PlatformAnthropic: {Enabled: true, ShardID: 5, AccountIDs: map[int64]struct{}{32: {}}},
+		"":                {Enabled: true, ShardID: 5, AccountIDs: map[int64]struct{}{31: {}, 32: {}}},
+	}}
+	group := &Group{ID: groupID, Platform: PlatformComposite, Status: StatusActive, Hydrated: true, ShardEnabled: true}
+	svc := &GatewayService{
+		accountRepo:        newGroupAwareMockRepo(accounts),
+		groupRepo:          &mockGroupRepoForGateway{groups: map[int64]*Group{groupID: group}},
+		groupShardRepo:     shardRepo,
+		cache:              &mockGatewayCacheForPlatform{},
+		cfg:                testConfig(),
+		concurrencyService: NewConcurrencyService(&mockConcurrencyCache{}),
+	}
+	ctx = WithCompositeRouteDecision(ctx, CompositeRouteDecision{
+		Matched:        true,
+		GroupID:        groupID,
+		PublicModel:    "claude-alias",
+		TargetPlatform: PlatformAnthropic,
+		UpstreamModel:  "claude-3-5-sonnet-20241022",
+		Endpoint:       CompositeRouteEndpointResponses,
+	})
+
+	result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "", "claude-alias", nil, "", userID)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotNil(t, result.Account)
+	require.Equal(t, int64(32), result.Account.ID)
+	require.Equal(t, PlatformAnthropic, shardRepo.lastPlatform)
+}

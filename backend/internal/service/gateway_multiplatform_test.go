@@ -338,6 +338,9 @@ func (m *mockGroupRepoForGateway) ListActive(ctx context.Context) ([]Group, erro
 func (m *mockGroupRepoForGateway) ListActiveByPlatform(ctx context.Context, platform string) ([]Group, error) {
 	return nil, nil
 }
+func (m *mockGroupRepoForGateway) GetDefaultShardGroup(ctx context.Context) (*Group, error) {
+	return nil, ErrDefaultShardGroupNotConfigured
+}
 func (m *mockGroupRepoForGateway) ExistsByName(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }

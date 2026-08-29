@@ -130,7 +130,7 @@ func TestGatewayOpenAICompatibleHandlersClaudeCodeOnlyFallback(t *testing.T) {
 					nil, &groupMapRepo{fakeGroupRepo: &fakeGroupRepo{}, groups: map[int64]*service.Group{
 						primaryGroupID:  primary,
 						fallbackGroupID: fallback,
-					}}, nil, nil, nil, nil, nil, nil, nil,
+					}}, nil, nil, nil, nil, nil, nil, nil, nil,
 					service.NewSchedulerSnapshotService(schedulerCache, nil, nil, nil, nil),
 					nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 				)

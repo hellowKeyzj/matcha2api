@@ -32,6 +32,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
+	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -97,6 +100,12 @@ type Client struct {
 	ErrorPassthroughRule *ErrorPassthroughRuleClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
+	// GroupShard is the client for interacting with the GroupShard builders.
+	GroupShard *GroupShardClient
+	// GroupShardAccount is the client for interacting with the GroupShardAccount builders.
+	GroupShardAccount *GroupShardAccountClient
+	// GroupShardUser is the client for interacting with the GroupShardUser builders.
+	GroupShardUser *GroupShardUserClient
 	// IdempotencyRecord is the client for interacting with the IdempotencyRecord builders.
 	IdempotencyRecord *IdempotencyRecordClient
 	// IdentityAdoptionDecision is the client for interacting with the IdentityAdoptionDecision builders.
@@ -169,6 +178,9 @@ func (c *Client) init() {
 	c.CompositeModelRoute = NewCompositeModelRouteClient(c.config)
 	c.ErrorPassthroughRule = NewErrorPassthroughRuleClient(c.config)
 	c.Group = NewGroupClient(c.config)
+	c.GroupShard = NewGroupShardClient(c.config)
+	c.GroupShardAccount = NewGroupShardAccountClient(c.config)
+	c.GroupShardUser = NewGroupShardUserClient(c.config)
 	c.IdempotencyRecord = NewIdempotencyRecordClient(c.config)
 	c.IdentityAdoptionDecision = NewIdentityAdoptionDecisionClient(c.config)
 	c.PaymentAuditLog = NewPaymentAuditLogClient(c.config)
@@ -300,6 +312,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		CompositeModelRoute:           NewCompositeModelRouteClient(cfg),
 		ErrorPassthroughRule:          NewErrorPassthroughRuleClient(cfg),
 		Group:                         NewGroupClient(cfg),
+		GroupShard:                    NewGroupShardClient(cfg),
+		GroupShardAccount:             NewGroupShardAccountClient(cfg),
+		GroupShardUser:                NewGroupShardUserClient(cfg),
 		IdempotencyRecord:             NewIdempotencyRecordClient(cfg),
 		IdentityAdoptionDecision:      NewIdentityAdoptionDecisionClient(cfg),
 		PaymentAuditLog:               NewPaymentAuditLogClient(cfg),
@@ -358,6 +373,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		CompositeModelRoute:           NewCompositeModelRouteClient(cfg),
 		ErrorPassthroughRule:          NewErrorPassthroughRuleClient(cfg),
 		Group:                         NewGroupClient(cfg),
+		GroupShard:                    NewGroupShardClient(cfg),
+		GroupShardAccount:             NewGroupShardAccountClient(cfg),
+		GroupShardUser:                NewGroupShardUserClient(cfg),
 		IdempotencyRecord:             NewIdempotencyRecordClient(cfg),
 		IdentityAdoptionDecision:      NewIdentityAdoptionDecisionClient(cfg),
 		PaymentAuditLog:               NewPaymentAuditLogClient(cfg),
@@ -413,7 +431,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.AuthIdentity, c.AuthIdentityChannel, c.BatchImageEvent, c.BatchImageItem,
 		c.BatchImageJob, c.ChannelMonitor, c.ChannelMonitorDailyRollup,
 		c.ChannelMonitorHistory, c.ChannelMonitorRequestTemplate,
-		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
+		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.GroupShard,
+		c.GroupShardAccount, c.GroupShardUser, c.IdempotencyRecord,
 		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
 		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
@@ -433,7 +452,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.AuthIdentity, c.AuthIdentityChannel, c.BatchImageEvent, c.BatchImageItem,
 		c.BatchImageJob, c.ChannelMonitor, c.ChannelMonitorDailyRollup,
 		c.ChannelMonitorHistory, c.ChannelMonitorRequestTemplate,
-		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
+		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.GroupShard,
+		c.GroupShardAccount, c.GroupShardUser, c.IdempotencyRecord,
 		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
 		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
 		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
@@ -482,6 +502,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ErrorPassthroughRule.mutate(ctx, m)
 	case *GroupMutation:
 		return c.Group.mutate(ctx, m)
+	case *GroupShardMutation:
+		return c.GroupShard.mutate(ctx, m)
+	case *GroupShardAccountMutation:
+		return c.GroupShardAccount.mutate(ctx, m)
+	case *GroupShardUserMutation:
+		return c.GroupShardUser.mutate(ctx, m)
 	case *IdempotencyRecordMutation:
 		return c.IdempotencyRecord.mutate(ctx, m)
 	case *IdentityAdoptionDecisionMutation:
@@ -838,6 +864,22 @@ func (c *AccountClient) QueryGroups(_m *Account) *GroupQuery {
 	return query
 }
 
+// QueryGroupShards queries the group_shards edge of a Account.
+func (c *AccountClient) QueryGroupShards(_m *Account) *GroupShardQuery {
+	query := (&GroupShardClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(account.Table, account.FieldID, id),
+			sqlgraph.To(groupshard.Table, groupshard.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, account.GroupShardsTable, account.GroupShardsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProxy queries the proxy edge of a Account.
 func (c *AccountClient) QueryProxy(_m *Account) *ProxyQuery {
 	query := (&ProxyClient{config: c.config}).Query()
@@ -911,6 +953,22 @@ func (c *AccountClient) QueryAccountGroups(_m *Account) *AccountGroupQuery {
 			sqlgraph.From(account.Table, account.FieldID, id),
 			sqlgraph.To(accountgroup.Table, accountgroup.AccountColumn),
 			sqlgraph.Edge(sqlgraph.O2M, true, account.AccountGroupsTable, account.AccountGroupsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroupShardAccounts queries the group_shard_accounts edge of a Account.
+func (c *AccountClient) QueryGroupShardAccounts(_m *Account) *GroupShardAccountQuery {
+	query := (&GroupShardAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(account.Table, account.FieldID, id),
+			sqlgraph.To(groupshardaccount.Table, groupshardaccount.AccountColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, account.GroupShardAccountsTable, account.GroupShardAccountsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -3188,6 +3246,22 @@ func (c *GroupClient) QueryUsageLogs(_m *Group) *UsageLogQuery {
 	return query
 }
 
+// QueryShards queries the shards edge of a Group.
+func (c *GroupClient) QueryShards(_m *Group) *GroupShardQuery {
+	query := (&GroupShardClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(groupshard.Table, groupshard.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, group.ShardsTable, group.ShardsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAccounts queries the accounts edge of a Group.
 func (c *GroupClient) QueryAccounts(_m *Group) *AccountQuery {
 	query := (&AccountClient{config: c.config}).Query()
@@ -3276,6 +3350,465 @@ func (c *GroupClient) mutate(ctx context.Context, m *GroupMutation) (Value, erro
 		return (&GroupDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Group mutation op: %q", m.Op())
+	}
+}
+
+// GroupShardClient is a client for the GroupShard schema.
+type GroupShardClient struct {
+	config
+}
+
+// NewGroupShardClient returns a client for the GroupShard from the given config.
+func NewGroupShardClient(c config) *GroupShardClient {
+	return &GroupShardClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `groupshard.Hooks(f(g(h())))`.
+func (c *GroupShardClient) Use(hooks ...Hook) {
+	c.hooks.GroupShard = append(c.hooks.GroupShard, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `groupshard.Intercept(f(g(h())))`.
+func (c *GroupShardClient) Intercept(interceptors ...Interceptor) {
+	c.inters.GroupShard = append(c.inters.GroupShard, interceptors...)
+}
+
+// Create returns a builder for creating a GroupShard entity.
+func (c *GroupShardClient) Create() *GroupShardCreate {
+	mutation := newGroupShardMutation(c.config, OpCreate)
+	return &GroupShardCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of GroupShard entities.
+func (c *GroupShardClient) CreateBulk(builders ...*GroupShardCreate) *GroupShardCreateBulk {
+	return &GroupShardCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GroupShardClient) MapCreateBulk(slice any, setFunc func(*GroupShardCreate, int)) *GroupShardCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GroupShardCreateBulk{err: fmt.Errorf("calling to GroupShardClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GroupShardCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GroupShardCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for GroupShard.
+func (c *GroupShardClient) Update() *GroupShardUpdate {
+	mutation := newGroupShardMutation(c.config, OpUpdate)
+	return &GroupShardUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GroupShardClient) UpdateOne(_m *GroupShard) *GroupShardUpdateOne {
+	mutation := newGroupShardMutation(c.config, OpUpdateOne, withGroupShard(_m))
+	return &GroupShardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *GroupShardClient) UpdateOneID(id int64) *GroupShardUpdateOne {
+	mutation := newGroupShardMutation(c.config, OpUpdateOne, withGroupShardID(id))
+	return &GroupShardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for GroupShard.
+func (c *GroupShardClient) Delete() *GroupShardDelete {
+	mutation := newGroupShardMutation(c.config, OpDelete)
+	return &GroupShardDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *GroupShardClient) DeleteOne(_m *GroupShard) *GroupShardDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *GroupShardClient) DeleteOneID(id int64) *GroupShardDeleteOne {
+	builder := c.Delete().Where(groupshard.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &GroupShardDeleteOne{builder}
+}
+
+// Query returns a query builder for GroupShard.
+func (c *GroupShardClient) Query() *GroupShardQuery {
+	return &GroupShardQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGroupShard},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a GroupShard entity by its id.
+func (c *GroupShardClient) Get(ctx context.Context, id int64) (*GroupShard, error) {
+	return c.Query().Where(groupshard.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *GroupShardClient) GetX(ctx context.Context, id int64) *GroupShard {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryGroup queries the group edge of a GroupShard.
+func (c *GroupShardClient) QueryGroup(_m *GroupShard) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(groupshard.Table, groupshard.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, groupshard.GroupTable, groupshard.GroupColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUsers queries the users edge of a GroupShard.
+func (c *GroupShardClient) QueryUsers(_m *GroupShard) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(groupshard.Table, groupshard.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, groupshard.UsersTable, groupshard.UsersPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAccounts queries the accounts edge of a GroupShard.
+func (c *GroupShardClient) QueryAccounts(_m *GroupShard) *AccountQuery {
+	query := (&AccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(groupshard.Table, groupshard.FieldID, id),
+			sqlgraph.To(account.Table, account.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, groupshard.AccountsTable, groupshard.AccountsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroupShardUsers queries the group_shard_users edge of a GroupShard.
+func (c *GroupShardClient) QueryGroupShardUsers(_m *GroupShard) *GroupShardUserQuery {
+	query := (&GroupShardUserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(groupshard.Table, groupshard.FieldID, id),
+			sqlgraph.To(groupsharduser.Table, groupsharduser.GroupShardColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, groupshard.GroupShardUsersTable, groupshard.GroupShardUsersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroupShardAccounts queries the group_shard_accounts edge of a GroupShard.
+func (c *GroupShardClient) QueryGroupShardAccounts(_m *GroupShard) *GroupShardAccountQuery {
+	query := (&GroupShardAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(groupshard.Table, groupshard.FieldID, id),
+			sqlgraph.To(groupshardaccount.Table, groupshardaccount.GroupShardColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, groupshard.GroupShardAccountsTable, groupshard.GroupShardAccountsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *GroupShardClient) Hooks() []Hook {
+	return c.hooks.GroupShard
+}
+
+// Interceptors returns the client interceptors.
+func (c *GroupShardClient) Interceptors() []Interceptor {
+	return c.inters.GroupShard
+}
+
+func (c *GroupShardClient) mutate(ctx context.Context, m *GroupShardMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GroupShardCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GroupShardUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GroupShardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GroupShardDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown GroupShard mutation op: %q", m.Op())
+	}
+}
+
+// GroupShardAccountClient is a client for the GroupShardAccount schema.
+type GroupShardAccountClient struct {
+	config
+}
+
+// NewGroupShardAccountClient returns a client for the GroupShardAccount from the given config.
+func NewGroupShardAccountClient(c config) *GroupShardAccountClient {
+	return &GroupShardAccountClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `groupshardaccount.Hooks(f(g(h())))`.
+func (c *GroupShardAccountClient) Use(hooks ...Hook) {
+	c.hooks.GroupShardAccount = append(c.hooks.GroupShardAccount, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `groupshardaccount.Intercept(f(g(h())))`.
+func (c *GroupShardAccountClient) Intercept(interceptors ...Interceptor) {
+	c.inters.GroupShardAccount = append(c.inters.GroupShardAccount, interceptors...)
+}
+
+// Create returns a builder for creating a GroupShardAccount entity.
+func (c *GroupShardAccountClient) Create() *GroupShardAccountCreate {
+	mutation := newGroupShardAccountMutation(c.config, OpCreate)
+	return &GroupShardAccountCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of GroupShardAccount entities.
+func (c *GroupShardAccountClient) CreateBulk(builders ...*GroupShardAccountCreate) *GroupShardAccountCreateBulk {
+	return &GroupShardAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GroupShardAccountClient) MapCreateBulk(slice any, setFunc func(*GroupShardAccountCreate, int)) *GroupShardAccountCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GroupShardAccountCreateBulk{err: fmt.Errorf("calling to GroupShardAccountClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GroupShardAccountCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GroupShardAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for GroupShardAccount.
+func (c *GroupShardAccountClient) Update() *GroupShardAccountUpdate {
+	mutation := newGroupShardAccountMutation(c.config, OpUpdate)
+	return &GroupShardAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GroupShardAccountClient) UpdateOne(_m *GroupShardAccount) *GroupShardAccountUpdateOne {
+	mutation := newGroupShardAccountMutation(c.config, OpUpdateOne)
+	mutation.account = &_m.AccountID
+	mutation.group_shard = &_m.GroupShardID
+	return &GroupShardAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for GroupShardAccount.
+func (c *GroupShardAccountClient) Delete() *GroupShardAccountDelete {
+	mutation := newGroupShardAccountMutation(c.config, OpDelete)
+	return &GroupShardAccountDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Query returns a query builder for GroupShardAccount.
+func (c *GroupShardAccountClient) Query() *GroupShardAccountQuery {
+	return &GroupShardAccountQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGroupShardAccount},
+		inters: c.Interceptors(),
+	}
+}
+
+// QueryGroupShard queries the group_shard edge of a GroupShardAccount.
+func (c *GroupShardAccountClient) QueryGroupShard(_m *GroupShardAccount) *GroupShardQuery {
+	return c.Query().
+		Where(groupshardaccount.AccountID(_m.AccountID), groupshardaccount.GroupShardID(_m.GroupShardID)).
+		QueryGroupShard()
+}
+
+// QueryGroup queries the group edge of a GroupShardAccount.
+func (c *GroupShardAccountClient) QueryGroup(_m *GroupShardAccount) *GroupQuery {
+	return c.Query().
+		Where(groupshardaccount.AccountID(_m.AccountID), groupshardaccount.GroupShardID(_m.GroupShardID)).
+		QueryGroup()
+}
+
+// QueryAccount queries the account edge of a GroupShardAccount.
+func (c *GroupShardAccountClient) QueryAccount(_m *GroupShardAccount) *AccountQuery {
+	return c.Query().
+		Where(groupshardaccount.AccountID(_m.AccountID), groupshardaccount.GroupShardID(_m.GroupShardID)).
+		QueryAccount()
+}
+
+// Hooks returns the client hooks.
+func (c *GroupShardAccountClient) Hooks() []Hook {
+	return c.hooks.GroupShardAccount
+}
+
+// Interceptors returns the client interceptors.
+func (c *GroupShardAccountClient) Interceptors() []Interceptor {
+	return c.inters.GroupShardAccount
+}
+
+func (c *GroupShardAccountClient) mutate(ctx context.Context, m *GroupShardAccountMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GroupShardAccountCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GroupShardAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GroupShardAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GroupShardAccountDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown GroupShardAccount mutation op: %q", m.Op())
+	}
+}
+
+// GroupShardUserClient is a client for the GroupShardUser schema.
+type GroupShardUserClient struct {
+	config
+}
+
+// NewGroupShardUserClient returns a client for the GroupShardUser from the given config.
+func NewGroupShardUserClient(c config) *GroupShardUserClient {
+	return &GroupShardUserClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `groupsharduser.Hooks(f(g(h())))`.
+func (c *GroupShardUserClient) Use(hooks ...Hook) {
+	c.hooks.GroupShardUser = append(c.hooks.GroupShardUser, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `groupsharduser.Intercept(f(g(h())))`.
+func (c *GroupShardUserClient) Intercept(interceptors ...Interceptor) {
+	c.inters.GroupShardUser = append(c.inters.GroupShardUser, interceptors...)
+}
+
+// Create returns a builder for creating a GroupShardUser entity.
+func (c *GroupShardUserClient) Create() *GroupShardUserCreate {
+	mutation := newGroupShardUserMutation(c.config, OpCreate)
+	return &GroupShardUserCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of GroupShardUser entities.
+func (c *GroupShardUserClient) CreateBulk(builders ...*GroupShardUserCreate) *GroupShardUserCreateBulk {
+	return &GroupShardUserCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GroupShardUserClient) MapCreateBulk(slice any, setFunc func(*GroupShardUserCreate, int)) *GroupShardUserCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GroupShardUserCreateBulk{err: fmt.Errorf("calling to GroupShardUserClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GroupShardUserCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GroupShardUserCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for GroupShardUser.
+func (c *GroupShardUserClient) Update() *GroupShardUserUpdate {
+	mutation := newGroupShardUserMutation(c.config, OpUpdate)
+	return &GroupShardUserUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GroupShardUserClient) UpdateOne(_m *GroupShardUser) *GroupShardUserUpdateOne {
+	mutation := newGroupShardUserMutation(c.config, OpUpdateOne)
+	mutation.user = &_m.UserID
+	mutation.group_shard = &_m.GroupShardID
+	return &GroupShardUserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for GroupShardUser.
+func (c *GroupShardUserClient) Delete() *GroupShardUserDelete {
+	mutation := newGroupShardUserMutation(c.config, OpDelete)
+	return &GroupShardUserDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Query returns a query builder for GroupShardUser.
+func (c *GroupShardUserClient) Query() *GroupShardUserQuery {
+	return &GroupShardUserQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGroupShardUser},
+		inters: c.Interceptors(),
+	}
+}
+
+// QueryGroupShard queries the group_shard edge of a GroupShardUser.
+func (c *GroupShardUserClient) QueryGroupShard(_m *GroupShardUser) *GroupShardQuery {
+	return c.Query().
+		Where(groupsharduser.UserID(_m.UserID), groupsharduser.GroupShardID(_m.GroupShardID)).
+		QueryGroupShard()
+}
+
+// QueryGroup queries the group edge of a GroupShardUser.
+func (c *GroupShardUserClient) QueryGroup(_m *GroupShardUser) *GroupQuery {
+	return c.Query().
+		Where(groupsharduser.UserID(_m.UserID), groupsharduser.GroupShardID(_m.GroupShardID)).
+		QueryGroup()
+}
+
+// QueryUser queries the user edge of a GroupShardUser.
+func (c *GroupShardUserClient) QueryUser(_m *GroupShardUser) *UserQuery {
+	return c.Query().
+		Where(groupsharduser.UserID(_m.UserID), groupsharduser.GroupShardID(_m.GroupShardID)).
+		QueryUser()
+}
+
+// Hooks returns the client hooks.
+func (c *GroupShardUserClient) Hooks() []Hook {
+	return c.hooks.GroupShardUser
+}
+
+// Interceptors returns the client interceptors.
+func (c *GroupShardUserClient) Interceptors() []Interceptor {
+	return c.inters.GroupShardUser
+}
+
+func (c *GroupShardUserClient) mutate(ctx context.Context, m *GroupShardUserMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GroupShardUserCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GroupShardUserUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GroupShardUserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GroupShardUserDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown GroupShardUser mutation op: %q", m.Op())
 	}
 }
 
@@ -5901,6 +6434,22 @@ func (c *UserClient) QueryAllowedGroups(_m *User) *GroupQuery {
 	return query
 }
 
+// QueryGroupShards queries the group_shards edge of a User.
+func (c *UserClient) QueryGroupShards(_m *User) *GroupShardQuery {
+	query := (&GroupShardClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(groupshard.Table, groupshard.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.GroupShardsTable, user.GroupShardsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryUsageLogs queries the usage_logs edge of a User.
 func (c *UserClient) QueryUsageLogs(_m *User) *UsageLogQuery {
 	query := (&UsageLogClient{config: c.config}).Query()
@@ -6022,6 +6571,22 @@ func (c *UserClient) QueryUserAllowedGroups(_m *User) *UserAllowedGroupQuery {
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(userallowedgroup.Table, userallowedgroup.UserColumn),
 			sqlgraph.Edge(sqlgraph.O2M, true, user.UserAllowedGroupsTable, user.UserAllowedGroupsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroupShardUsers queries the group_shard_users edge of a User.
+func (c *UserClient) QueryGroupShardUsers(_m *User) *GroupShardUserQuery {
+	query := (&GroupShardUserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(groupsharduser.Table, groupsharduser.UserColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, user.GroupShardUsersTable, user.GroupShardUsersColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -6845,24 +7410,24 @@ type (
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
 		ChannelMonitorRequestTemplate, CompositeModelRoute, ErrorPassthroughRule,
-		Group, IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog,
-		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
-		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
-		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
-		UserAttributeDefinition, UserAttributeValue, UserPlatformQuota,
-		UserSubscription []ent.Hook
+		Group, GroupShard, GroupShardAccount, GroupShardUser, IdempotencyRecord,
+		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
+		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
+		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,
+		UserAttributeValue, UserPlatformQuota, UserSubscription []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
 		ChannelMonitorRequestTemplate, CompositeModelRoute, ErrorPassthroughRule,
-		Group, IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog,
-		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
-		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
-		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
-		UserAttributeDefinition, UserAttributeValue, UserPlatformQuota,
-		UserSubscription []ent.Interceptor
+		Group, GroupShard, GroupShardAccount, GroupShardUser, IdempotencyRecord,
+		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
+		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
+		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,
+		UserAttributeValue, UserPlatformQuota, UserSubscription []ent.Interceptor
 	}
 )
 

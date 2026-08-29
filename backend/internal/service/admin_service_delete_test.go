@@ -296,6 +296,10 @@ func (s *groupRepoStub) ListActiveByPlatform(ctx context.Context, platform strin
 	panic("unexpected ListActiveByPlatform call")
 }
 
+func (s *groupRepoStub) GetDefaultShardGroup(context.Context) (*Group, error) {
+	return nil, ErrDefaultShardGroupNotConfigured
+}
+
 func (s *groupRepoStub) ExistsByName(ctx context.Context, name string) (bool, error) {
 	panic("unexpected ExistsByName call")
 }
