@@ -303,7 +303,7 @@ describe('GroupsView duplicate action', () => {
     wrapper.unmount()
   })
 
-  it('shows the standardized API message when updating a group fails', async () => {
+  it('shows the localized error when updating a group fails with a known reason', async () => {
     updateGroup.mockRejectedValueOnce({
       status: 409,
       code: 409,
@@ -321,7 +321,7 @@ describe('GroupsView duplicate action', () => {
     await flushPromises()
 
     expect(updateGroup).toHaveBeenCalledTimes(1)
-    expect(showError).toHaveBeenCalledWith('group name already exists')
+    expect(showError).toHaveBeenCalledWith('admin.groups.errors.GROUP_EXISTS')
     wrapper.unmount()
   })
 

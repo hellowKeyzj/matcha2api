@@ -48,6 +48,20 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		googleError(c, http.StatusBadRequest, "API key group platform is not gemini")
 		return
 	}
+	authSubject, _ := middleware.GetAuthSubjectFromContext(c)
+	scopePlatform := effectivePlatform
+	if hasForcePlatform {
+		scopePlatform = forcePlatform
+	}
+	shardScope, err := h.gatewayService.ResolveGroupShardAccountScope(c.Request.Context(), apiKey.GroupID, authSubject.UserID, scopePlatform, true)
+	if err != nil {
+		googleError(c, http.StatusServiceUnavailable, "Unable to resolve account eligibility")
+		return
+	}
+	if shardScope.IsEmpty() {
+		googleError(c, http.StatusServiceUnavailable, "No available Gemini accounts")
+		return
+	}
 
 	// 分组级模型白名单开启时过滤 models[].name（名字形如 models/xxx）。
 	filterGeminiModels := func(models []gemini.Model) []gemini.Model {
@@ -63,7 +77,7 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return filtered
 	}
 
-	agModelIDs, err := h.geminiCompatService.AntigravityGeminiModelIDs(c.Request.Context(), apiKey.GroupID, forcePlatform != service.PlatformAntigravity)
+	agModelIDs, err := h.geminiCompatService.AntigravityGeminiModelIDs(c.Request.Context(), apiKey.GroupID, forcePlatform != service.PlatformAntigravity, shardScope)
 	if err != nil {
 		googleError(c, http.StatusServiceUnavailable, "Unable to list Antigravity models")
 		return
@@ -78,7 +92,7 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 	}
 
 	// 分组内 Gemini 账号都声明了 model_mapping 时，列表与 /v1/models 同源（含白名单口径），不透传单个账号的上游列表。
-	if declared, err := h.geminiCompatService.DeclaredModelIDs(c.Request.Context(), apiKey.GroupID); err == nil && len(declared) > 0 {
+	if declared, err := h.geminiCompatService.DeclaredModelIDs(c.Request.Context(), apiKey.GroupID, shardScope); err == nil && len(declared) > 0 {
 		ids := append([]string{}, declared...)
 		for _, id := range agModelIDs {
 			if !slices.Contains(declared, id) {
@@ -96,7 +110,7 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return
 	}
 
-	account, err := h.geminiCompatService.SelectAccountForModelsEndpoints(c.Request.Context(), apiKey.GroupID)
+	account, err := h.geminiCompatService.SelectAccountForModelsEndpoints(c.Request.Context(), apiKey.GroupID, shardScope)
 	if err != nil {
 		if len(agModels) > 0 {
 			c.JSON(http.StatusOK, gemini.ModelsListResponse{Models: filterGeminiModels(agModels)})
@@ -253,6 +267,20 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 		googleError(c, http.StatusBadRequest, "API key group platform is not gemini")
 		return
 	}
+	authSubject, _ := middleware.GetAuthSubjectFromContext(c)
+	scopePlatform := effectivePlatform
+	if hasForcePlatform {
+		scopePlatform = forcePlatform
+	}
+	shardScope, err := h.gatewayService.ResolveGroupShardAccountScope(c.Request.Context(), apiKey.GroupID, authSubject.UserID, scopePlatform, true)
+	if err != nil {
+		googleError(c, http.StatusServiceUnavailable, "Unable to resolve account eligibility")
+		return
+	}
+	if shardScope.IsEmpty() {
+		googleError(c, http.StatusServiceUnavailable, "No available Gemini accounts")
+		return
+	}
 
 	modelName := strings.TrimSpace(c.Param("model"))
 	if modelName == "" {
@@ -280,8 +308,8 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 	}
 
 	// 分组内 Gemini 账号都声明了 model_mapping 时，按列表接口的同一来源判断模型是否存在。
-	if declared, err := h.geminiCompatService.DeclaredModelIDs(c.Request.Context(), apiKey.GroupID); err == nil && len(declared) > 0 {
-		if agModelIDs, agErr := h.geminiCompatService.AntigravityGeminiModelIDs(c.Request.Context(), apiKey.GroupID, true); agErr == nil {
+	if declared, err := h.geminiCompatService.DeclaredModelIDs(c.Request.Context(), apiKey.GroupID, shardScope); err == nil && len(declared) > 0 {
+		if agModelIDs, agErr := h.geminiCompatService.AntigravityGeminiModelIDs(c.Request.Context(), apiKey.GroupID, true, shardScope); agErr == nil {
 			if service.DeclaredModelsCover(declared, modelName) || service.DeclaredModelsCover(agModelIDs, modelName) {
 				c.JSON(http.StatusOK, gemini.FallbackModel(modelName))
 				return
@@ -291,10 +319,10 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 		}
 	}
 
-	account, err := h.geminiCompatService.SelectAccountForModelsEndpoints(c.Request.Context(), apiKey.GroupID)
+	account, err := h.geminiCompatService.SelectAccountForModelsEndpoints(c.Request.Context(), apiKey.GroupID, shardScope)
 	if err != nil {
 		// 没有 gemini 账户，检查是否有 antigravity 账户可用
-		hasAntigravity, _ := h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID)
+		hasAntigravity, _ := h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID, shardScope)
 		if hasAntigravity {
 			// antigravity 账户使用静态模型信息
 			c.JSON(http.StatusOK, gemini.FallbackModel(modelName))
@@ -593,7 +621,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 		if cachedContentExclusions != nil {
 			excludedAccountIDs = mergeAccountIDSets(cachedContentExclusions, fs.FailedAccountIDs)
 		}
-		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionKey, modelName, excludedAccountIDs, "", int64(0)) // Gemini 不使用会话限制
+		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionKey, modelName, excludedAccountIDs, "", authSubject.UserID) // Gemini 不使用会话限制
 		if err == nil && cachedContentBinding != nil && selection.Account.ID != cachedContentBinding.AccountID {
 			if selection.Acquired && selection.ReleaseFunc != nil {
 				selection.ReleaseFunc()

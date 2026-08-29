@@ -169,7 +169,7 @@ func (h *GatewayHandler) GeminiCachedContentsCreate(c *gin.Context) {
 	var lastUpstreamErr *service.GeminiCachedContentUpstreamError
 	var ttlRejectedLimit time.Duration
 	for attempts := 0; attempts < geminiCachedContentCreateMaxAttempts; {
-		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, "", modelName, excluded, "", int64(0))
+		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, "", modelName, excluded, "", authSubject.UserID)
 		if err != nil {
 			if failoverClientGone(c) {
 				return
@@ -399,7 +399,7 @@ func (h *GatewayHandler) GeminiCachedContentsGet(c *gin.Context) {
 // 同一缓存的修改串行执行：上游修改、本地写回与计费都在修改意图的租约内完成，并发的修改返回 409。
 // 上游结果未知或本地写回失败的修改不计费，租约过期后由恢复流程把上游有效期回滚到修改前的到期时间。
 func (h *GatewayHandler) GeminiCachedContentsPatch(c *gin.Context) {
-	apiKey, _, reqLog, ok := h.geminiCachedContentsPreamble(c, "handler.gemini_v1beta.cached_contents.patch")
+	apiKey, authSubject, reqLog, ok := h.geminiCachedContentsPreamble(c, "handler.gemini_v1beta.cached_contents.patch")
 	if !ok {
 		return
 	}
@@ -410,6 +410,11 @@ func (h *GatewayHandler) GeminiCachedContentsPatch(c *gin.Context) {
 	}
 	record, ok := h.resolveGeminiCachedContentOrWrite(c, reqLog, apiKey, c.Param("cacheID"))
 	if !ok {
+		return
+	}
+	scope, err := h.gatewayService.ResolveGroupShardAccountScope(c.Request.Context(), apiKey.GroupID, authSubject.UserID, service.PlatformGemini, false)
+	if err != nil || !scope.Allows(record.AccountID) {
+		googleError(c, http.StatusServiceUnavailable, geminiCachedContentUnavailableMessage)
 		return
 	}
 	account, err := svc.BoundAccount(c.Request.Context(), record)

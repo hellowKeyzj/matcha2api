@@ -43,7 +43,7 @@ func TestSelectAccountForModelsEndpoints_VertexServiceAccountOnlyGroup(t *testin
 	vertex.ID = 18
 	svc := newGeminiModelsEndpointsTestService([]Account{vertex}, nil)
 
-	account, err := svc.SelectAccountForModelsEndpoints(context.Background(), &groupID)
+	account, err := svc.SelectAccountForModelsEndpoints(context.Background(), &groupID, nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(18), account.ID)
 }
@@ -70,7 +70,7 @@ func TestSelectAccountForModelsEndpoints_PrefersAPIKeyOverVertex(t *testing.T) {
 	apiKey := Account{ID: 19, Platform: PlatformGemini, Type: AccountTypeAPIKey, Priority: 9, Credentials: map[string]any{"api_key": "k"}}
 	svc := newGeminiModelsEndpointsTestService([]Account{vertex, apiKey}, nil)
 
-	account, err := svc.SelectAccountForModelsEndpoints(context.Background(), &groupID)
+	account, err := svc.SelectAccountForModelsEndpoints(context.Background(), &groupID, nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(19), account.ID)
 }

@@ -25,6 +25,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
+	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -563,6 +566,87 @@ func (f TraverseGroup) Traverse(ctx context.Context, q ent.Query) error {
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.GroupQuery", q)
+}
+
+// The GroupShardFunc type is an adapter to allow the use of ordinary function as a Querier.
+type GroupShardFunc func(context.Context, *ent.GroupShardQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f GroupShardFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.GroupShardQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.GroupShardQuery", q)
+}
+
+// The TraverseGroupShard type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseGroupShard func(context.Context, *ent.GroupShardQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseGroupShard) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseGroupShard) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.GroupShardQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.GroupShardQuery", q)
+}
+
+// The GroupShardAccountFunc type is an adapter to allow the use of ordinary function as a Querier.
+type GroupShardAccountFunc func(context.Context, *ent.GroupShardAccountQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f GroupShardAccountFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.GroupShardAccountQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.GroupShardAccountQuery", q)
+}
+
+// The TraverseGroupShardAccount type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseGroupShardAccount func(context.Context, *ent.GroupShardAccountQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseGroupShardAccount) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseGroupShardAccount) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.GroupShardAccountQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.GroupShardAccountQuery", q)
+}
+
+// The GroupShardUserFunc type is an adapter to allow the use of ordinary function as a Querier.
+type GroupShardUserFunc func(context.Context, *ent.GroupShardUserQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f GroupShardUserFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.GroupShardUserQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.GroupShardUserQuery", q)
+}
+
+// The TraverseGroupShardUser type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseGroupShardUser func(context.Context, *ent.GroupShardUserQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseGroupShardUser) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseGroupShardUser) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.GroupShardUserQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.GroupShardUserQuery", q)
 }
 
 // The IdempotencyRecordFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -1196,6 +1280,12 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.ErrorPassthroughRuleQuery, predicate.ErrorPassthroughRule, errorpassthroughrule.OrderOption]{typ: ent.TypeErrorPassthroughRule, tq: q}, nil
 	case *ent.GroupQuery:
 		return &query[*ent.GroupQuery, predicate.Group, group.OrderOption]{typ: ent.TypeGroup, tq: q}, nil
+	case *ent.GroupShardQuery:
+		return &query[*ent.GroupShardQuery, predicate.GroupShard, groupshard.OrderOption]{typ: ent.TypeGroupShard, tq: q}, nil
+	case *ent.GroupShardAccountQuery:
+		return &query[*ent.GroupShardAccountQuery, predicate.GroupShardAccount, groupshardaccount.OrderOption]{typ: ent.TypeGroupShardAccount, tq: q}, nil
+	case *ent.GroupShardUserQuery:
+		return &query[*ent.GroupShardUserQuery, predicate.GroupShardUser, groupsharduser.OrderOption]{typ: ent.TypeGroupShardUser, tq: q}, nil
 	case *ent.IdempotencyRecordQuery:
 		return &query[*ent.IdempotencyRecordQuery, predicate.IdempotencyRecord, idempotencyrecord.OrderOption]{typ: ent.TypeIdempotencyRecord, tq: q}, nil
 	case *ent.IdentityAdoptionDecisionQuery:

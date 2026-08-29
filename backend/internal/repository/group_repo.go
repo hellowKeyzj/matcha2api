@@ -135,6 +135,8 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 		SetNillableFallbackGroupIDOnInvalidRequest(groupIn.FallbackGroupIDOnInvalidRequest).
 		SetModelRoutingEnabled(groupIn.ModelRoutingEnabled).
 		SetMcpXMLInject(groupIn.MCPXMLInject).
+		SetShardEnabled(groupIn.ShardEnabled).
+		SetShardAutoCreate(groupIn.ShardAutoCreate).
 		SetAllowMessagesDispatch(groupIn.AllowMessagesDispatch).
 		SetAllowLive(groupIn.AllowLive).
 		SetForceOpenaiFast(groupIn.ForceOpenAIFast).
@@ -156,6 +158,9 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 		SetProfitControlEnabled(groupIn.ProfitControlEnabled).
 		SetProfitMinMargin(groupIn.ProfitMinMargin).
 		SetProfitSafetyBuffer(groupIn.ProfitSafetyBuffer)
+	if groupIn.ShardMaxUsersPerShard != 0 {
+		builder.SetShardMaxUsersPerShard(groupIn.ShardMaxUsersPerShard)
+	}
 	if groupIn.DuplicateOperationID != "" {
 		builder = builder.SetDuplicateOperationID(groupIn.DuplicateOperationID)
 	}
@@ -174,12 +179,38 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 
 	created, err := builder.Save(ctx)
 	if err != nil {
-		return translatePersistenceError(err, nil, service.ErrGroupExists)
+		return translateGroupCreatePersistenceError(err)
 	}
+	groupIn.ShardMaxUsersPerShard = created.ShardMaxUsersPerShard
 	groupIn.ID = created.ID
 	groupIn.CreatedAt = created.CreatedAt
 	groupIn.UpdatedAt = created.UpdatedAt
 	return nil
+}
+
+func translateGroupCreatePersistenceError(err error) error {
+	if isDefaultShardGroupUniqueViolation(err) {
+		return service.ErrDefaultShardGroupAlreadyAssigned.WithCause(err)
+	}
+	return translatePersistenceError(err, nil, service.ErrGroupExists)
+}
+
+func translateGroupUpdatePersistenceError(err error) error {
+	if isDefaultShardGroupUniqueViolation(err) {
+		return service.ErrDefaultShardGroupAlreadyAssigned.WithCause(err)
+	}
+	return translatePersistenceError(err, service.ErrGroupNotFound, service.ErrGroupExists)
+}
+
+func isDefaultShardGroupUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pq.Error
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505" && pgErr.Constraint == "idx_groups_single_default_shard_group"
+	}
+	return strings.Contains(err.Error(), "idx_groups_single_default_shard_group")
 }
 
 func (r *groupRepository) FindByDuplicateOperationID(ctx context.Context, operationID string) (*service.Group, error) {
@@ -282,6 +313,24 @@ func (r *groupRepository) GetByIDLite(ctx context.Context, id int64) (*service.G
 	return groupEntityToService(m), nil
 }
 
+func (r *groupRepository) GetDefaultShardGroup(ctx context.Context) (*service.Group, error) {
+	m, err := clientFromContext(ctx, r.client).Group.Query().
+		Where(group.ShardEnabledEQ(true), group.DeletedAtIsNil()).
+		Order(dbent.Asc(group.FieldID)).
+		Only(ctx)
+	if err != nil {
+		switch {
+		case dbent.IsNotFound(err):
+			return nil, service.ErrDefaultShardGroupNotConfigured
+		case dbent.IsNotSingular(err):
+			return nil, service.ErrDefaultShardGroupAlreadyAssigned
+		default:
+			return nil, err
+		}
+	}
+	return groupEntityToService(m), nil
+}
+
 func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) error {
 	modelPricing, err := json.Marshal(groupIn.ModelPricing)
 	if err != nil {
@@ -320,6 +369,9 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetClaudeCodeOnly(groupIn.ClaudeCodeOnly).
 		SetModelRoutingEnabled(groupIn.ModelRoutingEnabled).
 		SetMcpXMLInject(groupIn.MCPXMLInject).
+		SetShardEnabled(groupIn.ShardEnabled).
+		SetShardMaxUsersPerShard(groupIn.ShardMaxUsersPerShard).
+		SetShardAutoCreate(groupIn.ShardAutoCreate).
 		SetAllowMessagesDispatch(groupIn.AllowMessagesDispatch).
 		SetAllowLive(groupIn.AllowLive).
 		SetForceOpenaiFast(groupIn.ForceOpenAIFast).
@@ -445,7 +497,7 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 
 	updated, err := builder.Save(ctx)
 	if err != nil {
-		return translatePersistenceError(err, service.ErrGroupNotFound, service.ErrGroupExists)
+		return translateGroupUpdatePersistenceError(err)
 	}
 	groupIn.UpdatedAt = updated.UpdatedAt
 	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {

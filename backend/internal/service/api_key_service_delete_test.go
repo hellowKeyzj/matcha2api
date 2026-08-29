@@ -30,6 +30,7 @@ type apiKeyRepoStub struct {
 	deleteErr              error   // Delete 的错误返回值
 	updateErr              error   // Update 的错误返回值
 	deletedIDs             []int64 // 记录已删除的 API Key ID 列表
+	auditDeletedIDs        []int64
 	updatedKeys            []APIKey
 	allowListByUserID      bool
 	listByUserIDKeys       []APIKey
@@ -98,6 +99,7 @@ func (s *apiKeyRepoStub) Delete(ctx context.Context, id int64) error {
 
 // DeleteWithAudit 与 Delete 一样记录被删除的 ID,供 service 测试断言。
 func (s *apiKeyRepoStub) DeleteWithAudit(ctx context.Context, id int64) error {
+	s.auditDeletedIDs = append(s.auditDeletedIDs, id)
 	s.deletedIDs = append(s.deletedIDs, id)
 	return s.deleteErr
 }
@@ -304,14 +306,7 @@ func TestApiKeyService_Delete_OwnerMismatch(t *testing.T) {
 	require.Empty(t, cache.deleteAuthKeys)
 }
 
-// TestApiKeyService_Delete_Success 测试所有者成功删除 API Key 的场景。
-// 预期行为：
-//   - GetKeyAndOwnerID 返回所有者 ID 为 7
-//   - 调用者 userID 为 7（匹配）
-//   - Delete 成功执行
-//   - 认证缓存被正确清除
-//   - 返回 nil 错误
-func TestApiKeyService_Delete_Success(t *testing.T) {
+func TestApiKeyService_Delete_OwnerCannotSelfDelete(t *testing.T) {
 	repo := &apiKeyRepoStub{
 		apiKey: &APIKey{ID: 42, UserID: 7, Key: "k"},
 	}
@@ -319,12 +314,12 @@ func TestApiKeyService_Delete_Success(t *testing.T) {
 	svc := &APIKeyService{apiKeyRepo: repo, cache: cache}
 	svc.lastUsedTouchL1.Store(int64(42), time.Now())
 
-	err := svc.Delete(context.Background(), 42, 7) // API Key ID=42, 调用者 userID=7
-	require.NoError(t, err)
-	require.Equal(t, []int64{42}, repo.deletedIDs) // 验证正确的 API Key 被删除
-	require.Equal(t, []string{svc.authCacheKey("k")}, cache.deleteAuthKeys)
+	err := svc.Delete(context.Background(), 42, 7)
+	require.ErrorIs(t, err, ErrAPIKeySelfDeleteDisabled)
+	require.Empty(t, repo.deletedIDs)
+	require.Empty(t, cache.deleteAuthKeys)
 	_, exists := svc.lastUsedTouchL1.Load(int64(42))
-	require.False(t, exists, "delete should clear touch debounce cache")
+	require.True(t, exists)
 }
 
 // TestApiKeyService_Delete_NotFound 测试删除不存在的 API Key 时返回正确的错误。
@@ -468,24 +463,93 @@ func TestAPIKeyService_GetByID_FillsCurrentConcurrency(t *testing.T) {
 	require.Equal(t, 4, key.CurrentConcurrency)
 }
 
-// TestApiKeyService_Delete_DeleteFails 测试删除操作失败时的错误处理。
-// 预期行为：
-//   - GetKeyAndOwnerID 返回正确的所有者 ID
-//   - 所有权验证通过
-//   - DeleteWithAudit 被调用但返回错误
-//   - 删除失败时缓存不被清除（缓存清理在删除成功后执行，消除竞态）
-//   - 返回包含 "delete api key" 的错误信息
-func TestApiKeyService_Delete_DeleteFails(t *testing.T) {
-	repo := &apiKeyRepoStub{
-		apiKey:    &APIKey{ID: 42, UserID: 3, Key: "k"},
-		deleteErr: errors.New("delete failed"),
+func TestAPIKeyService_Create_UserCreateDisabled(t *testing.T) {
+	svc := &APIKeyService{}
+
+	_, err := svc.Create(context.Background(), 7, CreateAPIKeyRequest{Name: "default"})
+	require.ErrorIs(t, err, ErrAPIKeySelfCreateDisabled)
+}
+
+func TestAPIKeyService_CreateSystem_IgnoresCustomCredential(t *testing.T) {
+	access, _, _, repo := newDefaultAccessServiceForTest(5, nil)
+	custom := "sk-custom-key-0123456789"
+	groupID := int64(5)
+	key, err := access.apiKeyService.CreateSystem(context.Background(), 7, CreateAPIKeyRequest{
+		Name: "managed", GroupID: &groupID, CustomKey: &custom, Quota: 10, RateLimit5h: 3,
+	})
+	require.NoError(t, err)
+	require.Len(t, repo.created, 1)
+	require.NotEqual(t, custom, key.Key)
+	require.True(t, strings.HasPrefix(key.Key, "sk-"))
+	require.Equal(t, groupID, *key.GroupID)
+	require.Equal(t, 10.0, key.Quota)
+	require.Equal(t, 3.0, key.RateLimit5h)
+}
+
+func TestAPIKeyService_Update_GroupRebindingDisabled(t *testing.T) {
+	originalGroupID := int64(5)
+	for _, groupID := range []int64{0, 5, 6} {
+		repo := &apiKeyRepoStub{apiKey: &APIKey{ID: 1, UserID: 7, Key: "sk-managed", GroupID: &originalGroupID}}
+		cache := &apiKeyCacheStub{}
+		svc := &APIKeyService{apiKeyRepo: repo, cache: cache}
+
+		_, err := svc.Update(context.Background(), 1, 7, UpdateAPIKeyRequest{GroupID: &groupID})
+		require.ErrorIs(t, err, ErrAPIKeyGroupChangeDisabled)
+		require.Empty(t, repo.updatedKeys)
+		require.Empty(t, cache.deleteAuthKeys)
+		require.Equal(t, originalGroupID, *repo.apiKey.GroupID)
 	}
+}
+
+func TestAPIKeyService_Rotate_PreservesConfigurationAndUsage(t *testing.T) {
+	groupID := int64(5)
+	expiresAt := time.Now().Add(time.Hour)
+	windowStart := time.Now()
+	original := APIKey{
+		ID: 1, UserID: 7, Key: "sk-old", Name: "managed", GroupID: &groupID,
+		Status: StatusDisabled, Quota: 10, QuotaUsed: 4, ExpiresAt: &expiresAt,
+		RateLimit5h: 1, RateLimit1d: 2, RateLimit7d: 3,
+		Usage5h: 0.1, Usage1d: 0.2, Usage7d: 0.3,
+		Window5hStart: &windowStart, Window1dStart: &windowStart, Window7dStart: &windowStart,
+		IPWhitelist: []string{"127.0.0.1"}, IPBlacklist: []string{"10.0.0.0/8"},
+	}
+	repo := &apiKeyRepoStub{apiKey: &original}
 	cache := &apiKeyCacheStub{}
 	svc := &APIKeyService{apiKeyRepo: repo, cache: cache}
 
-	err := svc.Delete(context.Background(), 3, 3) // API Key ID=3, 调用者 userID=3
-	require.Error(t, err)
-	require.ErrorContains(t, err, "delete api key")
-	require.Equal(t, []int64{3}, repo.deletedIDs) // 验证 DeleteWithAudit 被调用
-	require.Empty(t, cache.deleteAuthKeys)        // 验证删除失败时 auth 缓存未被清除
+	key, err := svc.Rotate(context.Background(), 1, 7)
+	require.NoError(t, err)
+	require.NotEqual(t, original.Key, key.Key)
+	require.Equal(t, []string{svc.authCacheKey(original.Key), svc.authCacheKey(key.Key)}, cache.deleteAuthKeys)
+	require.Len(t, repo.updatedKeys, 1)
+	preserved := repo.updatedKeys[0]
+	preserved.Key = original.Key
+	require.Equal(t, original, preserved)
+}
+
+func TestAPIKeyService_AdminDeletion_UsesAuditAndPreservesUserOnFailure(t *testing.T) {
+	for _, deleteErr := range []error{nil, errors.New("audit delete failed")} {
+		userRepo := &userRepoStub{user: &User{ID: 7, Role: RoleUser}}
+		repo := &apiKeyRepoStub{
+			allowListByUserID: true,
+			listByUserIDKeys:  []APIKey{{ID: 11, UserID: 7, Key: "sk-managed"}},
+			deleteErr:         deleteErr,
+		}
+		invalidator := &authCacheInvalidatorStub{}
+		svc := &adminServiceImpl{userRepo: userRepo, apiKeyRepo: repo, authCacheInvalidator: invalidator}
+
+		err := svc.DeleteUser(context.Background(), 7)
+		require.Equal(t, []int64{11}, repo.auditDeletedIDs)
+		if deleteErr != nil {
+			require.ErrorIs(t, err, deleteErr)
+			require.Empty(t, userRepo.deletedIDs)
+			require.Empty(t, invalidator.keys)
+			require.Empty(t, invalidator.userIDs)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, []int64{7}, userRepo.deletedIDs)
+			require.Equal(t, []string{"sk-managed"}, invalidator.keys)
+			require.Equal(t, []int64{7}, invalidator.userIDs)
+		}
+	}
 }

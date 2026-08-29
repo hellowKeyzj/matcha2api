@@ -47,7 +47,7 @@ func TestGatewayUsageKeepsModelAfterGinContextReuse(t *testing.T) {
 				Header:     http.Header{"X-Request-Id": []string{"usage-context-reuse"}},
 			}}
 			gw := service.NewGatewayService(
-				nil, &fakeGroupRepo{group: group}, usageRepo, billingRepo, nil, nil, nil, nil, cfg,
+				nil, &fakeGroupRepo{group: group}, nil, usageRepo, billingRepo, nil, nil, nil, nil, cfg,
 				snapshot, nil, service.NewBillingService(cfg, nil), nil, nil, nil, upstream,
 				&service.DeferredService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 			)

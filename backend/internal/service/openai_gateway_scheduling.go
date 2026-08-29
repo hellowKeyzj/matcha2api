@@ -1,7 +1,7 @@
 package service
 
-// 本文件由 openai_gateway_service.go 纯移动拆分而来：粘性会话哈希、账号选择与
-// 负载感知调度、配额自动暂停判定、并发槽位获取。仅做代码搬迁，无任何行为变更。
+// 本文件包含 OpenAI 兼容网关的粘性会话哈希、账号选择、负载感知调度、
+// 分组 shard 候选池约束、配额自动暂停判定与并发槽位获取。
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/gin-gonic/gin"
@@ -907,6 +908,21 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.C
 // 另返回账号是否来自粘性会话命中。
 func (s *OpenAIGatewayService) selectAccountForModelWithExclusionsStickyHit(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability OpenAIEndpointCapability, preferLowUpstreamRate bool) (*Account, bool, error) {
 	platform = NormalizeOpenAICompatiblePlatform(platform)
+	var group *Group
+	if s.groupShardRepo != nil {
+		var err error
+		group, err = s.resolveOpenAIGroupForScheduling(ctx, groupID)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	shardScope, err := s.resolveOpenAIShardAccountScope(ctx, groupID, group, 0, platform)
+	if err != nil {
+		return nil, false, err
+	}
+	if shardScope.IsEmpty() {
+		return nil, false, noAvailableOpenAISelectionError(requestedModel, false, openAISelectionFilterStats{}.summary("group_shard_empty"))
+	}
 	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
 		slog.Warn("channel pricing restriction blocked request",
 			"group_id", derefGroupID(groupID),
@@ -916,7 +932,7 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusionsStickyHit(ctx 
 
 	// 1. 尝试粘性会话命中
 	// Try sticky session hit
-	if account := s.tryStickySessionHit(ctx, groupID, platform, sessionHash, requestedModel, excludedIDs, requireCompact, stickyAccountID, requiredCapability); account != nil {
+	if account := s.tryStickySessionHit(ctx, groupID, platform, sessionHash, requestedModel, excludedIDs, requireCompact, stickyAccountID, requiredCapability, shardScope); account != nil {
 		return account, true, nil
 	}
 
@@ -925,6 +941,11 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusionsStickyHit(ctx 
 	accounts, err := s.listSchedulableAccounts(ctx, groupID, platform)
 	if err != nil {
 		return nil, false, fmt.Errorf("query accounts failed: %w", err)
+	}
+
+	accounts = filterOpenAIAccountsByShardScope(accounts, shardScope)
+	if len(accounts) == 0 {
+		return nil, false, noAvailableOpenAISelectionError(requestedModel, false, openAISelectionFilterStats{}.summary("group_shard_empty"))
 	}
 
 	// 3. 按优先级 + LRU 选择最佳账号
@@ -955,7 +976,7 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusionsStickyHit(ctx 
 //
 // tryStickySessionHit attempts to get account from sticky session.
 // Returns account if hit and usable; clears session and returns nil if account is unavailable.
-func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID *int64, platform string, sessionHash, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability OpenAIEndpointCapability) *Account {
+func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID *int64, platform string, sessionHash, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability OpenAIEndpointCapability, shardScope *GroupShardAccountScope) *Account {
 	if sessionHash == "" {
 		return nil
 	}
@@ -974,6 +995,10 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		return nil
 	}
 	ctx = withOpenAIImageSizeStickyAccount(ctx, accountID)
+	if !shardScope.Allows(accountID) {
+		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+		return nil
+	}
 
 	account, err := s.getSchedulableAccount(ctx, accountID)
 	if err != nil {
@@ -1101,6 +1126,68 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 //
 // isBetterAccount checks if candidate is better than current.
 // Rules: higher priority (lower value) wins; same priority: never used > least recently used.
+func openAIShardUserID(ctx context.Context, explicitUserID int64) int64 {
+	if explicitUserID > 0 {
+		return explicitUserID
+	}
+	if userID, ok := ctx.Value(ctxkey.UserID).(int64); ok && userID > 0 {
+		return userID
+	}
+	return 0
+}
+
+func (s *OpenAIGatewayService) resolveOpenAIGroupForScheduling(ctx context.Context, groupID *int64) (*Group, error) {
+	if s == nil || groupID == nil || *groupID <= 0 {
+		return nil, nil
+	}
+	if ctxGroup, ok := ctx.Value(ctxkey.Group).(*Group); ok && IsGroupContextValid(ctxGroup) && ctxGroup.ID == *groupID {
+		return ctxGroup, nil
+	}
+	if s.schedulerSnapshot != nil {
+		group, err := s.schedulerSnapshot.GetGroupByIDLite(ctx, *groupID)
+		if err != nil {
+			return nil, err
+		}
+		if group != nil {
+			return group, nil
+		}
+	}
+	if s.groupRepo == nil {
+		return nil, nil
+	}
+	return s.groupRepo.GetByIDLite(ctx, *groupID)
+}
+
+func (s *OpenAIGatewayService) resolveOpenAIShardAccountScope(ctx context.Context, groupID *int64, group *Group, userID int64, platform string) (*GroupShardAccountScope, error) {
+	if s == nil || s.groupShardRepo == nil || groupID == nil || *groupID <= 0 {
+		return &GroupShardAccountScope{Enabled: false}, nil
+	}
+	if group == nil || group.ID != *groupID {
+		loaded, err := s.resolveOpenAIGroupForScheduling(ctx, groupID)
+		if err != nil {
+			return nil, err
+		}
+		group = loaded
+	}
+	if group == nil || !group.ShardEnabled {
+		return &GroupShardAccountScope{Enabled: false}, nil
+	}
+	return s.groupShardRepo.ListAccountIDsForUserShard(ctx, group, openAIShardUserID(ctx, userID), NormalizeOpenAICompatiblePlatform(platform))
+}
+
+func filterOpenAIAccountsByShardScope(accounts []Account, scope *GroupShardAccountScope) []Account {
+	if scope == nil || !scope.Enabled {
+		return accounts
+	}
+	filtered := accounts[:0]
+	for _, account := range accounts {
+		if scope.Allows(account.ID) {
+			filtered = append(filtered, account)
+		}
+	}
+	return filtered
+}
+
 func (s *OpenAIGatewayService) isBetterAccount(candidate, current *Account) bool {
 	// 优先级更高（数值更小）
 	// Higher priority (lower value)
@@ -1189,12 +1276,35 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		return markStickySessionHit(selection, stickyHit), selectErr
 	}
 
+	var group *Group
+	if s.groupShardRepo != nil {
+		var err error
+		group, err = s.resolveOpenAIGroupForScheduling(ctx, groupID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	shardScope, err := s.resolveOpenAIShardAccountScope(ctx, groupID, group, 0, platform)
+	if err != nil {
+		return nil, err
+	}
+	if shardScope.IsEmpty() {
+		return nil, noAvailableOpenAISelectionError(requestedModel, false, openAISelectionFilterStats{}.summary("group_shard_empty"))
+	}
+	if stickyAccountID > 0 && !shardScope.Allows(stickyAccountID) {
+		if sessionHash != "" && s.cache != nil {
+			_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+		}
+		stickyAccountID = 0
+	}
+
 	accounts, err := s.listSchedulableAccounts(ctx, groupID, platform)
 	if err != nil {
 		return nil, err
 	}
+	accounts = filterOpenAIAccountsByShardScope(accounts, shardScope)
 	if len(accounts) == 0 {
-		return nil, noAvailableOpenAISelectionError(requestedModel, false, openAISelectionFilterStats{}.summary(""))
+		return nil, noAvailableOpenAISelectionError(requestedModel, false, openAISelectionFilterStats{}.summary("group_shard_empty"))
 	}
 
 	isExcluded := func(accountID int64) bool {

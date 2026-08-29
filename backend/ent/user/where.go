@@ -1538,6 +1538,29 @@ func HasAllowedGroupsWith(preds ...predicate.Group) predicate.User {
 	})
 }
 
+// HasGroupShards applies the HasEdge predicate on the "group_shards" edge.
+func HasGroupShards() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, GroupShardsTable, GroupShardsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasGroupShardsWith applies the HasEdge predicate on the "group_shards" edge with a given conditions (other predicates).
+func HasGroupShardsWith(preds ...predicate.GroupShard) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newGroupShardsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasUsageLogs applies the HasEdge predicate on the "usage_logs" edge.
 func HasUsageLogs() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -1714,6 +1737,29 @@ func HasUserAllowedGroups() predicate.User {
 func HasUserAllowedGroupsWith(preds ...predicate.UserAllowedGroup) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newUserAllowedGroupsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasGroupShardUsers applies the HasEdge predicate on the "group_shard_users" edge.
+func HasGroupShardUsers() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, GroupShardUsersTable, GroupShardUsersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasGroupShardUsersWith applies the HasEdge predicate on the "group_shard_users" edge with a given conditions (other predicates).
+func HasGroupShardUsersWith(preds ...predicate.GroupShardUser) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newGroupShardUsersStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

@@ -74,12 +74,12 @@ func newInflightEstimateGateway(t *testing.T, channelService *ChannelService) *G
 	cfg := &config.Config{}
 	cfg.Billing.InflightReservation = config.InflightReservationConfig{Enabled: true, DefaultMaxTokens: 1000, MaxInputTokens: 200000, MaxOutputTokens: 128000}
 	billing := NewBillingService(cfg, nil)
-	return &GatewayService{
-		cfg:            cfg,
-		billingService: billing,
-		resolver:       NewModelPricingResolver(channelService, billing),
-		channelService: channelService,
-	}
+	return NewGatewayService(
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, cfg,
+		nil, nil, billing, nil, nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, channelService, NewModelPricingResolver(channelService, billing),
+		nil, nil, nil,
+	)
 }
 
 func TestInflightEstimate_ChannelAliasUsesMappedModel(t *testing.T) {
@@ -458,6 +458,7 @@ func TestInflightEstimate_AccountMappingNoDBAndBoundedMemory(t *testing.T) {
 		require.False(t, priced)
 	}
 	runtime.GC()
+	runtime.KeepAlive(svc)
 	runtime.ReadMemStats(&after)
 	require.Zero(t, repo.dbCalls.Load(), "no direct DB query on the request path")
 	require.Equal(t, int64(n), snap.reads.Load(), "unpriced lookups read the scheduler snapshot only")

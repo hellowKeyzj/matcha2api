@@ -29,6 +29,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
+	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -128,6 +131,9 @@ func checkColumn(t, c string) error {
 			compositemodelroute.Table:           compositemodelroute.ValidColumn,
 			errorpassthroughrule.Table:          errorpassthroughrule.ValidColumn,
 			group.Table:                         group.ValidColumn,
+			groupshard.Table:                    groupshard.ValidColumn,
+			groupshardaccount.Table:             groupshardaccount.ValidColumn,
+			groupsharduser.Table:                groupsharduser.ValidColumn,
 			idempotencyrecord.Table:             idempotencyrecord.ValidColumn,
 			identityadoptiondecision.Table:      identityadoptiondecision.ValidColumn,
 			paymentauditlog.Table:               paymentauditlog.ValidColumn,

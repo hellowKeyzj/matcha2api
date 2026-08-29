@@ -59,6 +59,16 @@ type AdminService interface {
 	UpdateCompositeRoute(ctx context.Context, groupID, routeID int64, input CompositeRouteInput) (*CompositeModelRoute, error)
 	DeleteCompositeRoute(ctx context.Context, groupID, routeID int64) error
 	PreviewCompositeRoute(ctx context.Context, groupID int64, input CompositeRoutePreviewRequest) (*CompositeRouteDecision, error)
+	ListGroupShards(ctx context.Context, groupID int64) ([]GroupShard, error)
+	GetGroupShard(ctx context.Context, groupID, shardID int64) (*GroupShard, error)
+	CreateGroupShard(ctx context.Context, groupID int64, input GroupShardInput) (*GroupShard, error)
+	UpdateGroupShard(ctx context.Context, groupID, shardID int64, input UpdateGroupShardInput) (*GroupShard, error)
+	DeleteGroupShard(ctx context.Context, groupID, shardID int64) error
+	ListGroupShardUsers(ctx context.Context, groupID, shardID int64) ([]GroupShardUser, error)
+	AssignGroupShardUser(ctx context.Context, groupID, shardID, userID int64) error
+	RemoveGroupShardUser(ctx context.Context, groupID, shardID, userID int64) error
+	ListGroupShardAccounts(ctx context.Context, groupID, shardID int64) ([]GroupShardAccount, error)
+	SetGroupShardAccounts(ctx context.Context, groupID, shardID int64, input GroupShardAccountsInput) ([]GroupShardAccount, error)
 	GetGroupAPIKeys(ctx context.Context, groupID int64, page, pageSize int) ([]APIKey, int64, error)
 	GetGroupRateMultipliers(ctx context.Context, groupID int64) ([]UserGroupRateEntry, error)
 	ClearGroupRateMultipliers(ctx context.Context, groupID int64) error
@@ -285,9 +295,12 @@ type CreateGroupInput struct {
 	// 无效请求兜底分组 ID（仅 anthropic 平台使用）
 	FallbackGroupIDOnInvalidRequest *int64
 	// 模型路由配置（仅 anthropic 平台使用）
-	ModelRouting        map[string][]int64
-	ModelRoutingEnabled bool // 是否启用模型路由
-	MCPXMLInject        *bool
+	ModelRouting          map[string][]int64
+	ModelRoutingEnabled   bool // 是否启用模型路由
+	MCPXMLInject          *bool
+	ShardEnabled          bool
+	ShardMaxUsersPerShard int
+	ShardAutoCreate       *bool
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
@@ -368,9 +381,12 @@ type UpdateGroupInput struct {
 	// 无效请求兜底分组 ID（仅 anthropic 平台使用）
 	FallbackGroupIDOnInvalidRequest *int64
 	// 模型路由配置（仅 anthropic 平台使用）
-	ModelRouting        map[string][]int64
-	ModelRoutingEnabled *bool // 是否启用模型路由
-	MCPXMLInject        *bool
+	ModelRouting          map[string][]int64
+	ModelRoutingEnabled   *bool // 是否启用模型路由
+	MCPXMLInject          *bool
+	ShardEnabled          *bool
+	ShardMaxUsersPerShard *int
+	ShardAutoCreate       *bool
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
@@ -698,6 +714,7 @@ type adminServiceImpl struct {
 	groupRepo            GroupRepository
 	groupDuplicateRepo   GroupDuplicateRepository
 	emptyGroupDeleteRepo EmptyGroupDeleteRepository
+	groupShardRepo       GroupShardRepository
 	accountRepo          AccountRepository
 	accountDuplicateRepo AccountDuplicateRepository
 	accountBillingRepo   AccountBillingSettingsRepository
@@ -719,6 +736,7 @@ type adminServiceImpl struct {
 	affiliateService     adminRechargeAffiliateAccruer
 	compositeRouteRepo   CompositeModelRouteRepository
 	compositeResolver    *CompositeRouteResolver
+	defaultGatewayAccess DefaultGatewayAccessProvisioner
 	// 分组平台变更后用来失效渠道缓存；可为 nil（缓存会在 TTL 到期后自然重建）
 	channelCacheInvalidator ChannelCacheInvalidator
 }
@@ -742,6 +760,7 @@ func NewAdminService(
 	cfg *config.Config,
 	userRepo UserRepository,
 	groupRepo AdminGroupRepository,
+	groupShardRepo GroupShardRepository,
 	accountRepo AdminAccountRepository,
 	proxyRepo ProxyRepository,
 	apiKeyRepo APIKeyRepository,
@@ -761,6 +780,7 @@ func NewAdminService(
 	affiliateService *AffiliateService,
 	compositeRouteRepo CompositeModelRouteRepository,
 	compositeResolver *CompositeRouteResolver,
+	defaultGatewayAccess DefaultGatewayAccessProvisioner,
 	channelCacheInvalidator ChannelCacheInvalidator,
 ) AdminService {
 	return &adminServiceImpl{
@@ -769,6 +789,7 @@ func NewAdminService(
 		groupRepo:            groupRepo,
 		groupDuplicateRepo:   groupRepo,
 		emptyGroupDeleteRepo: groupRepo,
+		groupShardRepo:       groupShardRepo,
 		accountRepo:          accountRepo,
 		accountDuplicateRepo: accountRepo,
 		accountBillingRepo:   accountRepo,
@@ -790,6 +811,7 @@ func NewAdminService(
 		affiliateService:     affiliateService,
 		compositeRouteRepo:   compositeRouteRepo,
 		compositeResolver:    compositeResolver,
+		defaultGatewayAccess: defaultGatewayAccess,
 
 		channelCacheInvalidator: channelCacheInvalidator,
 	}

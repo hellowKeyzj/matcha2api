@@ -497,14 +497,14 @@ func (s *GeminiMessagesCompatService) validateUpstreamBaseURL(raw string) (strin
 
 // AntigravityGeminiModelIDs returns the effective Gemini mappings of schedulable
 // Antigravity accounts. Mixed routes must additionally respect the account opt-in.
-func (s *GeminiMessagesCompatService) AntigravityGeminiModelIDs(ctx context.Context, groupID *int64, requireMixed bool) ([]string, error) {
+func (s *GeminiMessagesCompatService) AntigravityGeminiModelIDs(ctx context.Context, groupID *int64, requireMixed bool, scope *GroupShardAccountScope) ([]string, error) {
 	accounts, err := s.listSchedulableAccountsOnce(ctx, groupID, PlatformAntigravity, false)
 	if err != nil {
 		return nil, err
 	}
 	seen := make(map[string]struct{})
 	for _, account := range accounts {
-		if account.Platform != PlatformAntigravity || (requireMixed && !account.IsMixedSchedulingEnabled()) {
+		if !scope.Allows(account.ID) || account.Platform != PlatformAntigravity || (requireMixed && !account.IsMixedSchedulingEnabled()) {
 			continue
 		}
 		for model := range account.GetModelMapping() {
@@ -522,12 +522,17 @@ func (s *GeminiMessagesCompatService) AntigravityGeminiModelIDs(ctx context.Cont
 }
 
 // HasAntigravityAccounts 检查是否有可用的 antigravity 账户
-func (s *GeminiMessagesCompatService) HasAntigravityAccounts(ctx context.Context, groupID *int64) (bool, error) {
+func (s *GeminiMessagesCompatService) HasAntigravityAccounts(ctx context.Context, groupID *int64, scope *GroupShardAccountScope) (bool, error) {
 	accounts, err := s.listSchedulableAccountsOnce(ctx, groupID, PlatformAntigravity, false)
 	if err != nil {
 		return false, err
 	}
-	return len(accounts) > 0, nil
+	for _, account := range accounts {
+		if scope.Allows(account.ID) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (*ForwardResult, error) {
