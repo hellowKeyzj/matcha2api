@@ -81,7 +81,7 @@ func readGeminiCachedContentBody(c *gin.Context) ([]byte, bool) {
 }
 
 func (h *GatewayHandler) checkGeminiCachedContentBilling(c *gin.Context, reqLog *zap.Logger, apiKey *service.APIKey, subscription *service.UserSubscription) bool {
-	if err := h.billingCacheService.CheckBillingEligibility(c.Request.Context(), apiKey.User, apiKey, apiKey.Group, subscription, service.QuotaPlatform(c.Request.Context(), apiKey)); err != nil {
+	if err := h.billingCacheService.CheckBillingEligibility(c.Request.Context(), apiKey.User, apiKey, apiKey.Group, subscription, geminiCachedContentBillingSource(c), service.QuotaPlatform(c.Request.Context(), apiKey)); err != nil {
 		reqLog.Info("gemini.cached_content.billing_eligibility_check_failed", zap.Error(err))
 		status, code, message, retryAfter := billingErrorDetails(err)
 		if retryAfter > 0 {
@@ -147,7 +147,7 @@ func (h *GatewayHandler) GeminiCachedContentsCreate(c *gin.Context) {
 	if !h.checkGeminiCachedContentBilling(c, reqLog, apiKey, subscription) {
 		return
 	}
-	inflightRelease, err := reserveInflightBalance(c, h.billingCacheService, h.gatewayService, apiKey, subscription, tokenInflightEstimate(modelName, body))
+	inflightRelease, err := reserveInflightBalance(c, h.billingCacheService, h.gatewayService, apiKey, subscription, geminiCachedContentBillingSource(c), tokenInflightEstimate(modelName, body))
 	if err != nil {
 		reqLog.Info("gemini.cached_content.inflight_reservation_rejected", zap.Error(err))
 		status, code, message, retryAfter := billingErrorDetails(err)
@@ -276,7 +276,7 @@ func (h *GatewayHandler) GeminiCachedContentsCreate(c *gin.Context) {
 				Model: modelName, UpstreamModel: mappedModel,
 				Usage: service.ClaudeUsage{InputTokens: int(tokens)}, CacheStorageTokenHours: storageTokenHours,
 			},
-			APIKey: apiKey, User: apiKey.User, Subscription: subscription, PricingAt: pricingAt, ChannelUsageFields: usageFields,
+			APIKey: apiKey, User: apiKey.User, Subscription: subscription, BillingSource: geminiCachedContentBillingSource(c), PricingAt: pricingAt, ChannelUsageFields: usageFields,
 		})
 		inflightRelease()
 		chargeDone, err := h.reserveGeminiCachedContentCharge(c, apiKey, subscription, amount)
@@ -443,7 +443,7 @@ func (h *GatewayHandler) GeminiCachedContentsPatch(c *gin.Context) {
 				Model: record.Model, UpstreamModel: record.UpstreamModelID(),
 				CacheStorageTokenHours: service.GeminiCachedContentStorageTokenHours(record.TotalTokenCount, extension),
 			},
-			APIKey: apiKey, User: apiKey.User, Subscription: subscription, PricingAt: pricingAt,
+			APIKey: apiKey, User: apiKey.User, Subscription: subscription, BillingSource: geminiCachedContentBillingSource(c), PricingAt: pricingAt,
 			ChannelUsageFields: record.ChannelUsage,
 		}
 		if !h.gatewayService.CacheStoragePriced(c.Request.Context(), usage) {
@@ -695,6 +695,7 @@ func (h *GatewayHandler) submitGeminiCachedContentUsage(
 	clientIP := ip.GetClientIP(c)
 	requestPayloadHash := service.HashUsageRequestPayload(payload)
 	quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
+	billingSource := geminiCachedContentBillingSource(c)
 	h.submitMandatoryUsageRecordTask(c.Request.Context(), func(ctx context.Context) {
 		if err := h.gatewayService.RecordUsage(ctx, &service.RecordUsageInput{
 			Result:             result,
@@ -702,6 +703,7 @@ func (h *GatewayHandler) submitGeminiCachedContentUsage(
 			User:               apiKey.User,
 			Account:            account,
 			Subscription:       subscription,
+			BillingSource:      billingSource,
 			PricingAt:          pricingAt,
 			InboundEndpoint:    inboundEndpoint,
 			UpstreamEndpoint:   upstreamEndpoint,
@@ -741,7 +743,7 @@ func (h *GatewayHandler) cleanupGeminiCachedContentUpstream(reqLog *zap.Logger, 
 // 返回的 done 须在 handler 结束时调用；预留随计费任务交接，落库后释放。
 func (h *GatewayHandler) reserveGeminiCachedContentCharge(c *gin.Context, apiKey *service.APIKey, subscription *service.UserSubscription, amount float64) (func(), error) {
 	ctx := c.Request.Context()
-	res, err := h.billingCacheService.ReserveFixedCharge(ctx, apiKey.User, apiKey, apiKey.Group, subscription, amount)
+	res, err := h.billingCacheService.ReserveFixedCharge(ctx, apiKey.User, apiKey, apiKey.Group, subscription, geminiCachedContentBillingSource(c), amount)
 	if err != nil {
 		return inflightNoop, err
 	}
@@ -851,4 +853,9 @@ func (h *GatewayHandler) handleGeminiCachedContentFailoverExhausted(c *gin.Conte
 	}
 	service.SetOpsUpstreamError(c, failoverErr.StatusCode, service.ExtractUpstreamErrorMessage(failoverErr.ResponseBody), "")
 	c.Data(failoverErr.StatusCode, "application/json", failoverErr.ResponseBody)
+}
+
+func geminiCachedContentBillingSource(c *gin.Context) service.BillingSource {
+	source, _ := middleware.GetBillingSourceFromContext(c)
+	return source
 }

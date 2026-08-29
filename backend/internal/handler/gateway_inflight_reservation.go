@@ -48,12 +48,13 @@ func reserveInflightBalance(
 	estimator inflightReservationEstimator,
 	apiKey *service.APIKey,
 	subscription *service.UserSubscription,
+	billingSource service.BillingSource,
 	req service.InflightEstimateRequest,
 ) (func(), error) {
 	if c == nil || c.Request == nil {
 		return inflightNoop, nil
 	}
-	ctx, done, err := reserveInflightBalanceCtx(c.Request.Context(), billing, estimator, apiKey, subscription, req)
+	ctx, done, err := reserveInflightBalanceCtx(c.Request.Context(), billing, estimator, apiKey, subscription, billingSource, req)
 	if err != nil {
 		return inflightNoop, err
 	}
@@ -69,12 +70,13 @@ func reserveInflightBalanceCtx(
 	estimator inflightReservationEstimator,
 	apiKey *service.APIKey,
 	subscription *service.UserSubscription,
+	billingSource service.BillingSource,
 	req service.InflightEstimateRequest,
 ) (context.Context, func(), error) {
 	if billing == nil || estimator == nil || apiKey == nil || apiKey.User == nil || !billing.InflightReservationEnabled() {
 		return ctx, inflightNoop, nil
 	}
-	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() && subscription != nil {
+	if billingSource.IsSubscription() {
 		return ctx, inflightNoop, nil
 	}
 	estimate, priced := estimator.EstimateInflightReservation(ctx, apiKey, req)
@@ -84,7 +86,7 @@ func reserveInflightBalanceCtx(
 	if estimate <= 0 {
 		return ctx, inflightNoop, nil
 	}
-	res, err := billing.ReserveInflight(ctx, apiKey.User, apiKey.Group, subscription, estimate)
+	res, err := billing.ReserveInflight(ctx, apiKey.User, apiKey.Group, subscription, billingSource, estimate)
 	if err != nil {
 		return ctx, inflightNoop, err
 	}

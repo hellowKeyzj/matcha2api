@@ -50,17 +50,45 @@ func TestReserveInflightBalance_SkipsWhenDisabledOrSubscription(t *testing.T) {
 	est := &countingEstimator{cost: 1, priced: true}
 	apiKey := &service.APIKey{User: &service.User{ID: 1}}
 
-	done, err := reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, nil, tokenInflightEstimate("m", []byte(`{}`)))
+	done, err := reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, nil, service.BillingSourceBalance, tokenInflightEstimate("m", []byte(`{}`)))
 	require.NoError(t, err)
 	done()
 	require.Equal(t, 0, est.calls, "disabled switch must not even estimate")
 
 	cfg.Billing.InflightReservation.Enabled = true
 	apiKey.Group = &service.Group{SubscriptionType: service.SubscriptionTypeSubscription}
-	done, err = reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, &service.UserSubscription{}, tokenInflightEstimate("m", []byte(`{}`)))
+	done, err = reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, &service.UserSubscription{}, service.BillingSourceSubscription, tokenInflightEstimate("m", []byte(`{}`)))
 	require.NoError(t, err)
 	done()
 	require.Equal(t, 0, est.calls, "subscription mode must be unaffected")
+}
+
+func TestReserveInflightBalance_UsesExplicitSourceForHybridGroup(t *testing.T) {
+	cache := newHandlerInflightCache(0)
+	cfg := &config.Config{}
+	cfg.Billing.InflightReservation = config.InflightReservationConfig{Enabled: true, TTLSeconds: 60, FailClosedOnUnpriced: true}
+	billing := service.NewBillingCacheService(cache, nil, nil, nil, nil, nil, cfg, nil)
+	t.Cleanup(billing.Stop)
+	apiKey := &service.APIKey{User: &service.User{ID: 1}, Group: &service.Group{SubscriptionType: service.SubscriptionTypeSubscriptionBalance}}
+	est := &countingEstimator{cost: 1, priced: true}
+	subscription := &service.UserSubscription{}
+
+	// Subscription-selected requests do not touch the zero balance or estimator.
+	done, err := reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, subscription, service.BillingSourceSubscription, tokenInflightEstimate("m", nil))
+	require.NoError(t, err)
+	done()
+	require.Zero(t, est.calls)
+	require.Zero(t, cache.count())
+
+	// The same group and retained subscription pointer must reserve when auth chose balance.
+	c := newInflightTestGinContext()
+	done, err = reserveInflightBalance(c, billing, est, apiKey, subscription, service.BillingSourceBalance, tokenInflightEstimate("m", nil))
+	require.NoError(t, err)
+	require.Equal(t, 1, est.calls)
+	require.Equal(t, 1, cache.count())
+	require.Equal(t, 1.0, service.InflightReservationFromContext(c.Request.Context()).Amount())
+	done()
+	require.Zero(t, cache.count())
 }
 
 func TestReserveInflightBalance_UnpricedFailOpenByDefaultFailClosedOptIn(t *testing.T) {
@@ -72,12 +100,12 @@ func TestReserveInflightBalance_UnpricedFailOpenByDefaultFailClosedOptIn(t *test
 	apiKey := &service.APIKey{User: &service.User{ID: 1}}
 	est := &countingEstimator{priced: false}
 
-	done, err := reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, nil, tokenInflightEstimate("unknown", nil))
+	done, err := reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, nil, service.BillingSourceBalance, tokenInflightEstimate("unknown", nil))
 	require.NoError(t, err)
 	done()
 
 	cfg.Billing.InflightReservation.FailClosedOnUnpriced = true
-	_, err = reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, nil, tokenInflightEstimate("unknown", nil))
+	_, err = reserveInflightBalance(newInflightTestGinContext(), billing, est, apiKey, nil, service.BillingSourceBalance, tokenInflightEstimate("unknown", nil))
 	require.ErrorIs(t, err, service.ErrInsufficientBalance)
 }
 
@@ -139,7 +167,7 @@ func TestWrapUsageRecordTaskContext_HandsReservationToBillingTask(t *testing.T) 
 	apiKey := &service.APIKey{User: &service.User{ID: 5}}
 
 	c := newInflightTestGinContext()
-	done, err := reserveInflightBalance(c, billing, &countingEstimator{cost: 0.9, priced: true}, apiKey, nil, tokenInflightEstimate("m", nil))
+	done, err := reserveInflightBalance(c, billing, &countingEstimator{cost: 0.9, priced: true}, apiKey, nil, service.BillingSourceBalance, tokenInflightEstimate("m", nil))
 	require.NoError(t, err)
 	require.Equal(t, 1, cache.count())
 
@@ -154,7 +182,7 @@ func TestWrapUsageRecordTaskContext_HandsReservationToBillingTask(t *testing.T) 
 
 	// Dropped task: the submitter abandons it and the reservation is released.
 	c2 := newInflightTestGinContext()
-	done2, err := reserveInflightBalance(c2, billing, &countingEstimator{cost: 0.9, priced: true}, apiKey, nil, tokenInflightEstimate("m", nil))
+	done2, err := reserveInflightBalance(c2, billing, &countingEstimator{cost: 0.9, priced: true}, apiKey, nil, service.BillingSourceBalance, tokenInflightEstimate("m", nil))
 	require.NoError(t, err)
 	_, abandon2 := wrapUsageRecordTaskContext(c2.Request.Context(), func(context.Context) {})
 	done2()
@@ -185,7 +213,7 @@ func TestWebSearch_RejectsWhenInflightExceedsBalance(t *testing.T) {
 	}
 
 	// Another in-flight request of this user already holds $1.
-	held, err := billingCache.ReserveInflight(context.Background(), apiKey.User, apiKey.Group, nil, 1.0)
+	held, err := billingCache.ReserveInflight(context.Background(), apiKey.User, apiKey.Group, nil, service.BillingSourceBalance, 1.0)
 	require.NoError(t, err)
 	defer held.HandlerDone()
 
