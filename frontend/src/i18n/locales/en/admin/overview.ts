@@ -1127,10 +1127,11 @@ export default {
         title: 'Subscription Settings',
         type: 'Billing Type',
         typeHint:
-          'Standard billing deducts from user balance. Subscription mode uses quota limits instead.',
-        typeNotEditable: 'Billing type cannot be changed after group creation.',
+          'Standard balance bills the wallet only. Subscription quota bills subscription quota only. Subscription-first balance fallback uses subscription first, then wallet balance when unavailable or exhausted.',
+        typeNotEditable: 'Changing billing type affects admission and billing source for future requests.',
         standard: 'Standard (Balance)',
         subscription: 'Subscription (Quota)',
+        subscriptionBalance: 'Subscription First (Balance Fallback)',
         dailyLimit: 'Daily Limit (USD)',
         weeklyLimit: 'Weekly Limit (USD)',
         monthlyLimit: 'Monthly Limit (USD)',

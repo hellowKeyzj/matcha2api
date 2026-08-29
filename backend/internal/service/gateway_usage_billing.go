@@ -42,7 +42,8 @@ type RecordUsageInput struct {
 	APIKey             *APIKey
 	User               *User
 	Account            *Account
-	Subscription       *UserSubscription  // 可选：订阅信息
+	Subscription       *UserSubscription  // 可选：仅当 BillingSource=subscription 时参与扣费
+	BillingSource      BillingSource      // 本次请求在鉴权准入时选定的计费来源
 	PricingAt          time.Time          // token 售价固定时刻；零值保持既有的记录时刻语义
 	InboundEndpoint    string             // 入站端点（客户端请求路径）
 	UpstreamEndpoint   string             // 上游端点（标准化后的上游路径）
@@ -652,6 +653,7 @@ func (s *GatewayService) RecordUsage(ctx context.Context, input *RecordUsageInpu
 		User:               input.User,
 		Account:            input.Account,
 		Subscription:       input.Subscription,
+		BillingSource:      input.BillingSource,
 		PricingAt:          input.PricingAt,
 		InboundEndpoint:    input.InboundEndpoint,
 		UpstreamEndpoint:   input.UpstreamEndpoint,
@@ -673,6 +675,7 @@ type recordUsageCoreInput struct {
 	User               *User
 	Account            *Account
 	Subscription       *UserSubscription
+	BillingSource      BillingSource
 	PricingAt          time.Time
 	InboundEndpoint    string
 	UpstreamEndpoint   string
@@ -854,16 +857,24 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		}
 	}
 
-	// 判断计费方式：订阅模式 vs 余额模式
-	isSubscriptionBilling := subscription != nil && apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
+	billingSource := input.BillingSource
+	if billingSource == "" {
+		billingSource = BillingSourceBalance
+	}
+	isSubscriptionBilling := billingSource.IsSubscription()
+	if isSubscriptionBilling && subscription == nil {
+		return ErrSubscriptionInvalid
+	}
 	billingType := BillingTypeBalance
+	billableSubscription := (*UserSubscription)(nil)
 	if isSubscriptionBilling {
 		billingType = BillingTypeSubscription
+		billableSubscription = subscription
 	}
 
 	// 创建使用日志
 	accountRateMultiplier := account.BillingRateMultiplier()
-	usageLog := s.buildRecordUsageLog(ctx, input, result, apiKey, user, account, subscription,
+	usageLog := s.buildRecordUsageLog(ctx, input, result, apiKey, user, account, billableSubscription,
 		requestedModel, multiplier, imageMultiplier, accountRateMultiplier, billingType, cacheTTLOverridden, cost)
 
 	// 计算账号统计定价费用（使用最终上游模型匹配自定义规则）
@@ -908,7 +919,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		User:                       user,
 		APIKey:                     apiKey,
 		Account:                    account,
-		Subscription:               subscription,
+		Subscription:               billableSubscription,
 		RequestPayloadHash:         resolveUsageBillingPayloadFingerprint(ctx, input.RequestPayloadHash),
 		IsSubscriptionBill:         isSubscriptionBilling && !simpleModeKeyRateLimitOnly,
 		AccountRateMultiplier:      accountRateMultiplier,

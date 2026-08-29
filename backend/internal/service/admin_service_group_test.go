@@ -1811,23 +1811,35 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsUnsupportedPlatfo
 
 func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsSubscription(t *testing.T) {
 	fallbackID := int64(10)
-	repo := &groupRepoStubForInvalidRequestFallback{
-		groups: map[int64]*Group{
-			fallbackID: {ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeStandard},
-		},
+	tests := []struct {
+		name             string
+		subscriptionType string
+	}{
+		{name: "subscription", subscriptionType: SubscriptionTypeSubscription},
+		{name: "subscription_balance", subscriptionType: SubscriptionTypeSubscriptionBalance},
 	}
-	svc := &adminServiceImpl{groupRepo: repo}
 
-	_, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
-		Name:                            "g1",
-		Platform:                        PlatformAnthropic,
-		RateMultiplier:                  1.0,
-		SubscriptionType:                SubscriptionTypeSubscription,
-		FallbackGroupIDOnInvalidRequest: &fallbackID,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "subscription groups cannot set invalid request fallback")
-	require.Nil(t, repo.created)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &groupRepoStubForInvalidRequestFallback{
+				groups: map[int64]*Group{
+					fallbackID: {ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeStandard},
+				},
+			}
+			svc := &adminServiceImpl{groupRepo: repo}
+
+			_, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+				Name:                            "g1",
+				Platform:                        PlatformAnthropic,
+				RateMultiplier:                  1.0,
+				SubscriptionType:                tc.subscriptionType,
+				FallbackGroupIDOnInvalidRequest: &fallbackID,
+			})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "subscription groups cannot set invalid request fallback")
+			require.Nil(t, repo.created)
+		})
+	}
 }
 
 func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *testing.T) {
@@ -1849,6 +1861,11 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *
 		{
 			name:        "subscription_group",
 			fallback:    &Group{ID: 10, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription},
+			wantMessage: "fallback group cannot be subscription type",
+		},
+		{
+			name:        "subscription_balance_group",
+			fallback:    &Group{ID: 10, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscriptionBalance},
 			wantMessage: "fallback group cannot be subscription type",
 		},
 		{
@@ -1972,28 +1989,40 @@ func TestAdminService_UpdateGroup_InvalidRequestFallbackPlatformMismatch(t *test
 
 func TestAdminService_UpdateGroup_InvalidRequestFallbackSubscriptionMismatch(t *testing.T) {
 	fallbackID := int64(10)
-	existing := &Group{
-		ID:                              1,
-		Name:                            "g1",
-		Platform:                        PlatformAnthropic,
-		SubscriptionType:                SubscriptionTypeStandard,
-		Status:                          StatusActive,
-		FallbackGroupIDOnInvalidRequest: &fallbackID,
+	tests := []struct {
+		name             string
+		subscriptionType string
+	}{
+		{name: "subscription", subscriptionType: SubscriptionTypeSubscription},
+		{name: "subscription_balance", subscriptionType: SubscriptionTypeSubscriptionBalance},
 	}
-	repo := &groupRepoStubForInvalidRequestFallback{
-		groups: map[int64]*Group{
-			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeStandard},
-		},
-	}
-	svc := &adminServiceImpl{groupRepo: repo}
 
-	_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
-		SubscriptionType: SubscriptionTypeSubscription,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "subscription groups cannot set invalid request fallback")
-	require.Nil(t, repo.updated)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			existing := &Group{
+				ID:                              1,
+				Name:                            "g1",
+				Platform:                        PlatformAnthropic,
+				SubscriptionType:                SubscriptionTypeStandard,
+				Status:                          StatusActive,
+				FallbackGroupIDOnInvalidRequest: &fallbackID,
+			}
+			repo := &groupRepoStubForInvalidRequestFallback{
+				groups: map[int64]*Group{
+					existing.ID: existing,
+					fallbackID:  {ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeStandard},
+				},
+			}
+			svc := &adminServiceImpl{groupRepo: repo}
+
+			_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
+				SubscriptionType: tc.subscriptionType,
+			})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "subscription groups cannot set invalid request fallback")
+			require.Nil(t, repo.updated)
+		})
+	}
 }
 
 func TestAdminService_UpdateGroup_InvalidRequestFallbackClearsOnZero(t *testing.T) {
@@ -2027,27 +2056,45 @@ func TestAdminService_UpdateGroup_InvalidRequestFallbackClearsOnZero(t *testing.
 
 func TestAdminService_UpdateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *testing.T) {
 	fallbackID := int64(10)
-	existing := &Group{
-		ID:               1,
-		Name:             "g1",
-		Platform:         PlatformAnthropic,
-		SubscriptionType: SubscriptionTypeStandard,
-		Status:           StatusActive,
-	}
-	repo := &groupRepoStubForInvalidRequestFallback{
-		groups: map[int64]*Group{
-			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription},
+	tests := []struct {
+		name     string
+		fallback *Group
+	}{
+		{
+			name:     "subscription_group",
+			fallback: &Group{ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription},
+		},
+		{
+			name:     "subscription_balance_group",
+			fallback: &Group{ID: fallbackID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscriptionBalance},
 		},
 	}
-	svc := &adminServiceImpl{groupRepo: repo}
 
-	_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
-		FallbackGroupIDOnInvalidRequest: &fallbackID,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "fallback group cannot be subscription type")
-	require.Nil(t, repo.updated)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			existing := &Group{
+				ID:               1,
+				Name:             "g1",
+				Platform:         PlatformAnthropic,
+				SubscriptionType: SubscriptionTypeStandard,
+				Status:           StatusActive,
+			}
+			repo := &groupRepoStubForInvalidRequestFallback{
+				groups: map[int64]*Group{
+					existing.ID: existing,
+					fallbackID:  tc.fallback,
+				},
+			}
+			svc := &adminServiceImpl{groupRepo: repo}
+
+			_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
+				FallbackGroupIDOnInvalidRequest: &fallbackID,
+			})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "fallback group cannot be subscription type")
+			require.Nil(t, repo.updated)
+		})
+	}
 }
 
 func TestAdminService_UpdateGroup_InvalidRequestFallbackSetSuccess(t *testing.T) {

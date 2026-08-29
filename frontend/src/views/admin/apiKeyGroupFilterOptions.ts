@@ -1,4 +1,5 @@
 import type { AdminGroup } from '@/types'
+import { supportsSubscriptionType } from '@/utils/subscriptionTypes'
 
 export interface ApiKeyGroupFilterOption {
   value: number | null
@@ -49,7 +50,7 @@ export function buildApiKeyGroupFilterOptions(
     const item: ApiKeyGroupFilterOption = { value: grp.id, label: grp.name }
     if (grp.status !== 'active') {
       disabledGroups.push(item)
-    } else if (grp.subscription_type === 'subscription') {
+    } else if (supportsSubscriptionType(grp.subscription_type)) {
       subscription.push(item)
     } else if (grp.is_exclusive) {
       exclusive.push(item)

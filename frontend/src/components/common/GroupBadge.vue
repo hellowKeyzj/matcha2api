@@ -32,6 +32,7 @@ import { useI18n } from 'vue-i18n'
 import type { SubscriptionType, GroupPlatform } from '@/types'
 import { useAppStore } from '@/stores/app'
 import { formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
+import { supportsSubscriptionType } from '@/utils/subscriptionTypes'
 import PlatformIcon from './PlatformIcon.vue'
 
 interface Props {
@@ -65,7 +66,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { t } = useI18n()
 
-const isSubscription = computed(() => props.subscriptionType === 'subscription')
+const isSubscription = computed(() => supportsSubscriptionType(props.subscriptionType))
 
 // 是否有专属倍率（且与默认倍率不同）
 const hasCustomRate = computed(() => {

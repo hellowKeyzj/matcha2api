@@ -180,6 +180,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				Concurrency: apiKey.User.Concurrency,
 			})
 			c.Set(string(ContextKeyUserRole), apiKey.User.Role)
+			SetBillingSource(c, service.BillingSourceBalance)
 			setGroupContext(c, apiKey.Group)
 			if !billingInfoRequest {
 				_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
@@ -188,31 +189,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 
-		// ── 5. 按端点需要加载订阅 ───────────────────────────────────
-
-		var subscription *service.UserSubscription
-		isSubscriptionType := apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
-
-		// 倍率自省不需要订阅数据；/v1/usage 仍保留原有订阅读取行为。
-		if isSubscriptionType && subscriptionService != nil && !billingInfoRequest {
-			sub, subErr := subscriptionService.GetActiveSubscription(
-				c.Request.Context(),
-				apiKey.User.ID,
-				apiKey.Group.ID,
-			)
-			if subErr != nil {
-				if !skipBilling {
-					AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group")
-					return
-				}
-				// skipBilling: 订阅不存在也放行，handler 会返回可用的数据
-			} else {
-				subscription = sub
-			}
-		}
-
-		// ── 6. 计费执行（skipBilling 时整块跳过） ────────────────────
-
+		// Select exactly one billing source for this request.
 		if !skipBilling {
 			// Key 状态检查
 			switch apiKey.Status {
@@ -233,45 +210,22 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				abortWithAPIKeyQuotaError(c)
 				return
 			}
-
-			// 订阅模式：验证订阅限额
-			if subscription != nil {
-				needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
-				if needsMaintenance {
-					refreshed, maintenanceErr := subscriptionService.EnsureWindowMaintenance(c.Request.Context(), subscription)
-					if maintenanceErr != nil {
-						AbortWithError(c, 500, "SUBSCRIPTION_MAINTENANCE_FAILED", "Failed to maintain subscription usage windows")
-						return
-					}
-					subscription = refreshed
-					_, validateErr = subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
-				}
-				if validateErr != nil {
-					code := "SUBSCRIPTION_INVALID"
-					status := 403
-					if errors.Is(validateErr, service.ErrDailyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrWeeklyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
-						code = "USAGE_LIMIT_EXCEEDED"
-						status = 429
-					}
-					AbortWithError(c, status, code, validateErr.Error())
-					return
-				}
-			} else {
-				// 非订阅模式 或 订阅模式但 subscriptionService 未注入：回退到余额检查
-				if apiKeyBalanceBelowAuthThreshold(apiKey.User.Balance, cfg) {
-					AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
-					return
-				}
-			}
 		}
 
-		// ── 7. 设置上下文 → Next ─────────────────────────────────────
+		decision, reject := resolveAPIKeyBillingDecision(c.Request.Context(), apiKey, subscriptionService, cfg, skipBilling, !billingInfoRequest)
+		if reject != nil {
+			AbortWithError(c, reject.Status, reject.Code, reject.Message)
+			return
+		}
+		subscription := decision.Subscription
+		billingSource := decision.Source
+
+		// ── 6. 设置上下文 → Next ─────────────────────────────────────
 
 		if subscription != nil {
 			c.Set(string(ContextKeySubscription), subscription)
 		}
+		SetBillingSource(c, billingSource)
 		c.Set(string(ContextKeyAPIKey), apiKey)
 		c.Set(string(ContextKeyUser), AuthSubject{
 			UserID:      apiKey.User.ID,
@@ -340,6 +294,118 @@ func isAsyncImageTaskRead(method, path string) bool {
 	return strings.HasPrefix(path, "/v1/images/tasks/") || strings.HasPrefix(path, "/images/tasks/")
 }
 
+type apiKeyBillingDecision struct {
+	Source       service.BillingSource
+	Subscription *service.UserSubscription
+}
+
+type apiKeyBillingReject struct {
+	Status  int
+	Code    string
+	Message string
+}
+
+func resolveAPIKeyBillingDecision(ctx context.Context, apiKey *service.APIKey, subscriptionService *service.SubscriptionService, cfg *config.Config, skipBilling, loadSubscription bool) (apiKeyBillingDecision, *apiKeyBillingReject) {
+	decision := apiKeyBillingDecision{Source: service.BillingSourceBalance}
+	if apiKey == nil || apiKey.User == nil {
+		return decision, nil
+	}
+	group := apiKey.Group
+	if group == nil || !group.SupportsSubscription() {
+		return resolveBalanceBillingDecision(apiKey, cfg, skipBilling, decision)
+	}
+
+	if subscriptionService != nil && loadSubscription {
+		subscription, err := subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, group.ID)
+		if err == nil {
+			decision.Subscription = subscription
+		} else if !skipBilling {
+			if group.AllowsBalanceFallback() && errors.Is(err, service.ErrSubscriptionNotFound) {
+				return resolveBalanceBillingDecision(apiKey, cfg, false, decision)
+			}
+			if group.AllowsBalanceFallback() {
+				return decision, &apiKeyBillingReject{Status: http.StatusServiceUnavailable, Code: "BILLING_SERVICE_ERROR", Message: "Billing service temporarily unavailable"}
+			}
+			return decision, noActiveSubscriptionReject()
+		}
+	} else if !skipBilling && group.IsSubscriptionType() {
+		return decision, noActiveSubscriptionReject()
+	}
+
+	if skipBilling {
+		if decision.Subscription != nil {
+			decision.Source = service.BillingSourceSubscription
+		}
+		return decision, nil
+	}
+
+	if decision.Subscription != nil {
+		refreshed, reject := validateAPIKeySubscription(ctx, subscriptionService, decision.Subscription, group)
+		if reject == nil {
+			decision.Subscription = refreshed
+			decision.Source = service.BillingSourceSubscription
+			return decision, nil
+		}
+		if !group.AllowsBalanceFallback() || !subscriptionErrorAllowsBalanceFallback(reject.Code) {
+			return decision, reject
+		}
+		decision.Subscription = nil
+	}
+
+	if group.IsSubscriptionType() {
+		return decision, noActiveSubscriptionReject()
+	}
+	return resolveBalanceBillingDecision(apiKey, cfg, false, decision)
+}
+
+func resolveBalanceBillingDecision(apiKey *service.APIKey, cfg *config.Config, skipBilling bool, decision apiKeyBillingDecision) (apiKeyBillingDecision, *apiKeyBillingReject) {
+	decision.Source = service.BillingSourceBalance
+	decision.Subscription = nil
+	if !skipBilling && apiKeyBalanceBelowAuthThreshold(apiKey.User.Balance, cfg) {
+		return decision, &apiKeyBillingReject{Status: http.StatusForbidden, Code: "INSUFFICIENT_BALANCE", Message: "Insufficient account balance"}
+	}
+	return decision, nil
+}
+
+func validateAPIKeySubscription(ctx context.Context, subscriptionService *service.SubscriptionService, subscription *service.UserSubscription, group *service.Group) (*service.UserSubscription, *apiKeyBillingReject) {
+	if subscriptionService == nil {
+		return subscription, noActiveSubscriptionReject()
+	}
+	needsMaintenance, err := subscriptionService.ValidateAndCheckLimits(subscription, group)
+	if needsMaintenance {
+		refreshed, maintenanceErr := subscriptionService.EnsureWindowMaintenance(ctx, subscription)
+		if maintenanceErr != nil {
+			return subscription, &apiKeyBillingReject{Status: http.StatusInternalServerError, Code: "SUBSCRIPTION_MAINTENANCE_FAILED", Message: "Failed to maintain subscription usage windows"}
+		}
+		subscription = refreshed
+		_, err = subscriptionService.ValidateAndCheckLimits(subscription, group)
+	}
+	if err != nil {
+		return subscription, subscriptionReject(err)
+	}
+	return subscription, nil
+}
+
+func subscriptionReject(err error) *apiKeyBillingReject {
+	status := http.StatusForbidden
+	code := "SUBSCRIPTION_INVALID"
+	if errors.Is(err, service.ErrDailyLimitExceeded) ||
+		errors.Is(err, service.ErrWeeklyLimitExceeded) ||
+		errors.Is(err, service.ErrMonthlyLimitExceeded) {
+		status = http.StatusTooManyRequests
+		code = "USAGE_LIMIT_EXCEEDED"
+	}
+	return &apiKeyBillingReject{Status: status, Code: code, Message: err.Error()}
+}
+
+func subscriptionErrorAllowsBalanceFallback(code string) bool {
+	return code == "SUBSCRIPTION_INVALID" || code == "USAGE_LIMIT_EXCEEDED"
+}
+
+func noActiveSubscriptionReject() *apiKeyBillingReject {
+	return &apiKeyBillingReject{Status: http.StatusForbidden, Code: "SUBSCRIPTION_NOT_FOUND", Message: "No active subscription found for this group"}
+}
+
 // GetAPIKeyFromContext 从上下文中获取API key
 func GetAPIKeyFromContext(c *gin.Context) (*service.APIKey, bool) {
 	value, exists := c.Get(string(ContextKeyAPIKey))
@@ -378,6 +444,25 @@ func GetSubscriptionFromContext(c *gin.Context) (*service.UserSubscription, bool
 	}
 	subscription, ok := value.(*service.UserSubscription)
 	return subscription, ok
+}
+
+func SetBillingSource(c *gin.Context, source service.BillingSource) {
+	if source == "" {
+		source = service.BillingSourceBalance
+	}
+	c.Set(string(ContextKeyBillingSource), source)
+}
+
+func GetBillingSourceFromContext(c *gin.Context) (service.BillingSource, bool) {
+	value, exists := c.Get(string(ContextKeyBillingSource))
+	if !exists {
+		return service.BillingSourceBalance, false
+	}
+	source, ok := value.(service.BillingSource)
+	if !ok || source == "" {
+		return service.BillingSourceBalance, false
+	}
+	return source, true
 }
 
 func setGroupContext(c *gin.Context, group *service.Group) {
@@ -428,7 +513,7 @@ func validateAPIKeyGroupAllowed(apiKey *service.APIKey) bool {
 		return true
 	}
 	group := apiKey.Group
-	if group.IsSubscriptionType() {
+	if group.SupportsSubscription() {
 		return true
 	}
 	return apiKey.User.CanBindGroup(group.ID, group.IsExclusive)

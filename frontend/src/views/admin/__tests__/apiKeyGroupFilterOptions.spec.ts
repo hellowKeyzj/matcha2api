@@ -27,6 +27,7 @@ describe('buildApiKeyGroupFilterOptions', () => {
       g({ id: 1, name: 'Excl', is_exclusive: true, subscription_type: 'standard' }),
       g({ id: 2, name: 'Pub', is_exclusive: false, subscription_type: 'standard' }),
       g({ id: 3, name: 'Sub', is_exclusive: false, subscription_type: 'subscription' }),
+      g({ id: 4, name: 'Hybrid', is_exclusive: false, subscription_type: 'subscription_balance' }),
     ]
     expect(buildApiKeyGroupFilterOptions(groups, labels)).toEqual([
       { value: null, label: 'All' },
@@ -36,13 +37,18 @@ describe('buildApiKeyGroupFilterOptions', () => {
       { value: 2, label: 'Pub' },
       { value: -3, label: 'Subscription', kind: 'group', disabled: true },
       { value: 3, label: 'Sub' },
+      { value: 4, label: 'Hybrid' },
     ])
   })
 
-  it('treats subscription_type=subscription as subscription even if is_exclusive', () => {
-    const groups = [g({ id: 9, name: 'X', is_exclusive: true, subscription_type: 'subscription' })]
+  it('treats subscription-capable groups as subscription even if is_exclusive', () => {
+    const groups = [
+      g({ id: 9, name: 'Sub', is_exclusive: true, subscription_type: 'subscription' }),
+      g({ id: 10, name: 'Hybrid', is_exclusive: true, subscription_type: 'subscription_balance' }),
+    ]
     const opts = buildApiKeyGroupFilterOptions(groups, labels)
-    expect(opts).toContainEqual({ value: 9, label: 'X' })
+    expect(opts).toContainEqual({ value: 9, label: 'Sub' })
+    expect(opts).toContainEqual({ value: 10, label: 'Hybrid' })
     expect(opts.find((o) => o.label === 'Subscription')).toBeDefined()
     expect(opts.find((o) => o.label === 'Exclusive')).toBeUndefined()
   })

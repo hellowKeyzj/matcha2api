@@ -155,8 +155,40 @@ func (g *Group) IsActive() bool {
 	return g.Status == StatusActive
 }
 
+func SubscriptionTypeSupportsSubscription(subscriptionType string) bool {
+	switch strings.TrimSpace(subscriptionType) {
+	case SubscriptionTypeSubscription, SubscriptionTypeSubscriptionBalance:
+		return true
+	default:
+		return false
+	}
+}
+
+func SubscriptionTypeAllowsBalanceFallback(subscriptionType string) bool {
+	return strings.TrimSpace(subscriptionType) == SubscriptionTypeSubscriptionBalance
+}
+
+type BillingSource string
+
+const (
+	BillingSourceBalance      BillingSource = "balance"
+	BillingSourceSubscription BillingSource = "subscription"
+)
+
+func (s BillingSource) IsSubscription() bool {
+	return s == BillingSourceSubscription
+}
+
 func (g *Group) IsSubscriptionType() bool {
 	return g.SubscriptionType == SubscriptionTypeSubscription
+}
+
+func (g *Group) SupportsSubscription() bool {
+	return g != nil && SubscriptionTypeSupportsSubscription(g.SubscriptionType)
+}
+
+func (g *Group) AllowsBalanceFallback() bool {
+	return g != nil && SubscriptionTypeAllowsBalanceFallback(g.SubscriptionType)
 }
 
 func (g *Group) HasDailyLimit() bool {
@@ -317,7 +349,7 @@ func parseMinutes(hhmm string) (int, bool) {
 //
 // 该方法是纯函数，不读取任何外部状态，便于单测。
 func (g *Group) PeakMultiplierAt(now time.Time) float64 {
-	if g == nil || !g.IsSubscriptionType() || !g.PeakRateEnabled || g.PeakStart == "" || g.PeakEnd == "" {
+	if g == nil || !g.SupportsSubscription() || !g.PeakRateEnabled || g.PeakStart == "" || g.PeakEnd == "" {
 		return 1.0
 	}
 	start, ok1 := parseMinutes(g.PeakStart)
@@ -341,7 +373,7 @@ func ValidatePeakRateConfig(subscriptionType string, enabled bool, start, end st
 	if !enabled {
 		return nil
 	}
-	if subscriptionType != SubscriptionTypeSubscription {
+	if !SubscriptionTypeSupportsSubscription(subscriptionType) {
 		return errors.New("高峰时段倍率仅支持订阅类型分组")
 	}
 	if start == "" || end == "" {
@@ -373,7 +405,7 @@ func ValidatePeakRateConfig(subscriptionType string, enabled bool, start, end st
 // enabled=false 时校验放行，由本函数兜底清洗。调用顺序为先归一化、后校验，
 // 使"订阅转标准"这类更新能静默清空高峰配置而不是被校验拒绝。
 func NormalizePeakRateConfig(subscriptionType string, enabled bool, start, end string, multiplier float64) (bool, string, string, float64) {
-	if subscriptionType != SubscriptionTypeSubscription {
+	if !SubscriptionTypeSupportsSubscription(subscriptionType) {
 		return false, "", "", 1.0
 	}
 	if !enabled {

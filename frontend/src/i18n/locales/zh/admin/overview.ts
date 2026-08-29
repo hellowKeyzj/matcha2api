@@ -1124,10 +1124,11 @@ export default {
       subscription: {
         title: '订阅设置',
         type: '计费类型',
-        typeHint: '标准计费从用户余额扣除。订阅模式使用配额限制。',
-        typeNotEditable: '分组创建后无法修改计费类型。',
+        typeHint: '标准余额只扣用户余额；订阅配额只走订阅额度；订阅优先余额兜底会先用订阅，不可用或额度用完后按余额扣费。',
+        typeNotEditable: '更改计费类型会影响后续请求的准入和扣费来源。',
         standard: '标准（余额）',
         subscription: '订阅（配额）',
+        subscriptionBalance: '订阅优先（余额兜底）',
         dailyLimit: '每日限额（USD）',
         weeklyLimit: '每周限额（USD）',
         monthlyLimit: '每月限额（USD）',

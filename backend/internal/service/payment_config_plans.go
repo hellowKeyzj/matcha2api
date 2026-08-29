@@ -71,6 +71,20 @@ func validatePlanPatch(req UpdatePlanRequest) error {
 	return nil
 }
 
+func (s *PaymentConfigService) validatePlanSubscriptionGroup(ctx context.Context, groupID int64) error {
+	g, err := s.entClient.Group.Query().Where(group.IDEQ(groupID), group.DeletedAtIsNil()).Only(ctx)
+	if err != nil {
+		return infraerrors.NotFound("PLAN_GROUP_NOT_FOUND", "subscription group not found")
+	}
+	if g.Status != payment.EntityStatusActive {
+		return infraerrors.BadRequest("PLAN_GROUP_INACTIVE", "subscription group must be active")
+	}
+	if !SubscriptionTypeSupportsSubscription(g.SubscriptionType) {
+		return infraerrors.BadRequest("PLAN_GROUP_TYPE_MISMATCH", "group does not support subscription")
+	}
+	return nil
+}
+
 // --- Plan CRUD ---
 
 // PlanGroupInfo holds the group details needed for subscription plan display.
@@ -136,6 +150,9 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 	if err := validatePlanRequired(req.Name, req.GroupID, req.Price, req.ValidityDays, req.ValidityUnit, req.OriginalPrice); err != nil {
 		return nil, err
 	}
+	if err := s.validatePlanSubscriptionGroup(ctx, req.GroupID); err != nil {
+		return nil, err
+	}
 	currency, err := normalizePlanCurrency(req.Currency)
 	if err != nil {
 		return nil, err
@@ -157,6 +174,11 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req UpdatePlanRequest) (*dbent.SubscriptionPlan, error) {
 	if err := validatePlanPatch(req); err != nil {
 		return nil, err
+	}
+	if req.GroupID != nil {
+		if err := s.validatePlanSubscriptionGroup(ctx, *req.GroupID); err != nil {
+			return nil, err
+		}
 	}
 	u := s.entClient.SubscriptionPlan.UpdateOneID(id)
 	if req.GroupID != nil {

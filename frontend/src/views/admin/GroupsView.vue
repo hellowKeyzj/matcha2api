@@ -172,20 +172,14 @@
               <span
                 :class="[
                   'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
-                  row.subscription_type === 'subscription'
-                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                  subscriptionTypeBadgeClass(row.subscription_type),
                 ]"
               >
-                {{
-                  row.subscription_type === "subscription"
-                    ? t("admin.groups.subscription.subscription")
-                    : t("admin.groups.subscription.standard")
-                }}
+                {{ subscriptionTypeLabel(row.subscription_type) }}
               </span>
               <!-- Subscription Limits - compact single line -->
               <div
-                v-if="row.subscription_type === 'subscription'"
+                v-if="supportsSubscriptionType(row.subscription_type)"
                 class="space-y-0.5 text-xs text-gray-500 dark:text-gray-400"
               >
                 <div
@@ -699,7 +693,7 @@
           v-model:mappings="createForm.reasoning_effort_mappings"
         />
         <div
-          v-if="createForm.subscription_type !== 'subscription'"
+          v-if="!supportsSubscriptionType(createForm.subscription_type)"
           data-tour="group-form-exclusive"
         >
           <div class="mb-1.5 flex items-center gap-1">
@@ -774,7 +768,7 @@
 
           <!-- Subscription limits (only show when subscription type is selected) -->
           <div
-            v-if="createForm.subscription_type === 'subscription'"
+            v-if="supportsSubscriptionType(createForm.subscription_type)"
             class="space-y-4 border-l-2 border-primary-200 pl-4 dark:border-primary-800"
           >
             <div>
@@ -1224,7 +1218,7 @@
         </div>
 
         <!-- 高峰时段倍率配置（仅订阅类型分组） -->
-        <div v-if="createForm.subscription_type === 'subscription'" class="border-t pt-4">
+        <div v-if="supportsSubscriptionType(createForm.subscription_type)" class="border-t pt-4">
           <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
@@ -1930,7 +1924,7 @@
         <div
           v-if="
             ['anthropic', 'antigravity'].includes(createForm.platform) &&
-            createForm.subscription_type !== 'subscription'
+            !supportsSubscriptionType(createForm.subscription_type)
           "
           class="border-t pt-4"
         >
@@ -2376,7 +2370,7 @@
           v-model:over-limit="editForm.max_reasoning_effort_over_limit"
           v-model:mappings="editForm.reasoning_effort_mappings"
         />
-        <div v-if="editForm.subscription_type !== 'subscription'">
+        <div v-if="!supportsSubscriptionType(editForm.subscription_type)">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t("admin.groups.form.exclusive") }}
@@ -2445,16 +2439,15 @@
             <Select
               v-model="editForm.subscription_type"
               :options="subscriptionTypeOptions"
-              :disabled="true"
             />
             <p class="input-hint">
-              {{ t("admin.groups.subscription.typeNotEditable") }}
+              {{ t("admin.groups.subscription.typeHint") }}
             </p>
           </div>
 
           <!-- Subscription limits (only show when subscription type is selected) -->
           <div
-            v-if="editForm.subscription_type === 'subscription'"
+            v-if="supportsSubscriptionType(editForm.subscription_type)"
             class="space-y-4 border-l-2 border-primary-200 pl-4 dark:border-primary-800"
           >
             <div>
@@ -2904,7 +2897,7 @@
         </div>
 
         <!-- 高峰时段倍率配置（仅订阅类型分组） -->
-        <div v-if="editForm.subscription_type === 'subscription'" class="border-t pt-4">
+        <div v-if="supportsSubscriptionType(editForm.subscription_type)" class="border-t pt-4">
           <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
@@ -3619,7 +3612,7 @@
         <div
           v-if="
             ['anthropic', 'antigravity'].includes(editForm.platform) &&
-            editForm.subscription_type !== 'subscription'
+            !supportsSubscriptionType(editForm.subscription_type)
           "
           class="border-t pt-4"
         >
@@ -4411,6 +4404,7 @@ import type { ChannelModelPricing } from "@/api/admin/channels";
 import { VueDraggable } from "vue-draggable-plus";
 import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { extractApiErrorCode, extractApiErrorMessage } from "@/utils/apiError";
+import { supportsSubscriptionType } from "@/utils/subscriptionTypes";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
 import {
@@ -4776,7 +4770,31 @@ const editStatusOptions = computed(() => [
 const subscriptionTypeOptions = computed(() => [
   { value: "standard", label: t("admin.groups.subscription.standard") },
   { value: "subscription", label: t("admin.groups.subscription.subscription") },
+  {
+    value: "subscription_balance",
+    label: t("admin.groups.subscription.subscriptionBalance"),
+  },
 ]);
+
+const subscriptionTypeLabel = (subscriptionType?: SubscriptionType | string | null) => {
+  if (subscriptionType === "subscription") {
+    return t("admin.groups.subscription.subscription");
+  }
+  if (subscriptionType === "subscription_balance") {
+    return t("admin.groups.subscription.subscriptionBalance");
+  }
+  return t("admin.groups.subscription.standard");
+};
+
+const subscriptionTypeBadgeClass = (subscriptionType?: SubscriptionType | string | null) => {
+  if (subscriptionType === "subscription") {
+    return "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400";
+  }
+  if (subscriptionType === "subscription_balance") {
+    return "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300";
+  }
+  return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
+};
 
 // 降级分组选项（创建时）- 仅包含 anthropic 平台且未启用 claude_code_only 的分组
 const fallbackGroupOptions = computed(() => {
@@ -4823,7 +4841,7 @@ const invalidRequestFallbackOptions = computed(() => {
     (g) =>
       g.platform === "anthropic" &&
       g.status === "active" &&
-      g.subscription_type !== "subscription" &&
+      !supportsSubscriptionType(g.subscription_type) &&
       g.fallback_group_id_on_invalid_request === null,
   );
   eligibleGroups.forEach((g) => {
@@ -4842,7 +4860,7 @@ const invalidRequestFallbackOptionsForEdit = computed(() => {
     (g) =>
       g.platform === "anthropic" &&
       g.status === "active" &&
-      g.subscription_type !== "subscription" &&
+      !supportsSubscriptionType(g.subscription_type) &&
       g.fallback_group_id_on_invalid_request === null &&
       g.id !== currentId,
   );
@@ -5662,7 +5680,7 @@ const deleteConfirmMessage = computed(() => {
   if (!deletingGroup.value) {
     return "";
   }
-  if (deletingGroup.value.subscription_type === "subscription") {
+  if (supportsSubscriptionType(deletingGroup.value.subscription_type)) {
     return t("admin.groups.deleteConfirmSubscription", {
       name: deletingGroup.value.name,
     });
@@ -6789,11 +6807,11 @@ const confirmDelete = async () => {
   }
 };
 
-// 监听 subscription_type 变化，订阅模式时 is_exclusive 默认为 true；标准模式清空高峰配置
+// 订阅能力分组默认专属，并清空无效请求兜底；余额模式清空订阅高峰配置。
 watch(
   () => createForm.subscription_type,
   (newVal) => {
-    if (newVal === "subscription") {
+    if (supportsSubscriptionType(newVal)) {
       createForm.is_exclusive = true;
       createForm.fallback_group_id_on_invalid_request = null;
     } else {
@@ -6805,16 +6823,19 @@ watch(
   },
 );
 
-// 编辑表单：切回标准模式时清空高峰配置，避免残留随更新请求提交被后端拒绝
+// 编辑表单同样按订阅能力收口，避免隐藏字段把后端拒绝的配置带回去。
 watch(
   () => editForm.subscription_type,
   (newVal) => {
-    if (newVal !== "subscription") {
-      editForm.peak_rate_enabled = false;
-      editForm.peak_start = "";
-      editForm.peak_end = "";
-      editForm.peak_rate_multiplier = 1.0;
+    if (supportsSubscriptionType(newVal)) {
+      editForm.is_exclusive = true;
+      editForm.fallback_group_id_on_invalid_request = null;
+      return;
     }
+    editForm.peak_rate_enabled = false;
+    editForm.peak_start = "";
+    editForm.peak_end = "";
+    editForm.peak_rate_multiplier = 1.0;
   },
 );
 

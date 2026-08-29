@@ -852,6 +852,7 @@ import BulkSubscriptionActionDialog from '@/components/admin/subscription/BulkSu
 import type { Column } from '@/components/common/types'
 import { formatDateTimeToMinute } from '@/utils/format'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
+import { supportsSubscriptionType } from '@/utils/subscriptionTypes'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -1117,7 +1118,7 @@ const platformFilterOptions = computed(() => [
 // Group options for assign (only subscription type groups)
 const subscriptionGroupOptions = computed(() =>
   groups.value
-    .filter((g) => g.subscription_type === 'subscription' && g.status === 'active')
+    .filter((g) => supportsSubscriptionType(g.subscription_type) && g.status === 'active')
     .map((g) => ({
       value: g.id,
       label: g.name,

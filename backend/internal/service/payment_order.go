@@ -148,8 +148,8 @@ func (s *PaymentService) validateSubOrder(ctx context.Context, req CreateOrderRe
 	if err != nil || group.Status != payment.EntityStatusActive {
 		return nil, infraerrors.NotFound("GROUP_NOT_FOUND", "subscription group is no longer available")
 	}
-	if !group.IsSubscriptionType() {
-		return nil, infraerrors.BadRequest("GROUP_TYPE_MISMATCH", "group is not a subscription type")
+	if !group.SupportsSubscription() {
+		return nil, infraerrors.BadRequest("GROUP_TYPE_MISMATCH", "group does not support subscription")
 	}
 	return plan, nil
 }

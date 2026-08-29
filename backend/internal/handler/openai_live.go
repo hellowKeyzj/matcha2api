@@ -77,6 +77,7 @@ func (h *OpenAIGatewayHandler) Live(c *gin.Context) {
 	}
 
 	subscription, _ := middleware2.GetSubscriptionFromContext(c)
+	billingSource, _ := middleware2.GetBillingSourceFromContext(c)
 	if h.billingCacheService == nil {
 		h.errorResponse(c, http.StatusServiceUnavailable, "api_error", "Billing service unavailable")
 		return
@@ -87,6 +88,7 @@ func (h *OpenAIGatewayHandler) Live(c *gin.Context) {
 		apiKey,
 		apiKey.Group,
 		subscription,
+		billingSource,
 		service.QuotaPlatform(c.Request.Context(), apiKey),
 	); err != nil {
 		status, code, message, retryAfter := billingErrorDetails(err)

@@ -9050,6 +9050,7 @@ import {
 import TotpStepUpDialog from "@/components/auth/TotpStepUpDialog.vue";
 import { affiliatesAPI, type AffiliateAdminEntry, type SimpleUser as AffiliateSimpleUser } from "@/api/admin/affiliates";
 import { extractApiErrorMessage, extractI18nErrorMessage } from "@/utils/apiError";
+import { supportsSubscriptionType } from "@/utils/subscriptionTypes";
 import { useAppStore } from "@/stores";
 import { useAdminSettingsStore } from "@/stores/adminSettings";
 import { normalizeVisibleMethod } from "@/components/payment/paymentFlow";
@@ -11228,7 +11229,7 @@ async function loadSubscriptionGroups() {
     const groups = await adminAPI.groups.getAll();
     subscriptionGroups.value = groups.filter(
       (group) =>
-        group.subscription_type === "subscription" && group.status === "active",
+        supportsSubscriptionType(group.subscription_type) && group.status === "active",
     );
   } catch (_error: unknown) {
     subscriptionGroups.value = [];

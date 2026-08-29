@@ -623,6 +623,7 @@ import {
   getBrowserTimeZone,
   parseDateTimeLocalInput
 } from '@/utils/format'
+import { supportsSubscriptionType } from '@/utils/subscriptionTypes'
 import type {
   RedeemCode,
   RedeemCodeType,
@@ -664,7 +665,7 @@ const subscriptionGroups = ref<Group[]>([])
 // 订阅类型分组选项
 const subscriptionGroupOptions = computed(() => {
   return subscriptionGroups.value
-    .filter((g) => g.subscription_type === 'subscription')
+    .filter((g) => supportsSubscriptionType(g.subscription_type))
     .map((g) => ({
       value: g.id,
       label: g.name,
