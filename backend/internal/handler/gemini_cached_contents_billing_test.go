@@ -726,6 +726,7 @@ func TestReserveGeminiCachedContentCharge_UnsettledChargeHoldsSubscriptionHeadro
 		var done func()
 		var err error
 		env.serve(http.MethodPatch, "/", `{}`, nil, func(c *gin.Context) {
+			middleware.SetBillingSource(c, service.BillingSourceSubscription)
 			done, err = env.h.reserveGeminiCachedContentCharge(c, env.apiKey, sub, 103.5)
 		})
 		return done, err

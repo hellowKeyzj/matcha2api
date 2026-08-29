@@ -263,6 +263,7 @@ import { useAppStore } from '@/stores/app'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { adminAPI } from '@/api/admin'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
+import { supportsSubscriptionType } from '@/utils/subscriptionTypes'
 import type { AdminGroup, Announcement, AnnouncementTargeting } from '@/types'
 import type { Column } from '@/components/common/types'
 
@@ -442,7 +443,7 @@ const subscriptionGroups = ref<AdminGroup[]>([])
 async function loadSubscriptionGroups() {
   try {
     const all = await adminAPI.groups.getAll()
-    subscriptionGroups.value = (all || []).filter((g) => g.subscription_type === 'subscription')
+    subscriptionGroups.value = (all || []).filter((g) => supportsSubscriptionType(g.subscription_type))
   } catch (error: any) {
     console.error('Error loading groups:', error)
     // not fatal

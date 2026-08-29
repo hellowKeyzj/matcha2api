@@ -81,7 +81,7 @@ func TestCheckBillingEligibilitySimpleModeKeyRateLimitsAreOptInAndDBAuthoritativ
 			}
 			key := &APIKey{ID: 42, RateLimit5h: 10, RateLimit1d: 20, RateLimit7d: 30}
 
-			err := svc.CheckBillingEligibility(context.Background(), &User{ID: 7, Balance: 0}, key, nil, nil, "")
+			err := svc.CheckBillingEligibility(context.Background(), &User{ID: 7, Balance: 0}, key, nil, nil, BillingSourceBalance, "")
 			if tt.wantErr == nil {
 				require.NoError(t, err)
 				return

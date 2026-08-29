@@ -26,7 +26,7 @@
           {{ t('modelPlaza.badges.exclusive') }}
         </span>
         <span
-          v-if="group.subscription_type === 'subscription'"
+          v-if="supportsSubscriptionType(group.subscription_type)"
           class="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
         >
           {{ t('modelPlaza.badges.subscription') }}
@@ -83,6 +83,7 @@ import type { ModelPlazaGroup } from '@/api/modelPlaza'
 import type { GroupPlatform, SubscriptionType } from '@/types'
 import { platformBorderStrongClass } from '@/utils/platformColors'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
+import { supportsSubscriptionType } from '@/utils/subscriptionTypes'
 import { useAppStore } from '@/stores/app'
 
 const props = defineProps<{

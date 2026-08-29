@@ -169,7 +169,7 @@ describe('PlanEditDialog', () => {
     expect(wrapper.text()).not.toContain('¥71.43')
   })
 
-  it('allows composite subscription groups for payment plans', () => {
+  it('allows subscription-capable groups for payment plans', () => {
     const wrapper = mountDialog({
       groups: [
         groupFixture({
@@ -185,12 +185,19 @@ describe('PlanEditDialog', () => {
           platform: 'openai',
           subscription_type: 'standard',
         }),
+        groupFixture({
+          id: 12,
+          name: 'Subscription First',
+          platform: 'anthropic',
+          subscription_type: 'subscription_balance',
+        }),
       ],
     })
 
     const options = wrapper.findAll('option').map(option => option.text())
 
     expect(options).toContain('OpenAI + Claude + Gemini + Grok — composite (1.2x)')
+    expect(options).toContain('Subscription First — anthropic (1x)')
     expect(options).not.toContain('Standard OpenAI — openai (1x)')
   })
 })
