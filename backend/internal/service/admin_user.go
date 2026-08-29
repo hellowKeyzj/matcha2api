@@ -1281,8 +1281,8 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 		if err != nil {
 			return nil, fmt.Errorf("group not found: %w", err)
 		}
-		if !group.IsSubscriptionType() {
-			return nil, errors.New("group must be subscription type")
+		if !group.SupportsSubscription() {
+			return nil, errors.New("group must support subscription")
 		}
 	}
 

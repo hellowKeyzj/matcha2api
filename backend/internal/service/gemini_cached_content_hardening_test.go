@@ -444,7 +444,11 @@ func TestReserveFixedCharge(t *testing.T) {
 		return svc
 	}
 	reserve := func(svc *BillingCacheService, apiKey *APIKey, group *Group, sub *UserSubscription, amount float64) error {
-		res, err := svc.ReserveFixedCharge(ctx, user, apiKey, group, sub, amount)
+		source := BillingSourceBalance
+		if sub != nil {
+			source = BillingSourceSubscription
+		}
+		res, err := svc.ReserveFixedCharge(ctx, user, apiKey, group, sub, source, amount)
 		res.Release()
 		return err
 	}
@@ -454,6 +458,22 @@ func TestReserveFixedCharge(t *testing.T) {
 		require.NoError(t, reserve(svc, nil, nil, nil, 10))
 		require.ErrorIs(t, reserve(svc, nil, nil, nil, 10.01), ErrInsufficientBalance)
 		require.NoError(t, reserve(svc, nil, nil, nil, 0))
+	})
+
+	t.Run("balance fallback does not charge an exhausted subscription", func(t *testing.T) {
+		daily := 5.0
+		group := &Group{ID: 2, SubscriptionType: SubscriptionTypeSubscriptionBalance, DailyLimitUSD: &daily}
+		svc := newSvc(&fixedChargeCacheStub{balance: 10, sub: &SubscriptionCacheData{
+			Status: SubscriptionStatusActive, ExpiresAt: time.Now().Add(time.Hour), DailyUsage: 5,
+		}})
+		sub := &UserSubscription{ID: 1}
+		res, err := svc.ReserveFixedCharge(ctx, user, nil, group, sub, BillingSourceBalance, 2)
+		require.NoError(t, err)
+		res.Release()
+		_, err = svc.ReserveFixedCharge(ctx, user, nil, group, sub, BillingSourceBalance, 10.01)
+		require.ErrorIs(t, err, ErrInsufficientBalance)
+		_, err = svc.ReserveFixedCharge(ctx, user, nil, group, sub, BillingSourceSubscription, 2)
+		require.ErrorIs(t, err, ErrDailyLimitExceeded)
 	})
 
 	t.Run("subscription windows must cover the amount", func(t *testing.T) {
@@ -500,19 +520,19 @@ func TestReserveFixedCharge(t *testing.T) {
 		sub := &UserSubscription{ID: 1}
 		cache := &fixedChargeCacheStub{balance: 1000, sub: &SubscriptionCacheData{Status: SubscriptionStatusActive}}
 		svc := reservingSvc(cache, nil, nil)
-		first, err := svc.ReserveFixedCharge(ctx, user, nil, group, sub, 103.5)
+		first, err := svc.ReserveFixedCharge(ctx, user, nil, group, sub, BillingSourceSubscription, 103.5)
 		require.NoError(t, err)
-		_, err = svc.ReserveFixedCharge(ctx, user, nil, group, sub, 103.5)
+		_, err = svc.ReserveFixedCharge(ctx, user, nil, group, sub, BillingSourceSubscription, 103.5)
 		require.ErrorIs(t, err, ErrDailyLimitExceeded)
 		first.Release()
-		second, err := svc.ReserveFixedCharge(ctx, user, nil, group, sub, 103.5)
+		second, err := svc.ReserveFixedCharge(ctx, user, nil, group, sub, BillingSourceSubscription, 103.5)
 		require.NoError(t, err)
 		second.Release()
 
 		apiKey := &APIKey{ID: 5, Quota: 110}
-		first, err = svc.ReserveFixedCharge(ctx, user, apiKey, nil, nil, 103.5)
+		first, err = svc.ReserveFixedCharge(ctx, user, apiKey, nil, nil, BillingSourceBalance, 103.5)
 		require.NoError(t, err)
-		_, err = svc.ReserveFixedCharge(ctx, user, apiKey, nil, nil, 103.5)
+		_, err = svc.ReserveFixedCharge(ctx, user, apiKey, nil, nil, BillingSourceBalance, 103.5)
 		require.ErrorIs(t, err, ErrAPIKeyQuotaExhausted)
 		first.Release()
 		for key, reservations := range cache.reserved {

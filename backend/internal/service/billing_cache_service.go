@@ -741,7 +741,7 @@ func (s *BillingCacheService) IncrementUserPlatformQuotaUsage(userID int64, plat
 // 余额模式：检查缓存余额 > 0
 // 订阅模式：检查缓存用量未超过限额（Group限额从参数传入）
 // platform 为请求的目标平台（如 "anthropic"），传空串 "" 时跳过 user × platform quota 检查。
-func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user *User, apiKey *APIKey, group *Group, subscription *UserSubscription, platform string) error {
+func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user *User, apiKey *APIKey, group *Group, subscription *UserSubscription, billingSource BillingSource, platform string) error {
 	// 简易模式默认跳过所有计费检查. An explicit key-window opt-in keeps
 	// balance/subscription/platform checks bypassed while enforcing the three
 	// API-key monetary windows from the database source of truth.
@@ -754,11 +754,14 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 	if s.circuitBreaker != nil && !s.circuitBreaker.Allow() {
 		return ErrBillingServiceUnavailable
 	}
+	if billingSource == "" {
+		billingSource = BillingSourceBalance
+	}
 
-	// 判断计费模式
-	isSubscriptionMode := group != nil && group.IsSubscriptionType() && subscription != nil
-
-	if isSubscriptionMode {
+	if billingSource.IsSubscription() {
+		if subscription == nil {
+			return ErrSubscriptionInvalid
+		}
 		if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
 			return err
 		}
@@ -766,10 +769,6 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 		if err := s.checkBalanceEligibility(ctx, user.ID); err != nil {
 			return err
 		}
-	}
-
-	// user × platform quota 仅在 standard（余额）模式生效；订阅模式豁免
-	if !isSubscriptionMode {
 		if err := s.checkUserPlatformQuotaEligibility(ctx, user.ID, platform); err != nil {
 			return err
 		}
@@ -797,14 +796,14 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 // 在途预留：先登记本次预留再读用量，并发的两笔费用中后读用量的一方必然看到另一方（预留或已落库的扣费）。
 // 返回的句柄可能为 nil（未登记任何预留）；调用方须在 handler 结束时调用 HandlerDone，预留在计费任务落库后释放。
 // 须在 CheckBillingEligibility 通过后调用；简易模式不校验。
-func (s *BillingCacheService) ReserveFixedCharge(ctx context.Context, user *User, apiKey *APIKey, group *Group, subscription *UserSubscription, amount float64) (*InflightReservation, error) {
+func (s *BillingCacheService) ReserveFixedCharge(ctx context.Context, user *User, apiKey *APIKey, group *Group, subscription *UserSubscription, billingSource BillingSource, amount float64) (*InflightReservation, error) {
 	if user == nil || amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
 		return nil, nil
 	}
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple {
 		return nil, nil
 	}
-	subscriptionBill := group != nil && group.IsSubscriptionType() && subscription != nil
+	subscriptionBill := billingSource.IsSubscription() && group != nil && subscription != nil
 	if !subscriptionBill {
 		balance, err := s.GetUserBalance(ctx, user.ID)
 		if err != nil {
@@ -814,7 +813,7 @@ func (s *BillingCacheService) ReserveFixedCharge(ctx context.Context, user *User
 			return nil, ErrInsufficientBalance
 		}
 	}
-	res, err := s.reserveInflight(ctx, user, group, subscription, amount, false, false)
+	res, err := s.reserveInflight(ctx, user, group, subscription, billingSource, amount, false, false)
 	if err != nil {
 		return nil, err
 	}
