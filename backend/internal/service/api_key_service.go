@@ -25,6 +25,7 @@ import (
 
 var (
 	ErrAPIKeyNotFound            = infraerrors.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	ErrGatewayAPIKeyUnavailable  = infraerrors.NotFound("GATEWAY_API_KEY_UNAVAILABLE", "no usable gateway api key is available")
 	ErrAPIKeyExists              = infraerrors.Conflict("API_KEY_EXISTS", "api key already exists")
 	ErrAPIKeyCreateLimited       = infraerrors.TooManyRequests("API_KEY_CREATE_RATE_LIMITED", "too many api keys created recently, please try again later")
 	ErrAPIKeyCountExceeded       = infraerrors.Forbidden("API_KEY_COUNT_EXCEEDED", "api key count limit reached")
@@ -506,6 +507,55 @@ func (s *APIKeyService) List(ctx context.Context, userID int64, params paginatio
 	}
 	s.fillCurrentConcurrency(ctx, keys)
 	return keys, pagination, nil
+}
+
+// GetDefaultGatewayAPIKey returns the user's system-managed gateway credential if
+// it already exists. It is intentionally read-only: bootstrap/config endpoints must
+// not grant groups, create shards, create keys, rotate credentials, or mutate usage.
+func (s *APIKeyService) GetDefaultGatewayAPIKey(ctx context.Context, userID int64) (*APIKey, error) {
+	if s == nil || s.groupRepo == nil || s.apiKeyRepo == nil {
+		return nil, ErrGatewayAPIKeyUnavailable
+	}
+	if userID <= 0 {
+		return nil, ErrUserNotFound
+	}
+
+	group, err := s.groupRepo.GetDefaultShardGroup(ctx)
+	if err != nil {
+		return nil, ErrGatewayAPIKeyUnavailable
+	}
+	if group == nil || !group.ShardEnabled || !group.IsActive() {
+		return nil, ErrGatewayAPIKeyUnavailable
+	}
+
+	filters := APIKeyListFilters{Status: StatusActive, GroupID: &group.ID}
+	keys, err := s.listDefaultGatewayAPIKeys(ctx, userID, filters)
+	if err != nil {
+		return nil, fmt.Errorf("list default gateway api key: %w", err)
+	}
+	for i := range keys {
+		key := keys[i]
+		if key.GroupID == nil || *key.GroupID != group.ID {
+			continue
+		}
+		if key.Status != StatusActive || key.IsExpired() || key.IsQuotaExhausted() {
+			continue
+		}
+		if key.Group == nil {
+			key.Group = group
+		}
+		s.compileAPIKeyIPRules(&key)
+		return &key, nil
+	}
+	return nil, ErrGatewayAPIKeyUnavailable
+}
+
+func (s *APIKeyService) listDefaultGatewayAPIKeys(ctx context.Context, userID int64, filters APIKeyListFilters) ([]APIKey, error) {
+	if repo, ok := s.apiKeyRepo.(apiKeyAllByUserIDLister); ok {
+		return repo.ListAllByUserID(ctx, userID, filters)
+	}
+	keys, _, err := s.apiKeyRepo.ListByUserID(ctx, userID, pagination.PaginationParams{Page: 1, PageSize: 10, SortBy: "created_at", SortOrder: pagination.SortOrderAsc}, filters)
+	return keys, err
 }
 
 func (s *APIKeyService) listByCurrentConcurrency(ctx context.Context, userID int64, params pagination.PaginationParams, filters APIKeyListFilters) ([]APIKey, *pagination.PaginationResult, error) {
