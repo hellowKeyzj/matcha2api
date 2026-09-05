@@ -41,6 +41,17 @@ func TestToLocalizedModelPlazaGroups(t *testing.T) {
 	require.NotContains(t, decoded, "i18n")
 }
 
+func TestClientBootstrapLocalizesGroupWithoutChangingSource(t *testing.T) {
+	group := &service.Group{
+		ID: 1, Name: "Original",
+		I18n: service.GroupI18n{"en": {Name: "English"}},
+	}
+	key := &service.APIKey{Group: group}
+	response := newClientBootstrapResponse("https://example.com", "https://example.com/v1", key, "en")
+	require.Equal(t, "English", response.APIKey.Group.Name)
+	require.Equal(t, "Original", group.Name)
+}
+
 func TestLocalizeUserAvailableGroups(t *testing.T) {
 	refs := []service.AvailableGroupRef{
 		{ID: 1, Name: "标准", Platform: "anthropic", I18n: service.GroupI18n{"en": {Name: "Standard"}}},
