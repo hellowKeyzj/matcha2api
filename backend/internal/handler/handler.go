@@ -51,6 +51,7 @@ type Handlers struct {
 	User             *UserHandler
 	MCPOAuth         *MCPOAuthHandler
 	APIKey           *APIKeyHandler
+	Client           *ClientHandler
 	Usage            *UsageHandler
 	Redeem           *RedeemHandler
 	Subscription     *SubscriptionHandler
