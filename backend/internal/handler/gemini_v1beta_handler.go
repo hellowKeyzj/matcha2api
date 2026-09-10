@@ -321,6 +321,7 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 // POST /v1beta/models/{model}:generateContent
 // POST /v1beta/models/{model}:streamGenerateContent?alt=sse
 func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
+	packageMetering := consumePackageMeteringHeader(c)
 	apiKey, ok := middleware.GetAPIKeyFromContext(c)
 	if !ok || apiKey == nil {
 		googleError(c, http.StatusUnauthorized, "Invalid API key")
@@ -850,6 +851,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 				APIKeyService:      h.apiKeyService,
 				SessionID:          sessionID,
 				ChannelUsageFields: clientRequestedUsageFields(c, channelMapping, reqModel, result.UpstreamModel),
+				PackageMetering:    packageMetering,
 			}); err != nil {
 				logger.L().With(
 					zap.String("component", "handler.gemini_v1beta.models"),
@@ -860,7 +862,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 					zap.Int64("account_id", account.ID),
 				).Error("gemini.record_usage_failed", zap.Error(err))
 			}
-		})
+		}, packageMetering)
 		reqLog.Debug("gemini.request_completed",
 			zap.Int64("account_id", account.ID),
 			zap.Int("switch_count", fs.SwitchCount),

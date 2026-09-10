@@ -17,6 +17,14 @@ export { redeemAPI, type RedeemHistoryItem } from './redeem'
 export { paymentAPI } from './payment'
 export { userGroupsAPI } from './groups'
 export { userChannelsAPI } from './channels'
+export { packagesAPI, publishPackageVersion } from './packages'
+export type {
+  ResourcePackageEntitlementStatus,
+  ResourcePackageType,
+  ResourcePackageVersion,
+  ResourcePackageVersionStatus,
+  PackageMeteringBinding,
+} from './packages'
 export * as batchImageAPI from './batchImage'
 export { totpAPI } from './totp'
 export { passkeyAPI, type PasskeyCredentialSummary } from './passkey'

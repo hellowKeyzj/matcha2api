@@ -81,7 +81,7 @@ func TestSyncBalanceCacheAfterDeduction_InvalidatesExhaustedBalance(t *testing.T
 	}, &billingDeps{billingCacheService: svc}, &UsageBillingApplyResult{
 		NewBalance:         &newBalance,
 		BalanceOverdrafted: true,
-	})
+	}, 0.75)
 
 	require.Equal(t, int64(1), cache.invalidateCalls.Load())
 	require.Equal(t, int64(0), cache.deductCalls.Load())
@@ -102,7 +102,7 @@ func TestSyncBalanceCacheAfterDeduction_InvalidatesWhenBalanceFallsBelowReserve(
 	syncBalanceCacheAfterDeduction(context.Background(), &postUsageBillingParams{
 		Cost: &CostBreakdown{ActualCost: 0.495},
 		User: &User{ID: 1},
-	}, &billingDeps{billingCacheService: svc}, &UsageBillingApplyResult{NewBalance: &newBalance})
+	}, &billingDeps{billingCacheService: svc}, &UsageBillingApplyResult{NewBalance: &newBalance}, 0.495)
 
 	require.Equal(t, int64(1), cache.invalidateCalls.Load())
 	require.Equal(t, int64(0), cache.deductCalls.Load())
@@ -119,7 +119,7 @@ func TestSyncBalanceCacheAfterDeduction_QueuesDeductWhenBalanceStillEligible(t *
 	syncBalanceCacheAfterDeduction(context.Background(), &postUsageBillingParams{
 		Cost: &CostBreakdown{ActualCost: 0.25},
 		User: &User{ID: 1},
-	}, &billingDeps{billingCacheService: svc}, &UsageBillingApplyResult{NewBalance: &newBalance})
+	}, &billingDeps{billingCacheService: svc}, &UsageBillingApplyResult{NewBalance: &newBalance}, 0.25)
 
 	require.Equal(t, int64(0), cache.invalidateCalls.Load())
 	require.Eventually(t, func() bool {

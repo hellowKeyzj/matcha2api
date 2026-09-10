@@ -4,9 +4,14 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -31,6 +36,116 @@ func (s *SettingRepoSuite) TestSetAndGetValue() {
 	got, err := s.repo.GetValue(s.ctx, "k1")
 	s.Require().NoError(err, "GetValue")
 	s.Require().Equal("v1", got, "GetValue mismatch")
+}
+
+func (s *SettingRepoSuite) TestMatchaPackageCloudKeyEncryptionSurvivesRestart() {
+	cfg := &config.Config{Totp: config.TotpConfig{
+		EncryptionKey:           strings.Repeat("42", 32),
+		EncryptionKeyConfigured: true,
+	}}
+	encryptor, err := NewAESEncryptor(cfg)
+	s.Require().NoError(err)
+	legacyCfg := *cfg
+	legacyPEM, err := os.ReadFile("../service/testdata/sealed-v1/cloud-test.pem")
+	s.Require().NoError(err)
+	legacyCfg.SealedPackage.CloudKeyID = "legacy-config-key"
+	legacyCfg.SealedPackage.CloudPrivateKeyPEM = string(legacyPEM)
+	legacyReader := service.NewMatchaPackageCloudKeyService(s.repo, encryptor, &legacyCfg)
+	legacyKey, err := legacyReader.Get(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Equal("legacy-config-key", legacyKey.KeyID)
+
+	keys := service.NewMatchaPackageCloudKeyService(s.repo, encryptor, cfg)
+	status, err := keys.Generate(s.ctx, nil)
+	s.Require().NoError(err)
+	key, err := keys.Get(s.ctx)
+	s.Require().NoError(err)
+
+	raw, err := s.repo.GetValue(s.ctx, "matcha_package_sealed_cloud_key")
+	s.Require().NoError(err)
+	s.Require().NotContains(raw, "RSA PRIVATE KEY")
+	var stored struct {
+		EncryptedPrivateKeyPEM string `json:"encrypted_private_key_pem"`
+	}
+	s.Require().NoError(json.Unmarshal([]byte(raw), &stored))
+	s.Require().NotEmpty(stored.EncryptedPrivateKeyPEM)
+	plaintext, err := encryptor.Decrypt(stored.EncryptedPrivateKeyPEM)
+	s.Require().NoError(err)
+	s.Require().Equal(key.PrivateKeyPEM, strings.TrimSpace(plaintext))
+
+	restartedEncryptor, err := NewAESEncryptor(cfg)
+	s.Require().NoError(err)
+	restarted := service.NewMatchaPackageCloudKeyService(s.repo, restartedEncryptor, cfg)
+	reloaded, err := restarted.Get(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(key.PrivateKeyPEM, reloaded.PrivateKeyPEM)
+	s.Require().Equal(status.KeyID, reloaded.KeyID)
+	current, err := legacyReader.Get(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(status.KeyID, current.KeyID)
+	legacyRestarted := service.NewMatchaPackageCloudKeyService(s.repo, restartedEncryptor, &legacyCfg)
+	for _, reader := range []*service.MatchaPackageCloudKeyService{legacyReader, legacyRestarted} {
+		old, err := reader.Resolve(s.ctx, legacyKey.KeyID)
+		s.Require().NoError(err)
+		s.Require().Equal(legacyKey.PublicKeySPKIPEM, old.PublicKeySPKIPEM)
+		stored, err := reader.Resolve(s.ctx, status.KeyID)
+		s.Require().NoError(err)
+		s.Require().Equal(key.PublicKeySPKIPEM, stored.PublicKeySPKIPEM)
+		_, err = reader.Resolve(s.ctx, "unknown-key")
+		s.Require().ErrorIs(err, service.ErrSealedPackageCloudKeyUnavailable)
+	}
+	_, err = restarted.Generate(s.ctx, nil)
+	s.Require().ErrorIs(err, service.ErrSealedPackageCloudKeyExists)
+	after, err := s.repo.GetValue(s.ctx, "matcha_package_sealed_cloud_key")
+	s.Require().NoError(err)
+	s.Require().Equal(raw, after)
+}
+
+func TestMatchaPackageCloudKeyRepositoryCreateIfAbsentConcurrent(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	key := t.Name()
+	t.Cleanup(func() { require.NoError(t, NewSettingRepository(client).Delete(ctx, key)) })
+	repositories := []service.MatchaPackageCloudKeyRepository{
+		NewMatchaPackageCloudKeyRepository(client),
+		NewMatchaPackageCloudKeyRepository(client),
+	}
+	type result struct {
+		value   string
+		created bool
+		err     error
+	}
+	start := make(chan struct{})
+	results := make(chan result, len(repositories))
+	for i, repo := range repositories {
+		value := []string{"first", "second"}[i]
+		go func() {
+			<-start
+			created, err := repo.CreateIfAbsent(ctx, key, value)
+			results <- result{value, created, err}
+		}()
+	}
+	close(start)
+	winner := ""
+	for range repositories {
+		got := <-results
+		require.NoError(t, got.err)
+		if got.created {
+			require.Empty(t, winner, "only one SQL insert may succeed")
+			winner = got.value
+		}
+	}
+	require.NotEmpty(t, winner)
+	settings := NewSettingRepository(client)
+	before, err := settings.Get(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, winner, before.Value)
+	created, err := repositories[0].CreateIfAbsent(ctx, key, "replacement")
+	require.NoError(t, err)
+	require.False(t, created)
+	after, err := settings.Get(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, before, after, "DO NOTHING must preserve value and timestamp")
 }
 
 func (s *SettingRepoSuite) TestSet_Upsert() {

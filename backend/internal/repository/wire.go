@@ -83,6 +83,7 @@ var ProviderSet = wire.NewSet(
 	NewAnnouncementReadRepository,
 	NewUsageLogRepository,
 	NewUsageBillingRepository,
+	NewMatchaPackageRepository,
 	NewBatchImageRepository,
 	NewGeminiCachedContentRepository,
 	NewIdempotencyRepository,
@@ -90,6 +91,7 @@ var ProviderSet = wire.NewSet(
 	NewDashboardAggregationRepository,
 	NewSettingRepository,
 	NewScopedAdminKeyRepository,
+	NewMatchaPackageCloudKeyRepository,
 	NewOpsRepository,
 	NewAuditLogRepository,
 	NewPasskeyRepository,
@@ -154,6 +156,9 @@ var ProviderSet = wire.NewSet(
 
 	// Image storage (async image task result offload)
 	ProvideImageStorageFactory,
+
+	// Package storage (Matcha resource packages)
+	ProvideMatchaPackageObjectStoreFactory,
 
 	// HTTP service ports (DI Strategy A: return interface directly)
 	NewTurnstileVerifier,

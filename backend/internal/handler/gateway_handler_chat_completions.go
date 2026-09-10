@@ -36,6 +36,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		h.chatCompletionsErrorResponse(c, http.StatusInternalServerError, "api_error", "User context not found")
 		return
 	}
+	packageMetering := consumePackageMeteringHeader(c)
 	reqLog := requestLogger(
 		c,
 		"handler.gateway.chat_completions",
@@ -351,6 +352,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 					RequestPayloadHash: requestPayloadHash,
 					APIKeyService:      h.apiKeyService,
 					SessionID:          sessionID,
+                    PackageMetering:    packageMetering,
 					ChannelUsageFields: clientRequestedUsageFields(c, channelMapping, reqModel, result.UpstreamModel),
 				}); err != nil {
 					reqLog.Error("gateway.cc.record_usage_failed",
@@ -358,7 +360,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 						zap.Error(err),
 					)
 				}
-			})
+			}, packageMetering)
 		}
 
 		if err != nil {

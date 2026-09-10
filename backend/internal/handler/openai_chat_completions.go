@@ -21,6 +21,7 @@ import (
 // ChatCompletions handles OpenAI Chat Completions API requests.
 // POST /v1/chat/completions
 func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
+	packageMetering := consumePackageMeteringHeader(c)
 	streamStarted := false
 	defer h.recoverResponsesPanic(c, &streamStarted)
 
@@ -267,7 +268,7 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 		if service.GetOpsCyberPolicy(c) != nil {
 			cyberBlockBodyChat = body
 		}
-		h.recordCyberPolicyIfMarked(c, apiKey, account, subscription, reqModel, err != nil, cyberBlockBodyChat, clientRequestedUsageFields(c, channelMapping, reqModel, ""), service.HashUsageRequestPayload(body))
+		h.recordCyberPolicyIfMarked(c, c.Request.Context(), apiKey, account, subscription, billingSource, packageMetering, reqModel, err != nil, cyberBlockBodyChat, clientRequestedUsageFields(c, channelMapping, reqModel, ""), service.HashUsageRequestPayload(body))
 
 		forwardDurationMs := time.Since(forwardStart).Milliseconds()
 		upstreamLatencyMs, _ := getContextInt64(c, service.OpsUpstreamLatencyMsKey)
@@ -311,6 +312,7 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 					ChannelUsageFields: clientRequestedUsageFields(c, channelMapping, reqModel, res.UpstreamModel),
 					PricingAt:          pricingAt,
 					CyberBlocked:       cyberBlocked,
+					PackageMetering:    packageMetering,
 				}); err != nil {
 					logger.L().With(
 						zap.String("component", "handler.openai_gateway.chat_completions"),
@@ -321,7 +323,7 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 						zap.Int64("account_id", account.ID),
 					).Error("openai_chat_completions.record_usage_failed", zap.Error(err))
 				}
-			})
+			}, packageMetering)
 		}
 		if err != nil {
 			if result != nil && result.ImageCount > 0 {
