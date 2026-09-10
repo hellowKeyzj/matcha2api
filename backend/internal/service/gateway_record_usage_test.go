@@ -144,6 +144,49 @@ func TestGatewayServiceRecordUsage_BillingFingerprintIncludesRequestPayloadHash(
 	require.Equal(t, payloadHash, billingRepo.lastCmd.RequestPayloadHash)
 }
 
+func TestGatewayServiceRecordUsage_PassesPackageMeteringIntoBillingCommand(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newGatewayRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{})
+	bindingA := mustPackageMeteringBinding(t, PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          "skill",
+		Runtime:       "openclaw",
+		PackageSHA256: strings.Repeat("a", 64),
+		Key:           "skill:openclaw:test-a",
+		Use:           "turn",
+	})
+	bindingB := mustPackageMeteringBinding(t, PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          "agent",
+		Runtime:       "openclaw",
+		PackageSHA256: strings.Repeat("b", 64),
+		Key:           "agent:openclaw:test-b",
+		Use:           "session",
+	})
+	expected := NormalizePackageMeteringUsage(PackageMeteringUsage{Bindings: []string{bindingA, bindingB}})
+
+	err := svc.RecordUsage(context.Background(), &RecordUsageInput{
+		Result: &ForwardResult{
+			RequestID: "gateway_package_metering",
+			Usage: ClaudeUsage{
+				InputTokens:  10,
+				OutputTokens: 6,
+			},
+			Model:    "claude-sonnet-4",
+			Duration: time.Second,
+		},
+		APIKey:          &APIKey{ID: 501, Quota: 100},
+		User:            &User{ID: 601},
+		Account:         &Account{ID: 701},
+		PackageMetering: PackageMeteringUsage{Bindings: []string{bindingB, paddedBinding(bindingA), bindingB, "invalid"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, billingRepo.calls)
+	require.Equal(t, expected.Bindings, billingRepo.lastCmd.PackageMetering.Bindings)
+}
+
 func TestGatewayServiceRecordUsage_BillingFingerprintFallsBackToContextRequestID(t *testing.T) {
 	usageRepo := &openAIRecordUsageLogRepoStub{}
 	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}

@@ -47,6 +47,10 @@ type UsageBillingCommand struct {
 	// 只用于选择账号配额累加语句，不参与幂等指纹；实际累加哪些维度以数据库中的账号配置为准。
 	AccountQuotaHasDailyLimit  bool
 	AccountQuotaHasWeeklyLimit bool
+	ApplyAPIKeyQuota     bool
+	ApplyAPIKeyRateLimit bool
+	ApplyAccountQuota    bool
+	PackageMetering      PackageMeteringUsage
 }
 
 func (c *UsageBillingCommand) Normalize() {
@@ -54,6 +58,7 @@ func (c *UsageBillingCommand) Normalize() {
 		return
 	}
 	c.RequestID = strings.TrimSpace(c.RequestID)
+	c.PackageMetering = NormalizePackageMeteringUsage(c.PackageMetering)
 	if strings.TrimSpace(c.RequestFingerprint) == "" {
 		c.RequestFingerprint = buildUsageBillingFingerprint(c)
 	}
@@ -112,7 +117,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		return ""
 	}
 	raw := fmt.Sprintf(
-		"%d|%d|%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%d|%0.10f|%0.10f|%0.10f|%0.10f|%0.10f",
+		"%d|%d|%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%d|%0.10f|%0.10f|%0.10f|%0.10f|%0.10f|%s",
 		c.UserID,
 		c.AccountID,
 		c.APIKeyID,
@@ -133,6 +138,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		c.APIKeyQuotaCost,
 		c.APIKeyRateLimitCost,
 		c.AccountQuotaCost,
+		strings.Join(c.PackageMetering.Bindings, ","),
 	)
 	if payloadHash := strings.TrimSpace(c.RequestPayloadHash); payloadHash != "" {
 		raw += "|" + payloadHash
@@ -168,11 +174,16 @@ type AccountQuotaState struct {
 }
 
 type UsageBillingApplyResult struct {
-	Applied              bool
-	APIKeyQuotaExhausted bool
-	NewBalance           *float64           // post-deduction balance (nil = no balance deduction)
-	BalanceOverdrafted   bool               // true when the sufficient-balance guard missed and debt was still recorded
-	QuotaState           *AccountQuotaState // post-increment quota state (nil = no quota increment)
+	Applied                    bool
+	APIKeyQuotaExhausted       bool
+	NewBalance                 *float64           // post-deduction balance (nil = no balance deduction)
+	BalanceOverdrafted         bool               // true when the sufficient-balance guard missed and debt was still recorded
+	QuotaState                 *AccountQuotaState // post-increment quota state (nil = no quota increment)
+	PackageMeteringCost        float64
+	BalanceCostApplied         float64
+	SubscriptionCostApplied    float64
+	APIKeyRateLimitCostApplied float64
+	AccountQuotaCostApplied    float64
 }
 
 // BatchImageBalanceHoldCommand describes an idempotent balance hold operation.

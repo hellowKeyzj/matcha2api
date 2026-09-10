@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -65,6 +66,43 @@ func TestBuildUsageBillingCommand_AccountQuotaPeriodHints(t *testing.T) {
 			require.Equal(t, tt.wantQuota, cmd.AccountQuotaCost > 0)
 			require.Equal(t, tt.wantDaily, cmd.AccountQuotaHasDailyLimit)
 			require.Equal(t, tt.wantWeekly, cmd.AccountQuotaHasWeeklyLimit)
+		})
+	}
+}
+
+func TestBuildUsageBillingCommand_PackageOnlyAccountQuota(t *testing.T) {
+	binding := mustPackageMeteringBinding(t, PackageMeteringBindingPayload{
+		V: 1, Kind: "skill", Runtime: "openclaw", PackageSHA256: strings.Repeat("a", 64), Key: "test/skill", Use: "turn",
+	})
+	for _, tt := range []struct {
+		name    string
+		bound   bool
+		limited bool
+		simple  bool
+		want    bool
+	}{
+		{name: "package only", bound: true, limited: true, want: true},
+		{name: "no package", limited: true},
+		{name: "no quota limits", bound: true},
+		{name: "simple mode excludes package", bound: true, limited: true, simple: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &postUsageBillingParams{
+				Cost: &CostBreakdown{}, User: &User{ID: 1}, APIKey: &APIKey{ID: 2},
+				Account:               &Account{ID: 3, Type: AccountTypeAPIKey, Extra: map[string]any{}},
+				AccountRateMultiplier: 1, SimpleModeKeyRateLimitOnly: tt.simple,
+			}
+			if tt.bound {
+				p.PackageMetering = PackageMeteringUsage{Bindings: []string{binding}}
+			}
+			if tt.limited {
+				p.Account.Extra = map[string]any{"quota_daily_limit": 5.0, "quota_weekly_limit": 10.0}
+			}
+			cmd := buildUsageBillingCommand("package-only", nil, p)
+			require.Equal(t, tt.want, cmd.ApplyAccountQuota)
+			require.Equal(t, tt.want, cmd.AccountQuotaHasDailyLimit)
+			require.Equal(t, tt.want, cmd.AccountQuotaHasWeeklyLimit)
+			require.Zero(t, cmd.AccountQuotaCost, "package price is resolved atomically by the repository")
 		})
 	}
 }

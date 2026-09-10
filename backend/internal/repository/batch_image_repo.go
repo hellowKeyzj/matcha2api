@@ -10,7 +10,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-type batchImageSQLExecutor interface {
+type sqlRowExecutor interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -18,7 +18,7 @@ type batchImageSQLExecutor interface {
 
 type batchImageRepository struct {
 	db  *sql.DB
-	sql batchImageSQLExecutor
+	sql sqlRowExecutor
 }
 
 func NewBatchImageRepository(db *sql.DB) service.BatchImageRepository {
@@ -223,7 +223,7 @@ func (r *batchImageRepository) UpdateBatchImageJobProviderSubmit(ctx context.Con
 	return tx.Commit()
 }
 
-func (r *batchImageRepository) updateBatchImageJobProviderSubmitWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, params service.UpdateBatchImageJobProviderSubmitParams) error {
+func (r *batchImageRepository) updateBatchImageJobProviderSubmitWithSQL(ctx context.Context, sqlq sqlRowExecutor, params service.UpdateBatchImageJobProviderSubmitParams) error {
 	var current string
 	if err := sqlq.QueryRowContext(ctx, `SELECT status FROM batch_image_jobs WHERE batch_id = $1 FOR UPDATE`, params.BatchID).Scan(&current); err != nil {
 		return translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
@@ -293,7 +293,7 @@ func (r *batchImageRepository) MarkBatchImageJobSettled(ctx context.Context, par
 	return tx.Commit()
 }
 
-func (r *batchImageRepository) markBatchImageJobSettledWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, params service.MarkBatchImageJobSettledParams) error {
+func (r *batchImageRepository) markBatchImageJobSettledWithSQL(ctx context.Context, sqlq sqlRowExecutor, params service.MarkBatchImageJobSettledParams) error {
 	now := time.Now()
 	if params.Now != nil {
 		now = *params.Now
@@ -354,7 +354,7 @@ RETURNING retry_count`, batchID, code, message, time.Now()).Scan(&retryCount)
 	})
 }
 
-func (r *batchImageRepository) transitionBatchImageJobStatusWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, batchID, toStatus string, opts service.BatchImageTransitionOptions) error {
+func (r *batchImageRepository) transitionBatchImageJobStatusWithSQL(ctx context.Context, sqlq sqlRowExecutor, batchID, toStatus string, opts service.BatchImageTransitionOptions) error {
 	var current string
 	if err := sqlq.QueryRowContext(ctx, `SELECT status FROM batch_image_jobs WHERE batch_id = $1 FOR UPDATE`, batchID).Scan(&current); err != nil {
 		return translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
@@ -447,7 +447,7 @@ func (r *batchImageRepository) ReplaceBatchImageItemsForJob(ctx context.Context,
 	return tx.Commit()
 }
 
-func (r *batchImageRepository) replaceBatchImageItemsForJobWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, batchID string, items []service.CreateBatchImageItemParams, counts service.BatchImageCounts) error {
+func (r *batchImageRepository) replaceBatchImageItemsForJobWithSQL(ctx context.Context, sqlq sqlRowExecutor, batchID string, items []service.CreateBatchImageItemParams, counts service.BatchImageCounts) error {
 	var id int64
 	var status string
 	if err := sqlq.QueryRowContext(ctx, `SELECT id, status FROM batch_image_jobs WHERE batch_id = $1 FOR UPDATE`, batchID).Scan(&id, &status); err != nil {
@@ -485,7 +485,7 @@ WHERE batch_id = $1`, batchID, counts.SuccessCount, counts.FailCount, time.Now()
 	return err
 }
 
-func (r *batchImageRepository) batchImageItemPromptPreviews(ctx context.Context, sqlq batchImageSQLExecutor, batchID string) (map[string]string, error) {
+func (r *batchImageRepository) batchImageItemPromptPreviews(ctx context.Context, sqlq sqlRowExecutor, batchID string) (map[string]string, error) {
 	rows, err := sqlq.QueryContext(ctx, `SELECT custom_id, prompt_preview FROM batch_image_items WHERE job_id = $1 AND prompt_preview IS NOT NULL`, batchID)
 	if err != nil {
 		return nil, err
@@ -739,7 +739,7 @@ func (r *batchImageRepository) AppendBatchImageEvent(ctx context.Context, batchI
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, eventType, payload)
 }
 
-func createBatchImageJobWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, params service.CreateBatchImageJobParams) (*service.BatchImageJob, error) {
+func createBatchImageJobWithSQL(ctx context.Context, sqlq sqlRowExecutor, params service.CreateBatchImageJobParams) (*service.BatchImageJob, error) {
 	return scanBatchImageJob(sqlq.QueryRowContext(ctx, `
 INSERT INTO batch_image_jobs (
     batch_id, user_id, api_key_id, account_id, provider, model, task_name, parent_batch_id, status,
@@ -775,7 +775,7 @@ RETURNING `+batchImageJobColumns,
 	))
 }
 
-func createBatchImageItemWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, params service.CreateBatchImageItemParams) (*service.BatchImageItem, error) {
+func createBatchImageItemWithSQL(ctx context.Context, sqlq sqlRowExecutor, params service.CreateBatchImageItemParams) (*service.BatchImageItem, error) {
 	return scanBatchImageItem(sqlq.QueryRowContext(ctx, `
 INSERT INTO batch_image_items (
     job_id, custom_id, status, request_hash, prompt_preview, provider_source_object,
@@ -796,7 +796,7 @@ RETURNING `+batchImageItemColumns,
 	))
 }
 
-func appendBatchImageEventWithSQL(ctx context.Context, sqlq batchImageSQLExecutor, batchID, eventType string, payload any) error {
+func appendBatchImageEventWithSQL(ctx context.Context, sqlq sqlRowExecutor, batchID, eventType string, payload any) error {
 	var payloadArg any
 	if payload != nil {
 		payloadBytes, err := json.Marshal(payload)

@@ -20,6 +20,7 @@ import (
 
 // AlphaSearch proxies the standalone search endpoint used by Codex Responses Lite.
 func (h *OpenAIGatewayHandler) AlphaSearch(c *gin.Context) {
+	packageMetering := consumePackageMeteringHeader(c)
 	streamStarted := false
 	defer h.recoverResponsesPanic(c, &streamStarted)
 	setOpenAIClientTransportHTTP(c)
@@ -202,7 +203,7 @@ func (h *OpenAIGatewayHandler) AlphaSearch(c *gin.Context) {
 		if err == nil {
 			h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, requestedModel, false, result), true, nil)
 			if result != nil {
-				h.recordAlphaSearchUsage(c, apiKey, account, subscription, channelMapping, requestedModel, body, result, subject.UserID)
+				h.recordAlphaSearchUsage(c, apiKey, account, subscription, channelMapping, requestedModel, body, result, subject.UserID, packageMetering)
 			}
 			return
 		}
@@ -286,6 +287,7 @@ func (h *OpenAIGatewayHandler) recordAlphaSearchUsage(
 	body []byte,
 	result *service.OpenAIForwardResult,
 	userID int64,
+	packageMetering service.PackageMeteringUsage,
 ) {
 	userAgent := c.GetHeader("User-Agent")
 	clientIP := ip.GetClientIP(c)
@@ -312,6 +314,7 @@ func (h *OpenAIGatewayHandler) recordAlphaSearchUsage(
 			RequestPayloadHash: requestPayloadHash,
 			APIKeyService:      h.apiKeyService,
 			QuotaPlatform:      quotaPlatform,
+			PackageMetering:    packageMetering,
 			SessionID:          sessionID,
 			ChannelUsageFields: channelMapping.ToUsageFields(requestedModel, result.UpstreamModel),
 			PricingAt:          pricingAt,

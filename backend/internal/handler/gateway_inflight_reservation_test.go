@@ -192,6 +192,45 @@ func TestWrapUsageRecordTaskContext_HandsReservationToBillingTask(t *testing.T) 
 }
 
 // 新接入的端点（独立 web_search）：在途预留超过余额时拒绝，且不残留预留。
+func TestPackageMeteringTextUsageMandatoryWhenQueueFull(t *testing.T) {
+	for _, policy := range []string{"drop", "sample"} {
+		for _, openAI := range []bool{false, true} {
+			t.Run(policy+"/openai="+map[bool]string{false: "false", true: "true"}[openAI], func(t *testing.T) {
+				pool := service.NewUsageRecordWorkerPoolWithOptions(service.UsageRecordWorkerPoolOptions{WorkerCount: 1, QueueSize: 1, TaskTimeout: time.Second, OverflowPolicy: policy, OverflowSamplePercent: 0})
+				t.Cleanup(pool.Stop)
+				started, release := make(chan struct{}), make(chan struct{})
+				pool.Submit(func(context.Context) { close(started); <-release })
+				<-started
+				defer close(release)
+				pool.Submit(func(context.Context) {})
+				cache := newHandlerInflightCache(1)
+				cfg := &config.Config{}
+				cfg.Billing.InflightReservation = config.InflightReservationConfig{Enabled: true, TTLSeconds: 60}
+				billing := service.NewBillingCacheService(cache, nil, nil, nil, nil, nil, cfg, nil)
+				t.Cleanup(billing.Stop)
+				c := newInflightTestGinContext()
+				done, err := reserveInflightBalance(c, billing, &countingEstimator{cost: 0.9, priced: true}, &service.APIKey{User: &service.User{ID: 5}}, nil, service.BillingSourceBalance, tokenInflightEstimate("m", nil))
+				require.NoError(t, err)
+				defer done()
+				called := 0
+				task := func(context.Context) {
+					called++
+					require.Equal(t, 1, cache.count(), "billing holds reservation until the charge lands")
+				}
+				metering := service.PackageMeteringUsage{Bindings: []string{"binding"}}
+				if openAI {
+					(&OpenAIGatewayHandler{usageRecordWorkerPool: pool}).submitOpenAIUsageRecordTask(c.Request.Context(), &service.OpenAIForwardResult{}, task, metering)
+				} else {
+					(&GatewayHandler{usageRecordWorkerPool: pool}).submitUsageRecordTask(c.Request.Context(), task, metering)
+				}
+				require.Equal(t, 1, called, "package-only text charge must not be dropped or sampled")
+				done()
+				require.Zero(t, cache.count(), "handler and task references must both be returned")
+			})
+		}
+	}
+}
+
 func TestWebSearch_RejectsWhenInflightExceedsBalance(t *testing.T) {
 	cache := newHandlerInflightCache(1.5)
 	cfg := &config.Config{}

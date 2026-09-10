@@ -21,6 +21,7 @@ import (
 // POST /v1/images/generations
 // POST /v1/images/edits
 func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
+	packageMetering := consumePackageMeteringHeader(c)
 	streamStarted := false
 	defer h.recoverResponsesPanic(c, &streamStarted)
 
@@ -426,6 +427,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 				RequestPayloadHash: requestPayloadHash,
 				APIKeyService:      h.apiKeyService,
 				QuotaPlatform:      quotaPlatform,
+				PackageMetering:    packageMetering,
 				SessionID:          sessionID,
 				ChannelUsageFields: channelUsageFields,
 			}); err != nil {

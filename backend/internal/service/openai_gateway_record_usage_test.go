@@ -126,6 +126,64 @@ func TestRecordCyberPolicyUsageLog_NonStreamZeroTokensZeroCost(t *testing.T) {
 	require.Equal(t, RequestTypeCyberBlocked, usageRepo.lastLog.RequestType)
 }
 
+func TestRecordCyberPolicyUsageLog_PassesSourceAndPackageMeteringIntoBilling(t *testing.T) {
+	for _, source := range []BillingSource{BillingSourceBalance, BillingSourceSubscription} {
+		t.Run(string(source), func(t *testing.T) {
+			usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+			billingRepo := &openAIRecordUsageBillingRepoStub{}
+			svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+			groupID := int64(88)
+			apiKey := &APIKey{ID: 2, User: &User{ID: 1}, GroupID: &groupID, Group: &Group{ID: groupID, SubscriptionType: SubscriptionTypeSubscriptionBalance, RateMultiplier: 1}}
+			subscription := &UserSubscription{ID: 99}
+			usage := OpenAIUsage{InputTokens: 1200, OutputTokens: 300}
+			expected := expectedOpenAICost(t, svc, "gpt-5.1", usage, 1)
+			applied := expected.ActualCost + 0.5
+			billingRepo.result = &UsageBillingApplyResult{Applied: true, PackageMeteringCost: 0.5}
+			kind := cacheWriteDeductBalance
+			if source.IsSubscription() {
+				billingRepo.result.SubscriptionCostApplied = applied
+				kind = cacheWriteUpdateSubscriptionUsage
+			} else {
+				billingRepo.result.BalanceCostApplied = applied
+			}
+			writes := make(chan cacheWriteTask, 1)
+			svc.billingCacheService = &BillingCacheService{cache: &billingCacheWorkerStub{}, cacheWriteChan: writes}
+			binding := mustPackageMeteringBinding(t, PackageMeteringBindingPayload{
+				V: 1, Kind: "skill", Runtime: "openclaw", PackageSHA256: strings.Repeat("e", 64), Key: "skill:openclaw:cyber", Use: "turn",
+			})
+			svc.RecordCyberPolicyUsageLog(context.Background(), CyberPolicyUsageInput{
+				APIKey: apiKey, Account: &Account{ID: 3}, Subscription: subscription, BillingSource: source,
+				RequestID: "cyber-package-" + string(source), Model: "gpt-5.1", Stream: true,
+				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, NativeCompactionV2: true,
+				PackageMetering: PackageMeteringUsage{Bindings: []string{binding, paddedBinding(binding), "invalid"}},
+			})
+			require.Equal(t, 1, billingRepo.calls)
+			require.Equal(t, []string{binding}, billingRepo.lastCmd.PackageMetering.Bindings)
+			if source.IsSubscription() {
+				require.Equal(t, BillingTypeSubscription, billingRepo.lastCmd.BillingType)
+				require.Equal(t, subscription.ID, *billingRepo.lastCmd.SubscriptionID)
+				require.InDelta(t, expected.ActualCost, billingRepo.lastCmd.SubscriptionCost, 1e-12)
+				require.Zero(t, billingRepo.lastCmd.BalanceCost)
+			} else {
+				require.Equal(t, BillingTypeBalance, billingRepo.lastCmd.BillingType)
+				require.Nil(t, billingRepo.lastCmd.SubscriptionID)
+				require.InDelta(t, expected.ActualCost, billingRepo.lastCmd.BalanceCost, 1e-12)
+				require.Zero(t, billingRepo.lastCmd.SubscriptionCost)
+			}
+			require.Len(t, writes, 1)
+			write := <-writes
+			require.Equal(t, kind, write.kind)
+			require.InDelta(t, applied, write.amount, 1e-12, "applied package cost reaches selected billing cache")
+			require.Equal(t, "gpt-5.1", usageRepo.lastLog.Model)
+			require.Equal(t, usage.InputTokens, usageRepo.lastLog.InputTokens)
+			require.Equal(t, usage.OutputTokens, usageRepo.lastLog.OutputTokens)
+			require.Equal(t, RequestTypeCyberBlocked, usageRepo.lastLog.RequestType)
+			require.True(t, usageRepo.lastLog.Stream)
+			require.True(t, usageRepo.lastLog.NativeCompactionV2)
+		})
+	}
+}
+
 func TestRecordCyberPolicyUsageLog_SkipsWhenIncomplete(t *testing.T) {
 	usageRepo := &openAIRecordUsageLogRepoStub{}
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
@@ -343,6 +401,49 @@ func TestOpenAIGatewayServiceRecordUsage_ZeroUsageStillWritesUsageLog(t *testing
 	require.Zero(t, billingRepo.lastCmd.APIKeyQuotaCost)
 	require.Zero(t, billingRepo.lastCmd.APIKeyRateLimitCost)
 	require.Zero(t, billingRepo.lastCmd.AccountQuotaCost)
+}
+
+func TestOpenAIGatewayServiceRecordUsage_PassesPackageMeteringIntoBillingCommand(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{result: &UsageBillingApplyResult{Applied: true}}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+	bindingA := mustPackageMeteringBinding(t, PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          "skill",
+		Runtime:       "openclaw",
+		PackageSHA256: strings.Repeat("c", 64),
+		Key:           "skill:openclaw:test-c",
+		Use:           "turn",
+	})
+	bindingB := mustPackageMeteringBinding(t, PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          "agent",
+		Runtime:       "openclaw",
+		PackageSHA256: strings.Repeat("d", 64),
+		Key:           "agent:openclaw:test-d",
+		Use:           "session",
+	})
+	expected := NormalizePackageMeteringUsage(PackageMeteringUsage{Bindings: []string{bindingA, bindingB}})
+
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID: "openai_package_metering",
+			Usage: OpenAIUsage{
+				InputTokens:  10,
+				OutputTokens: 6,
+			},
+			Model:    "gpt-5.1",
+			Duration: time.Second,
+		},
+		APIKey:          &APIKey{ID: 1000, Quota: 100, Group: &Group{RateMultiplier: 1}},
+		User:            &User{ID: 2000},
+		Account:         &Account{ID: 3000, Type: AccountTypeAPIKey},
+		PackageMetering: PackageMeteringUsage{Bindings: []string{bindingB, paddedBinding(bindingA), bindingB, "invalid"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, billingRepo.calls)
+	require.Equal(t, expected.Bindings, billingRepo.lastCmd.PackageMetering.Bindings)
 }
 
 func TestOpenAIGatewayServiceRecordUsage_MissingPricingRecordsZeroCostUsageLog(t *testing.T) {

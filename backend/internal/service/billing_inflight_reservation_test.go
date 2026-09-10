@@ -361,11 +361,40 @@ func TestReserveInflight_UsesExplicitBillingSource(t *testing.T) {
 	}
 }
 
+func TestFinalizePostUsageBilling_AppliedPackageCostUpdatesBalanceCache(t *testing.T) {
+	for _, llmCost := range []float64{0.25, 0} {
+		for _, syncDeduct := range []bool{true, false} {
+			t.Run(fmt.Sprintf("llm=%g/sync=%t", llmCost, syncDeduct), func(t *testing.T) {
+				cache := newMemInflightCache(1)
+				cfg := &config.Config{}
+				cfg.Billing.InflightReservation.Enabled = syncDeduct
+				writes := make(chan cacheWriteTask, 1)
+				svc := &BillingCacheService{cache: cache, cfg: cfg, cacheWriteChan: writes}
+				applied := llmCost + 0.5
+				finalizePostUsageBilling(context.Background(), &postUsageBillingParams{
+					Cost: &CostBreakdown{ActualCost: llmCost}, User: &User{ID: 3}, Account: &Account{ID: 4},
+				}, &billingDeps{billingCacheService: svc, deferredService: &DeferredService{}}, &UsageBillingApplyResult{
+					Applied: true, BalanceCostApplied: applied, PackageMeteringCost: 0.5,
+				})
+				if syncDeduct {
+					require.Equal(t, int32(1), cache.deducts.Load(), "deduction lands before billing task returns")
+					bal, _ := cache.GetUserBalance(context.Background(), 3)
+					require.InDelta(t, 1-applied, bal, 1e-12)
+					require.Empty(t, writes)
+				} else {
+					require.Len(t, writes, 1)
+					require.InDelta(t, applied, (<-writes).amount, 1e-12)
+				}
+			})
+		}
+	}
+}
+
 func TestSyncBalanceCacheAfterDeduction_SynchronousWhenInflightEnabled(t *testing.T) {
 	cache := newMemInflightCache(1)
 	svc := newInflightSvc(t, cache, 60)
 	p := &postUsageBillingParams{Cost: &CostBreakdown{ActualCost: 0.25}, User: &User{ID: 3}}
-	syncBalanceCacheAfterDeduction(context.Background(), p, &billingDeps{billingCacheService: svc}, nil)
+	syncBalanceCacheAfterDeduction(context.Background(), p, &billingDeps{billingCacheService: svc}, nil, 0.25)
 	require.Equal(t, int32(1), cache.deducts.Load(), "cache deduction must land before the billing task returns")
 	bal, _ := cache.GetUserBalance(context.Background(), 3)
 	require.InDelta(t, 0.75, bal, 1e-12)

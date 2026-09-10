@@ -135,6 +135,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		h.errorResponse(c, http.StatusInternalServerError, "api_error", "User context not found")
 		return
 	}
+	packageMetering := consumePackageMeteringHeader(c)
 	reqLog := requestLogger(
 		c,
 		"handler.gateway.messages",
@@ -285,7 +286,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		h.handleStreamingAwareError(c, status, code, message, streamStarted)
 		return
 	}
-	defer inflightRelease()
+	defer func() { inflightRelease() }()
 
 	// 设置请求所属分组 ID（用于渠道级功能判断，如 WebSearch 模拟）
 	parsedReq.GroupID = apiKey.GroupID
@@ -620,6 +621,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					ForceCacheBilling:  forceCacheBilling,
 					APIKeyService:      h.apiKeyService,
 					ChannelUsageFields: channelUsageFields,
+					PackageMetering:    packageMetering,
 				}); err != nil {
 					logger.L().With(
 						zap.String("component", "handler.gateway.messages"),
@@ -630,7 +632,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 						zap.Int64("account_id", account.ID),
 					).Error("gateway.record_usage_failed", zap.Error(err))
 				}
-			})
+			}, packageMetering)
 			return
 		}
 	}
@@ -986,6 +988,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 						ForceCacheBilling:  forceCacheBilling,
 						APIKeyService:      h.apiKeyService,
 						ChannelUsageFields: channelUsageFields,
+						PackageMetering:    packageMetering,
 					}); err != nil {
 						logger.L().With(
 							zap.String("component", "handler.gateway.messages"),
@@ -996,7 +999,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 							zap.Int64("account_id", account.ID),
 						).Error("gateway.record_usage_failed", zap.Error(err))
 					}
-				})
+				}, packageMetering)
 			}
 
 			if err != nil {
@@ -1044,7 +1047,20 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 						}
 						// 兜底重试按"直接请求兜底分组"处理：清除强制平台，允许按分组平台调度
 						ctx := context.WithValue(c.Request.Context(), ctxkey.ForcePlatform, "")
+						// Retire only the old handler reference; any submitted billing tasks
+						// keep their own references until their charges land.
+						inflightRelease()
+						ctx = service.WithInflightReservation(ctx, nil)
 						c.Request = c.Request.WithContext(ctx)
+						inflightRelease, err = reserveInflightBalance(c, h.billingCacheService, h.gatewayService, fallbackAPIKey, nil, service.BillingSourceBalance, tokenInflightEstimate(reqModel, body))
+						if err != nil {
+							status, code, message, retryAfter := billingErrorDetails(err)
+							if retryAfter > 0 {
+								c.Header("Retry-After", strconv.Itoa(retryAfter))
+							}
+							h.handleStreamingAwareError(c, status, code, message, streamStarted)
+							return
+						}
 						currentAPIKey = fallbackAPIKey
 						currentSubscription = nil
 						currentBillingSource = service.BillingSourceBalance
@@ -2570,7 +2586,11 @@ func (h *GatewayHandler) maybeLogCompatibilityFallbackMetrics(reqLog *zap.Logger
 	)
 }
 
-func (h *GatewayHandler) submitUsageRecordTask(parent context.Context, task service.UsageRecordTask) {
+func (h *GatewayHandler) submitUsageRecordTask(parent context.Context, task service.UsageRecordTask, packageMetering service.PackageMeteringUsage) {
+	if len(packageMetering.Bindings) > 0 {
+		h.submitMandatoryUsageRecordTask(parent, task)
+		return
+	}
 	if task == nil {
 		return
 	}
