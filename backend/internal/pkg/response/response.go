@@ -189,6 +189,10 @@ func ParsePagination(c *gin.Context) (page, pageSize int) {
 			pageSize = val
 		}
 	}
+	maxInt := int(^uint(0) >> 1)
+	if page > maxInt/pageSize {
+		page = maxInt / pageSize
+	}
 
 	// Clamp the page so both offset and offset+pageSize stay within int.
 	if page > math.MaxInt/pageSize {
