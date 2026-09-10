@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newBatchImageRepositoryWithSQL(sqlq batchImageSQLExecutor) *batchImageRepository {
+func newBatchImageRepositoryWithSQL(sqlq sqlRowExecutor) *batchImageRepository {
 	return &batchImageRepository{sql: sqlq}
 }
 

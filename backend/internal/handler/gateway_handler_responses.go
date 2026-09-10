@@ -36,6 +36,7 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 		h.responsesErrorResponse(c, http.StatusInternalServerError, "api_error", "User context not found")
 		return
 	}
+	packageMetering := consumePackageMeteringHeader(c)
 	reqLog := requestLogger(
 		c,
 		"handler.gateway.responses",
@@ -336,7 +337,7 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 					User:               apiKey.User,
 					Account:            account,
 					Subscription:       subscription,
-                    BillingSource:      billingSource,
+					BillingSource:      billingSource,
 					PricingAt:          pricingAt,
 					InboundEndpoint:    inboundEndpoint,
 					UpstreamEndpoint:   upstreamEndpoint,
@@ -346,13 +347,14 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 					APIKeyService:      h.apiKeyService,
 					SessionID:          sessionID,
 					ChannelUsageFields: channelUsageFields,
+					PackageMetering:    packageMetering,
 				}); err != nil {
 					reqLog.Error("gateway.responses.record_usage_failed",
 						zap.Int64("account_id", account.ID),
 						zap.Error(err),
 					)
 				}
-			})
+			}, packageMetering)
 		}
 
 		if err != nil {

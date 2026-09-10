@@ -28,6 +28,20 @@ type batchBillingFixture struct {
 	subscriptionID int64
 }
 
+// Billing commits its own transactions, so these accounts and their outbox events need explicit cleanup.
+func newBillingAccountFixture(t *testing.T, client *dbent.Client, account *service.Account) *service.Account {
+	t.Helper()
+	account = mustCreateAccount(t, client, account)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_, err := integrationDB.ExecContext(ctx, "DELETE FROM scheduler_outbox WHERE account_id = $1", account.ID)
+		require.NoError(t, err)
+		_, err = integrationDB.ExecContext(ctx, "DELETE FROM accounts WHERE id = $1", account.ID)
+		require.NoError(t, err)
+	})
+	return account
+}
+
 func newBatchBillingFixture(t *testing.T, client *dbent.Client, balance float64) batchBillingFixture {
 	t.Helper()
 	suffix := uuid.NewString()
@@ -47,12 +61,12 @@ func newBatchBillingFixture(t *testing.T, client *dbent.Client, balance float64)
 	keyB := mustCreateApiKey(t, client, &service.APIKey{
 		UserID: user.ID, Key: "sk-usage-billing-batch-b-" + suffix, Name: "batch-b",
 	})
-	accountP := mustCreateAccount(t, client, &service.Account{
+	accountP := newBillingAccountFixture(t, client, &service.Account{
 		Name:  "usage-billing-batch-p-" + suffix,
 		Type:  service.AccountTypeAPIKey,
 		Extra: map[string]any{"quota_limit": 6.0, "quota_daily_limit": 4.0},
 	})
-	accountQ := mustCreateAccount(t, client, &service.Account{
+	accountQ := newBillingAccountFixture(t, client, &service.Account{
 		Name:  "usage-billing-batch-q-" + suffix,
 		Type:  service.AccountTypeAPIKey,
 		Extra: map[string]any{"quota_weekly_limit": 3.0},

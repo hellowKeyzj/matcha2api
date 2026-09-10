@@ -71,22 +71,35 @@ func (r *usageBillingRepository) ApplyBatch(ctx context.Context, cmds []*service
 	if err != nil {
 		return nil, err
 	}
-	for i := range cmds {
+	billed := cmds
+	copied := false
+	for i, cmd := range cmds {
 		if applied[i] {
-			outcomes[i].Result = &service.UsageBillingApplyResult{Applied: true}
+			prepared, result, err := prepareUsageBillingCommand(ctx, tx, cmd)
+			if err != nil {
+				return nil, err
+			}
+			if prepared != cmd {
+				if !copied {
+					billed = append([]*service.UsageBillingCommand(nil), cmds...)
+					copied = true
+				}
+				billed[i] = prepared
+			}
+			outcomes[i].Result = result
 		}
 	}
 
-	if err := applyUsageBillingBatchSubscriptions(ctx, tx, cmds, applied); err != nil {
+	if err := applyUsageBillingBatchSubscriptions(ctx, tx, billed, applied); err != nil {
 		return nil, err
 	}
-	if err := applyUsageBillingBatchBalance(ctx, tx, userID, cmds, applied, outcomes); err != nil {
+	if err := applyUsageBillingBatchBalance(ctx, tx, userID, billed, applied, outcomes); err != nil {
 		return nil, err
 	}
-	if err := applyUsageBillingBatchAPIKeys(ctx, tx, cmds, applied, outcomes); err != nil {
+	if err := applyUsageBillingBatchAPIKeys(ctx, tx, billed, applied, outcomes); err != nil {
 		return nil, err
 	}
-	if err := applyUsageBillingBatchAccountQuotas(ctx, tx, cmds, applied, outcomes); err != nil {
+	if err := applyUsageBillingBatchAccountQuotas(ctx, tx, billed, applied, outcomes); err != nil {
 		return nil, err
 	}
 

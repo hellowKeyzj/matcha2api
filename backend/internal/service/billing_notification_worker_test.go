@@ -64,7 +64,7 @@ func TestBalanceNotifyStopCancelsSettingsReads(t *testing.T) {
 	s.submitUsageNotifications(&postUsageBillingParams{
 		Cost: &CostBreakdown{ActualCost: 1},
 		User: &User{ID: 1, BalanceNotifyEnabled: true},
-	}, &billingDeps{balanceNotifyService: s}, nil)
+	}, &billingDeps{balanceNotifyService: s}, nil, 1)
 	select {
 	case ctx := <-settings.started:
 		_, ok := ctx.Deadline()

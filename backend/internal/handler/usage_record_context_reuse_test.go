@@ -64,6 +64,10 @@ func TestGatewayUsageKeepsModelAfterGinContextReuse(t *testing.T) {
 				concurrencyHelper:     NewConcurrencyHelper(service.NewConcurrencyService(&fakeConcurrencyCache{}), SSEPingFormatClaude, 0),
 			}
 			apiKey := &service.APIKey{ID: 9302, UserID: 9303, GroupID: &groupID, Group: group, User: &service.User{ID: 9303, Balance: 100}}
+			binding, ok := service.BuildPackageMeteringBinding(service.PackageMeteringBindingPayload{
+				V: 1, Kind: "skill", Runtime: "openclaw", PackageSHA256: strings.Repeat("a", 64), Key: "skill:context-reuse", Use: "turn",
+			})
+			require.True(t, ok)
 			var first *gin.Context
 			router := gin.New()
 			router.POST("/v1/"+endpoint, func(c *gin.Context) {
@@ -71,6 +75,7 @@ func TestGatewayUsageKeepsModelAfterGinContextReuse(t *testing.T) {
 				c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.RequestedPublicModel, "public-model-A"))
 				c.Set(string(middleware.ContextKeyAPIKey), apiKey)
 				c.Set(string(middleware.ContextKeyUser), middleware.AuthSubject{UserID: 9303})
+				c.Set(string(middleware.ContextKeyBillingSource), service.BillingSourceBalance)
 				if endpoint == "chat/completions" {
 					h.ChatCompletions(c)
 				} else {
@@ -79,6 +84,7 @@ func TestGatewayUsageKeepsModelAfterGinContextReuse(t *testing.T) {
 			})
 			router.GET("/next", func(c *gin.Context) {
 				c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.RequestedPublicModel, "public-model-B"))
+				c.Set(string(middleware.ContextKeyBillingSource), service.BillingSourceSubscription)
 			})
 			body := `{"model":"claude-sonnet-4.5","stream":true,"input":"hello"}`
 			if endpoint == "chat/completions" {
@@ -86,6 +92,7 @@ func TestGatewayUsageKeepsModelAfterGinContextReuse(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodPost, "/v1/"+endpoint, strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set(service.MatchaPackageMeteringHeader, binding)
 			recorder := httptest.NewRecorder()
 			router.ServeHTTP(recorder, req)
 			require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
@@ -97,6 +104,11 @@ func TestGatewayUsageKeepsModelAfterGinContextReuse(t *testing.T) {
 			select {
 			case usage := <-usageRepo.created:
 				require.Equal(t, "public-model-A", usage.RequestedModel)
+				require.Equal(t, service.BillingTypeBalance, usage.BillingType)
+				billingRepo.mu.Lock()
+				require.Len(t, billingRepo.commands, 1)
+				require.Equal(t, []string{binding}, billingRepo.commands[0].PackageMetering.Bindings)
+				billingRepo.mu.Unlock()
 			case <-time.After(2 * time.Second):
 				t.Fatal("queued request usage was not recorded")
 			}

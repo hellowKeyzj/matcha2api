@@ -31,7 +31,7 @@ func TestGatewayHandlerSubmitUsageRecordTask_StoppedPoolFallsBackToSync(t *testi
 	executed := false
 	h.submitUsageRecordTask(context.Background(), func(ctx context.Context) {
 		executed = true
-	})
+	}, service.PackageMeteringUsage{})
 	require.True(t, executed, "池已停止时计费任务必须内联同步执行")
 }
 
@@ -71,7 +71,7 @@ func TestGatewayHandlerSubmitUsageRecordTask_DropPolicyOverflowStillDrops(t *tes
 	var executed atomic.Bool
 	h.submitUsageRecordTask(context.Background(), func(ctx context.Context) {
 		executed.Store(true)
-	})
+	}, service.PackageMeteringUsage{})
 	time.Sleep(50 * time.Millisecond)
 	require.False(t, executed.Load(), "drop 溢出策略是运维显式配置的取舍，不应被同步兜底覆盖")
 }
