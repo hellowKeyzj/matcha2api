@@ -660,6 +660,88 @@ export default {
     }
   },
 
+  resourcePackages: {
+    title: '资源包',
+    description: '浏览、上传和下载 Matcha Agent / Skill 加密资源包',
+    tabs: {
+      market: '资源市场',
+      mine: '我的资源包'
+    },
+    filters: {
+      searchPlaceholder: '搜索资源包...',
+      allTypes: '全部类型',
+      agent: 'Agent',
+      skill: 'Skill'
+    },
+    actions: {
+      upload: '上传资源包',
+      publish: '发布',
+      download: '下载'
+    },
+    columns: {
+      name: '名称',
+      type: '类型',
+      version: '版本',
+      status: '状态',
+      entitlement: '权益',
+      metering: '计费',
+      updatedAt: '更新时间',
+      actions: '操作'
+    },
+    status: {
+      draft: '草稿',
+      published: '已发布',
+      disabled: '已禁用',
+      yanked: '已撤回'
+    },
+    entitlement: {
+      active: '可用',
+      revoked: '已撤销',
+      expired: '已过期'
+    },
+    metering: {
+      free: '免费',
+      turn: '每轮',
+      session: '每会话'
+    },
+    empty: {
+      title: '暂无资源包',
+      description: '当前筛选下没有可显示的资源包。'
+    },
+    messages: {
+      uploaded: '资源包已上传为草稿，可在「我的资源包」中发布',
+      published: '资源包已发布',
+      downloaded: '资源包已下载'
+    },
+    errors: {
+      failedToLoad: '加载资源包失败',
+      failedToUpload: '上传资源包失败',
+      failedToPublish: '发布资源包失败',
+      failedToDownload: '下载资源包失败',
+      PACKAGE_REGISTRY_UNAVAILABLE: '资源包服务暂不可用',
+      MATCHA_PACKAGE_NOT_FOUND: '资源包不存在或已被删除',
+      MATCHA_PACKAGE_VERSION_NOT_FOUND: '资源包版本不存在或已被删除',
+      MATCHA_PACKAGE_ENTITLEMENT_NOT_FOUND: '当前账号没有该资源包权益',
+      MATCHA_PACKAGE_VERSION_EXISTS: '该资源包版本已存在',
+      MATCHA_PACKAGE_STORAGE_NOT_CONFIGURED: '资源包存储尚未配置',
+      MATCHA_PACKAGE_INVALID_UPLOAD: '资源包文件格式或签名无效',
+      MATCHA_PACKAGE_CLOUD_ENVELOPE_REQUIRED: '资源包缺少云端信封，请在 Matcha 中使用此服务器的云密钥重新导出',
+      MATCHA_PACKAGE_CLOUD_KEY_UNAVAILABLE: '找不到与该资源包 key ID 对应的云密钥，请联系管理员恢复原密钥；生成新密钥无法解密此旧包',
+      MATCHA_PACKAGE_CLOUD_KEY_NOT_CONFIGURED: '资源包云密钥尚未配置，请联系管理员完成配置',
+      MATCHA_PACKAGE_CLOUD_KEY_ID_CONFLICT: '同一云密钥 ID 对应了不同密钥，请联系管理员修正云密钥配置',
+      MATCHA_PACKAGE_CLOUD_ENVELOPE_INVALID: '资源包云端信封无效，请在 Matcha 中重新导出',
+      MATCHA_PACKAGE_VERSION_NOT_PUBLISHABLE: '该资源包版本不可发布，只有草稿可以发布',
+      MATCHA_PACKAGE_BACKUP_S3_NOT_CONFIGURED: '资源包使用的备份 S3 存储尚未配置，请联系管理员',
+      INVALID_MATCHA_PACKAGE_UPLOAD: '资源包上传参数无效',
+      INVALID_MATCHA_PACKAGE_PUBLISH: '资源包发布参数无效',
+      MATCHA_PACKAGE_VERSION_NOT_DOWNLOADABLE: '该资源包版本当前不可下载',
+      INVALID_MATCHA_PACKAGE_OBJECT: '资源包文件无效',
+      INVALID_MATCHA_PACKAGE_OBJECT_KEY: '资源包存储 Key 无效',
+      INVALID_MATCHA_PACKAGE_ENTITLEMENT: '资源包权益参数无效',
+      MATCHA_PACKAGE_FORBIDDEN: '无权操作该资源包'
+    }
+  },
+
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: '模型广场',

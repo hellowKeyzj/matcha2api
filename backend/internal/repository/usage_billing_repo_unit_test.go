@@ -5,11 +5,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/Wei-Shaw/sub2api/internal/model"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
@@ -320,4 +322,239 @@ func TestReleaseUsageBillingBatchImageBalance_SkipsWhenHoldNeverReserved(t *test
 	require.Nil(t, result.FrozenBalance)
 	require.NoError(t, tx.Commit())
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestApplyRecordsPackageMeteringAndChargesBalance(t *testing.T) {
+	ctx := context.Background()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	sha := strings.Repeat("a", 64)
+	binding := testPackageMeteringBinding(t, service.PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          model.MatchaPackageKindSkill,
+		Runtime:       "openclaw",
+		PackageSHA256: sha,
+		Key:           "skill:openclaw:test",
+		Use:           "turn",
+	})
+	mock.ExpectBegin()
+	mock.ExpectQuery(`(?s)INSERT INTO usage_billing_dedup`).
+		WithArgs("req-package", int64(7), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	mock.ExpectQuery(`(?s)SELECT request_fingerprint\s+FROM usage_billing_dedup_archive`).
+		WithArgs("req-package", int64(7)).
+		WillReturnError(sql.ErrNoRows)
+	expectPackageMeteringLookup(mock, sha, model.MatchaPackageKindSkill, "openclaw", int64(42), "skill:openclaw:test").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "package_id", "owner_user_id", "price_amount", "price_currency", "entitlement_id"}).
+			AddRow(int64(7), int64(5), int64(9), "0.25000000", "USD", int64(13)))
+	mock.ExpectQuery(`(?s)INSERT INTO matcha_package_usage_records`).
+		WithArgs(int64(5), int64(7), int64(42), int64(13), "req-package", binding, "turn", "0.25000000", "USD").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(11)))
+	mock.ExpectExec(`(?s)INSERT INTO matcha_package_revenue_ledger`).
+		WithArgs(int64(5), int64(7), int64(11), sqlmock.AnyArg(), int64(42), "usage", "0.25000000", "USD", "pending").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery(conditionalBalanceDeductSQL).
+		WithArgs(0.25, int64(42)).
+		WillReturnRows(sqlmock.NewRows([]string{"balance"}).AddRow(9.75))
+	mock.ExpectCommit()
+
+	result, err := (&usageBillingRepository{db: db}).Apply(ctx, &service.UsageBillingCommand{
+		RequestID:       "req-package",
+		APIKeyID:        7,
+		UserID:          42,
+		AccountID:       3,
+		BillingType:     service.BillingTypeBalance,
+		PackageMetering: service.PackageMeteringUsage{Bindings: []string{binding}},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.InDelta(t, 0.25, result.PackageMeteringCost, 0.000001)
+	require.InDelta(t, 0.25, result.BalanceCostApplied, 0.000001)
+	require.NotNil(t, result.NewBalance)
+	require.InDelta(t, 9.75, *result.NewBalance, 0.000001)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestApplySkipsPackageMeteringWithoutActiveEntitlement(t *testing.T) {
+	ctx := context.Background()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	sha := strings.Repeat("c", 64)
+	binding := testPackageMeteringBinding(t, service.PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          model.MatchaPackageKindSkill,
+		Runtime:       "openclaw",
+		PackageSHA256: sha,
+		Key:           "skill:openclaw:test",
+		Use:           "turn",
+	})
+	mock.ExpectBegin()
+	mock.ExpectQuery(`(?s)INSERT INTO usage_billing_dedup`).
+		WithArgs("req-package-unentitled", int64(7), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	mock.ExpectQuery(`(?s)SELECT request_fingerprint\s+FROM usage_billing_dedup_archive`).
+		WithArgs("req-package-unentitled", int64(7)).
+		WillReturnError(sql.ErrNoRows)
+	expectPackageMeteringLookup(mock, sha, model.MatchaPackageKindSkill, "openclaw", int64(42), "skill:openclaw:test").
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectCommit()
+
+	result, err := (&usageBillingRepository{db: db}).Apply(ctx, &service.UsageBillingCommand{
+		RequestID:       "req-package-unentitled",
+		APIKeyID:        7,
+		UserID:          42,
+		AccountID:       3,
+		BillingType:     service.BillingTypeBalance,
+		PackageMetering: service.PackageMeteringUsage{Bindings: []string{binding}},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.Zero(t, result.PackageMeteringCost)
+	require.Nil(t, result.NewBalance)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestApplyDedupesExistingPackageUsageRecord(t *testing.T) {
+	ctx := context.Background()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	sha := strings.Repeat("b", 64)
+	binding := testPackageMeteringBinding(t, service.PackageMeteringBindingPayload{
+		V:             1,
+		Kind:          model.MatchaPackageKindAgent,
+		Runtime:       "openclaw",
+		PackageSHA256: sha,
+		Key:           "agent:openclaw:test",
+	})
+	mock.ExpectBegin()
+	mock.ExpectQuery(`(?s)INSERT INTO usage_billing_dedup`).
+		WithArgs("req-package", int64(7), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	mock.ExpectQuery(`(?s)SELECT request_fingerprint\s+FROM usage_billing_dedup_archive`).
+		WithArgs("req-package", int64(7)).
+		WillReturnError(sql.ErrNoRows)
+	expectPackageMeteringLookup(mock, sha, model.MatchaPackageKindAgent, "openclaw", int64(42), "agent:openclaw:test").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "package_id", "owner_user_id", "price_amount", "price_currency", "entitlement_id"}).
+			AddRow(int64(8), int64(6), nil, "1.00000000", "USD", int64(14)))
+	mock.ExpectQuery(`(?s)INSERT INTO matcha_package_usage_records`).
+		WithArgs(int64(6), int64(8), int64(42), int64(14), "req-package", binding, "session", "1.00000000", "USD").
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectCommit()
+
+	result, err := (&usageBillingRepository{db: db}).Apply(ctx, &service.UsageBillingCommand{
+		RequestID:       "req-package",
+		APIKeyID:        7,
+		UserID:          42,
+		AccountID:       3,
+		BillingType:     service.BillingTypeBalance,
+		PackageMetering: service.PackageMeteringUsage{Bindings: []string{binding}},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.Zero(t, result.PackageMeteringCost)
+	require.Nil(t, result.NewBalance)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestApplyPackageMeteringOnlyUpdatesUsageCounters(t *testing.T) {
+	for _, keyDeleted := range []bool{false, true} {
+		name := "active_key"
+		if keyDeleted {
+			name = "deleted_key"
+		}
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			db, mock, err := sqlmock.New()
+			require.NoError(t, err)
+			defer func() { _ = db.Close() }()
+
+			sha := strings.Repeat("d", 64)
+			binding := testPackageMeteringBinding(t, service.PackageMeteringBindingPayload{
+				V:             1,
+				Kind:          model.MatchaPackageKindSkill,
+				Runtime:       "openclaw",
+				PackageSHA256: sha,
+				Key:           "skill:openclaw:quota",
+				Use:           "turn",
+			})
+			mock.ExpectBegin()
+			mock.ExpectQuery(`(?s)INSERT INTO usage_billing_dedup`).
+				WithArgs("req-package-quota", int64(7), sqlmock.AnyArg()).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+			mock.ExpectQuery(`(?s)SELECT request_fingerprint\s+FROM usage_billing_dedup_archive`).
+				WithArgs("req-package-quota", int64(7)).
+				WillReturnError(sql.ErrNoRows)
+			expectPackageMeteringLookup(mock, sha, model.MatchaPackageKindSkill, "openclaw", int64(42), "skill:openclaw:quota").
+				WillReturnRows(sqlmock.NewRows([]string{"id", "package_id", "owner_user_id", "price_amount", "price_currency", "entitlement_id"}).
+					AddRow(int64(9), int64(6), nil, "0.25000000", "USD", int64(15)))
+			mock.ExpectQuery(`(?s)INSERT INTO matcha_package_usage_records`).
+				WithArgs(int64(6), int64(9), int64(42), int64(15), "req-package-quota", binding, "turn", "0.25000000", "USD").
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(12)))
+			mock.ExpectExec(`(?s)INSERT INTO matcha_package_revenue_ledger`).
+				WithArgs(int64(6), int64(9), int64(12), sqlmock.AnyArg(), int64(42), "usage", "0.25000000", "USD", "pending").
+				WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectQuery(conditionalBalanceDeductSQL).
+				WithArgs(0.25, int64(42)).
+				WillReturnRows(sqlmock.NewRows([]string{"balance"}).AddRow(9.75))
+			quotaUpdate := mock.ExpectQuery(apiKeyQuotaIncrementSQL).
+				WithArgs(0.25, int64(7), service.StatusAPIKeyActive, service.StatusAPIKeyQuotaExhausted)
+			if keyDeleted {
+				quotaUpdate.WillReturnError(sql.ErrNoRows)
+			} else {
+				quotaUpdate.WillReturnRows(sqlmock.NewRows([]string{"exhausted"}).AddRow(false))
+			}
+			rateUpdate := mock.ExpectExec(apiKeyRateLimitIncrementSQL).WithArgs(0.25, int64(7))
+			if keyDeleted {
+				rateUpdate.WillReturnResult(sqlmock.NewResult(0, 0))
+			} else {
+				rateUpdate.WillReturnResult(sqlmock.NewResult(0, 1))
+			}
+			mock.ExpectQuery(`(?s)UPDATE accounts SET extra =`).
+				WithArgs(0.25, int64(3)).
+				WillReturnRows(sqlmock.NewRows([]string{"total_used", "total_limit", "daily_used", "daily_limit", "weekly_used", "weekly_limit"}).
+					AddRow(0.25, 100.0, 0.0, 0.0, 0.0, 0.0))
+			mock.ExpectCommit()
+
+			result, err := (&usageBillingRepository{db: db}).Apply(ctx, &service.UsageBillingCommand{
+				RequestID:            "req-package-quota",
+				APIKeyID:             7,
+				UserID:               42,
+				AccountID:            3,
+				AccountType:          service.AccountTypeAPIKey,
+				BillingType:          service.BillingTypeBalance,
+				ApplyAPIKeyQuota:     true,
+				ApplyAPIKeyRateLimit: true,
+				ApplyAccountQuota:    true,
+				PackageMetering:      service.PackageMeteringUsage{Bindings: []string{binding}},
+			})
+			require.NoError(t, err)
+			require.True(t, result.Applied)
+			require.InDelta(t, 0.25, result.PackageMeteringCost, 0.000001)
+			require.InDelta(t, 0.25, result.APIKeyRateLimitCostApplied, 0.000001)
+			require.InDelta(t, 0.25, result.AccountQuotaCostApplied, 0.000001)
+			require.NotNil(t, result.QuotaState)
+			require.NotNil(t, result.NewBalance)
+			require.InDelta(t, 9.75, *result.NewBalance, 0.000001)
+			require.InDelta(t, 0.25, result.BalanceCostApplied, 0.000001)
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func expectPackageMeteringLookup(mock sqlmock.Sqlmock, sha, kind, runtime string, userID int64, key string) *sqlmock.ExpectedQuery {
+	return mock.ExpectQuery(`(?s)SELECT v\.id,\s+v\.package_id,\s+v\.owner_user_id,\s+v\.price_amount::text,\s+COALESCE\(NULLIF\(v\.price_currency, ''\), 'USD'\),\s+e\.id\s+FROM matcha_package_versions v\s+JOIN matcha_packages p ON p\.id = v\.package_id\s+JOIN matcha_package_entitlements e`).
+		WithArgs(model.MatchaPackageStatusActive, model.MatchaPackageVersionStatusPublished, sha, kind, runtime, userID, key)
+}
+
+func testPackageMeteringBinding(t *testing.T, payload service.PackageMeteringBindingPayload) string {
+	t.Helper()
+	binding, ok := service.BuildPackageMeteringBinding(payload)
+	require.True(t, ok)
+	return binding
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"strconv"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/util/logredact"
@@ -187,17 +188,14 @@ func ParsePagination(c *gin.Context) (page, pageSize int) {
 			pageSize = val
 		}
 	}
+	maxInt := int(^uint(0) >> 1)
+	if page > maxInt/pageSize {
+		page = maxInt / pageSize
+	}
 
 	return page, pageSize
 }
 
 func parseInt(s string) (int, error) {
-	var result int
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, nil
-		}
-		result = result*10 + int(c-'0')
-	}
-	return result, nil
+	return strconv.Atoi(s)
 }

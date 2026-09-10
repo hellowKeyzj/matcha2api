@@ -17,6 +17,23 @@ func NewSettingRepository(client *ent.Client) service.SettingRepository {
 	return &settingRepository{client: client}
 }
 
+func NewMatchaPackageCloudKeyRepository(client *ent.Client) service.MatchaPackageCloudKeyRepository {
+	return &settingRepository{client: client}
+}
+
+func (r *settingRepository) CreateIfAbsent(ctx context.Context, key, value string) (bool, error) {
+	_, err := r.client.Setting.Create().
+		SetKey(key).
+		SetValue(value).
+		OnConflictColumns(setting.FieldKey).
+		DoNothing().
+		ID(ctx)
+	if isSQLNoRowsError(err) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func (r *settingRepository) Get(ctx context.Context, key string) (*service.Setting, error) {
 	m, err := r.client.Setting.Query().Where(setting.KeyEQ(key)).Only(ctx)
 	if err != nil {

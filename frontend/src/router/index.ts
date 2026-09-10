@@ -229,6 +229,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/packages',
+    name: 'ResourcePackages',
+    component: () => import('@/views/user/ResourcePackagesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Resource Packages',
+      titleKey: 'resourcePackages.title',
+      descriptionKey: 'resourcePackages.description'
+    }
+  },
+  {
     path: '/usage',
     name: 'Usage',
     component: () => import('@/views/user/UsageView.vue'),
@@ -547,6 +559,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Plugin Management',
       titleKey: 'admin.plugins.title',
       descriptionKey: 'admin.plugins.description'
+    }
+  },
+  {
+    path: '/admin/packages',
+    name: 'AdminPackages',
+    component: () => import('@/pages/admin/packages/PackagesPage.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Package Management',
+      titleKey: 'admin.packages.title',
+      descriptionKey: 'admin.packages.description'
     }
   },
   {

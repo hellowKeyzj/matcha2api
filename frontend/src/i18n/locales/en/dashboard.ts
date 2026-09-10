@@ -655,6 +655,88 @@ export default {
     }
   },
 
+  resourcePackages: {
+    title: 'Resource Packages',
+    description: 'Browse, upload, and download sealed Matcha Agent / Skill packages',
+    tabs: {
+      market: 'Marketplace',
+      mine: 'My Packages'
+    },
+    filters: {
+      searchPlaceholder: 'Search packages...',
+      allTypes: 'All Types',
+      agent: 'Agent',
+      skill: 'Skill'
+    },
+    actions: {
+      upload: 'Upload Package',
+      publish: 'Publish',
+      download: 'Download'
+    },
+    columns: {
+      name: 'Name',
+      type: 'Type',
+      version: 'Version',
+      status: 'Status',
+      entitlement: 'Entitlement',
+      metering: 'Metering',
+      updatedAt: 'Updated At',
+      actions: 'Actions'
+    },
+    status: {
+      draft: 'Draft',
+      published: 'Published',
+      disabled: 'Disabled',
+      yanked: 'Yanked'
+    },
+    entitlement: {
+      active: 'Active',
+      revoked: 'Revoked',
+      expired: 'Expired'
+    },
+    metering: {
+      free: 'Free',
+      turn: 'per turn',
+      session: 'per session'
+    },
+    empty: {
+      title: 'No packages found',
+      description: 'No resource packages match the current filters.'
+    },
+    messages: {
+      uploaded: 'Package uploaded as a draft. Publish it from My Packages when ready.',
+      published: 'Package published',
+      downloaded: 'Package downloaded'
+    },
+    errors: {
+      failedToLoad: 'Failed to load resource packages',
+      failedToUpload: 'Failed to upload package',
+      failedToPublish: 'Failed to publish package',
+      failedToDownload: 'Failed to download package',
+      PACKAGE_REGISTRY_UNAVAILABLE: 'Package registry is temporarily unavailable',
+      MATCHA_PACKAGE_NOT_FOUND: 'Package not found or already deleted',
+      MATCHA_PACKAGE_VERSION_NOT_FOUND: 'Package version not found or already deleted',
+      MATCHA_PACKAGE_ENTITLEMENT_NOT_FOUND: 'Your account is not entitled to this package',
+      MATCHA_PACKAGE_VERSION_EXISTS: 'This package version already exists',
+      MATCHA_PACKAGE_STORAGE_NOT_CONFIGURED: 'Package storage is not configured',
+      MATCHA_PACKAGE_INVALID_UPLOAD: 'Invalid package format or signature',
+      MATCHA_PACKAGE_CLOUD_ENVELOPE_REQUIRED: 'This package has no cloud envelope. Re-export it in Matcha using this server’s cloud key.',
+      MATCHA_PACKAGE_CLOUD_KEY_UNAVAILABLE: 'The cloud key matching this package’s key ID is unavailable. Contact an administrator to restore the original key; generating a new key will not unlock this package.',
+      MATCHA_PACKAGE_CLOUD_KEY_NOT_CONFIGURED: 'The package cloud key is not configured. Contact an administrator to configure it.',
+      MATCHA_PACKAGE_CLOUD_KEY_ID_CONFLICT: 'The same cloud key ID refers to different keys. Contact an administrator to correct the cloud key configuration.',
+      MATCHA_PACKAGE_CLOUD_ENVELOPE_INVALID: 'Invalid package cloud envelope. Re-export the package in Matcha.',
+      MATCHA_PACKAGE_VERSION_NOT_PUBLISHABLE: 'This package version cannot be published. Only drafts can be published.',
+      MATCHA_PACKAGE_BACKUP_S3_NOT_CONFIGURED: 'Backup S3 storage is not configured for package storage. Contact an administrator.',
+      INVALID_MATCHA_PACKAGE_UPLOAD: 'Invalid package upload parameters',
+      INVALID_MATCHA_PACKAGE_PUBLISH: 'Invalid package publishing parameters',
+      MATCHA_PACKAGE_VERSION_NOT_DOWNLOADABLE: 'This package version is not downloadable',
+      INVALID_MATCHA_PACKAGE_OBJECT: 'Invalid package file',
+      INVALID_MATCHA_PACKAGE_OBJECT_KEY: 'Invalid package storage key',
+      INVALID_MATCHA_PACKAGE_ENTITLEMENT: 'Invalid package entitlement parameters',
+      MATCHA_PACKAGE_FORBIDDEN: 'You do not have permission to modify this package'
+    }
+  },
+
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: 'Model Plaza',

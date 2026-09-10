@@ -169,11 +169,8 @@ func (r *InflightReservation) startRenewal(renewer InflightBalanceReservationRen
 
 type inflightReservationCtxKey struct{}
 
-// WithInflightReservation 把预留句柄挂到 context 上，供计费任务提交时交接。
+// WithInflightReservation 把预留句柄挂到 context 上，供计费任务提交时交接；nil 清除继承的句柄。
 func WithInflightReservation(ctx context.Context, r *InflightReservation) context.Context {
-	if r == nil {
-		return ctx
-	}
 	return context.WithValue(ctx, inflightReservationCtxKey{}, r)
 }
 
@@ -212,8 +209,8 @@ func (s *BillingCacheService) InflightReservationFailClosedOnUnpriced() bool {
 }
 
 // ReserveInflightBalance 简化封装：返回释放函数，不续期、不做计费交接（预留最长存活 TTL）。
-func (s *BillingCacheService) ReserveInflightBalance(ctx context.Context, user *User, group *Group, subscription *UserSubscription, estimate float64) (func(), error) {
-	r, err := s.reserveInflight(ctx, user, group, subscription, estimate, false)
+func (s *BillingCacheService) ReserveInflightBalance(ctx context.Context, user *User, group *Group, subscription *UserSubscription, billingSource BillingSource, estimate float64) (func(), error) {
+	r, err := s.reserveInflight(ctx, user, group, subscription, billingSource, estimate, false)
 	if err != nil {
 		return noopRelease, err
 	}
@@ -231,16 +228,17 @@ func (s *BillingCacheService) ReserveInflightBalance(ctx context.Context, user *
 // 以下情况直接放行且不登记预留（fail-open，保持旧行为）：
 // 开关关闭 / 简易模式 / 订阅模式 / estimate <= 0 / 缓存不支持 / 余额读取失败 / Redis 执行失败。
 // 仅当 Redis 明确判定 缓存余额 - 在途合计 < estimate（且已有在途请求）时返回 ErrInsufficientBalance。
-func (s *BillingCacheService) ReserveInflight(ctx context.Context, user *User, group *Group, subscription *UserSubscription, estimate float64) (*InflightReservation, error) {
-	return s.reserveInflight(ctx, user, group, subscription, estimate, true)
+func (s *BillingCacheService) ReserveInflight(ctx context.Context, user *User, group *Group, subscription *UserSubscription, billingSource BillingSource, estimate float64) (*InflightReservation, error) {
+	return s.reserveInflight(ctx, user, group, subscription, billingSource, estimate, true)
 }
 
-func (s *BillingCacheService) reserveInflight(ctx context.Context, user *User, group *Group, subscription *UserSubscription, estimate float64, renew bool) (*InflightReservation, error) {
+func (s *BillingCacheService) reserveInflight(ctx context.Context, user *User, group *Group, subscription *UserSubscription, billingSource BillingSource, estimate float64, renew bool) (*InflightReservation, error) {
 	cfg, ok := s.inflightReservationConfig()
 	if !ok || user == nil {
 		return nil, nil
 	}
-	if group != nil && group.IsSubscriptionType() && subscription != nil {
+	// 与 eligibility / usage 一致：仅显式订阅来源豁免；空来源按余额处理。
+	if billingSource.IsSubscription() {
 		return nil, nil
 	}
 	if cfg.MaxReservationUSD > 0 && estimate > cfg.MaxReservationUSD {
@@ -339,7 +337,7 @@ type inflightEstimateDeps struct {
 }
 
 // inflightSnapshotLister 调度器快照读取（与账号选择同源：Redis 快照，未命中时由快照服务自身回源并回填）。
-type inflightSnapshotLister func(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]Account, error)
+type inflightSnapshotLister func(ctx context.Context, apiKey *APIKey, platform string, hasForcePlatform bool) ([]Account, error)
 
 // inflightAccountMappedModelsFromSnapshot 基于调度器快照在内存中匹配账号级映射（支持通配规则）。
 // resolvePlatform 返回与调度器一致的平台；无分组 API Key 使用调度器的未分组账号池（groupID=nil）。
@@ -356,7 +354,7 @@ func inflightAccountMappedModelsFromSnapshot(list inflightSnapshotLister, resolv
 		if !ok || platform == "" {
 			return nil
 		}
-		accounts, err := list(ctx, apiKey.GroupID, platform, forced)
+		accounts, err := list(ctx, apiKey, platform, forced)
 		if err != nil {
 			return nil
 		}
@@ -658,9 +656,16 @@ func (s *GatewayService) inflightEstimateDeps() inflightEstimateDeps {
 	if s.schedulerSnapshot != nil {
 		snap := s.schedulerSnapshot
 		d.accountMappedModels = inflightAccountMappedModelsFromSnapshot(
-			func(ctx context.Context, groupID *int64, platform string, forced bool) ([]Account, error) {
-				accounts, _, err := snap.ListSchedulableAccounts(ctx, groupID, platform, forced)
-				return accounts, err
+			func(ctx context.Context, apiKey *APIKey, platform string, forced bool) ([]Account, error) {
+				accounts, useMixed, err := snap.ListSchedulableAccounts(ctx, apiKey.GroupID, platform, forced)
+				if err != nil {
+					return nil, err
+				}
+				scope, err := s.resolveGatewayShardAccountScope(ctx, apiKey.GroupID, apiKey.Group, apiKey.User.ID, platform, useMixed)
+				if err != nil {
+					return nil, err
+				}
+				return filterGatewayAccountsByShardScope(accounts, scope), nil
 			},
 			func(ctx context.Context, apiKey *APIKey, model string) (string, bool, bool) {
 				platform, forced, err := s.resolvePlatform(ctx, apiKey.GroupID, apiKey.Group, model)
@@ -689,13 +694,23 @@ func (s *OpenAIGatewayService) inflightEstimateDeps() inflightEstimateDeps {
 	if s.schedulerSnapshot != nil {
 		snap := s.schedulerSnapshot
 		d.accountMappedModels = inflightAccountMappedModelsFromSnapshot(
-			func(ctx context.Context, groupID *int64, platform string, forced bool) ([]Account, error) {
-				accounts, _, err := snap.ListSchedulableAccounts(ctx, groupID, platform, forced)
-				return accounts, err
+			func(ctx context.Context, apiKey *APIKey, platform string, forced bool) ([]Account, error) {
+				accounts, _, err := snap.ListSchedulableAccounts(ctx, apiKey.GroupID, platform, forced)
+				if err != nil {
+					return nil, err
+				}
+				scope, err := s.resolveOpenAIShardAccountScope(ctx, apiKey.GroupID, apiKey.Group, apiKey.User.ID, platform)
+				if err != nil {
+					return nil, err
+				}
+				return filterOpenAIAccountsByShardScope(accounts, scope), nil
 			},
 			func(ctx context.Context, apiKey *APIKey, model string) (string, bool, bool) {
+				if platform, ok := ResolvedTargetPlatformFromContext(ctx); ok {
+					return NormalizeOpenAICompatiblePlatform(platform), false, true
+				}
 				platform := PlatformOpenAI
-				if apiKey.Group != nil && apiKey.Group.Platform != "" && apiKey.Group.Platform != PlatformComposite {
+				if apiKey.Group != nil {
 					platform = apiKey.Group.Platform
 				}
 				return NormalizeOpenAICompatiblePlatform(platform), false, true

@@ -106,6 +106,7 @@ type Config struct {
 	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
 	ImageStorage            ImageStorageConfig            `mapstructure:"image_storage"`
 	Plugins                 PluginConfig                  `mapstructure:"plugins"`
+	SealedPackage           SealedPackageConfig           `mapstructure:"sealed_package"`
 
 	// Enforce only API-key spending windows in simple mode.
 	SimpleModeKeyRateLimitEnabled bool `mapstructure:"simple_mode_key_rate_limit_enabled" yaml:"simple_mode_key_rate_limit_enabled"`
@@ -125,6 +126,11 @@ type PluginConfig struct {
 	MaxUploadBytes       int64             `mapstructure:"max_upload_bytes"`
 	MaxUncompressedBytes int64             `mapstructure:"max_uncompressed_bytes"`
 	StartTimeoutSeconds  int               `mapstructure:"start_timeout_seconds"`
+}
+
+type SealedPackageConfig struct {
+	CloudKeyID         string `mapstructure:"cloud_key_id"`
+	CloudPrivateKeyPEM string `mapstructure:"cloud_private_key_pem"`
 }
 
 type LogConfig struct {
@@ -1966,6 +1972,8 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 			"valid_modes", []string{UMQModeSerialize, UMQModeThrottle})
 		cfg.Gateway.UserMessageQueue.Mode = ""
 	}
+	cfg.SealedPackage.CloudKeyID = strings.TrimSpace(cfg.SealedPackage.CloudKeyID)
+	cfg.SealedPackage.CloudPrivateKeyPEM = strings.TrimSpace(cfg.SealedPackage.CloudPrivateKeyPEM)
 
 	// Auto-generate TOTP encryption key if not set (32 bytes = 64 hex chars for AES-256)
 	cfg.Totp.EncryptionKey = strings.TrimSpace(cfg.Totp.EncryptionKey)
@@ -2035,6 +2043,8 @@ func setDefaults() {
 	viper.SetDefault("run_mode", RunModeStandard)
 	viper.SetDefault("simple_mode.auto_create_default_groups", true)
 	viper.SetDefault("simple_mode_key_rate_limit_enabled", false)
+	viper.SetDefault("sealed_package.cloud_key_id", "")
+	viper.SetDefault("sealed_package.cloud_private_key_pem", "")
 
 	// Server
 	viper.SetDefault("server.host", "0.0.0.0")

@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 	"strings"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/model"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
@@ -17,6 +19,137 @@ type usageBillingRepository struct {
 
 func NewUsageBillingRepository(_ *dbent.Client, sqlDB *sql.DB) service.UsageBillingRepository {
 	return &usageBillingRepository{db: sqlDB}
+}
+
+type packageMeteringVersion struct {
+	id               int64
+	packageID        int64
+	ownerUserID      *int64
+	priceAmount      string
+	priceCurrency    string
+	priceAmountValue float64
+	entitlementID    int64
+}
+
+func recordPackageMeteringUsage(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand) (float64, error) {
+	if cmd.PackageMetering.Empty() || cmd.UserID <= 0 || strings.TrimSpace(cmd.RequestID) == "" {
+		return 0, nil
+	}
+	var packageCost float64
+	for _, binding := range cmd.PackageMetering.Bindings {
+		payload, canonical, ok := service.ParsePackageMeteringBinding(binding)
+		if !ok {
+			continue
+		}
+		version, err := lookupPackageMeteringVersion(ctx, tx, payload, cmd.UserID)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return 0, err
+		}
+		usageRecordID, inserted, err := insertPackageMeteringUsageRecord(ctx, tx, version, cmd.UserID, cmd.RequestID, canonical, packageMeteringUnit(payload))
+		if err != nil {
+			return 0, err
+		}
+		if inserted {
+			packageCost += version.priceAmountValue
+			if err := insertPackageMeteringRevenueLedger(ctx, tx, version, usageRecordID, cmd.UserID); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return service.QuantizeUsageBillingAmount(packageCost), nil
+}
+
+func lookupPackageMeteringVersion(ctx context.Context, tx *sql.Tx, payload service.PackageMeteringBindingPayload, userID int64) (*packageMeteringVersion, error) {
+	version := &packageMeteringVersion{}
+	var owner sql.NullInt64
+	err := tx.QueryRowContext(ctx, `
+		SELECT v.id,
+		       v.package_id,
+		       v.owner_user_id,
+		       v.price_amount::text,
+		       COALESCE(NULLIF(v.price_currency, ''), 'USD'),
+		       e.id
+		FROM matcha_package_versions v
+		JOIN matcha_packages p ON p.id = v.package_id
+		JOIN matcha_package_entitlements e
+		  ON e.package_id = v.package_id
+		 AND e.user_id = $6
+		 AND e.status = 'active'
+		 AND e.starts_at <= NOW()
+		 AND (e.expires_at IS NULL OR e.expires_at > NOW())
+		 AND (e.version_id IS NULL OR e.version_id = v.id)
+		WHERE p.status = $1
+		  AND v.status = $2
+		  AND v.sha256 = $3
+		  AND v.kind = $4
+		  AND v.runtime = $5
+		  AND (v.metadata->>'resourceKey' = $7 OR p.package_key = $7)
+		ORDER BY CASE WHEN e.version_id = v.id THEN 0 ELSE 1 END, v.published_at DESC NULLS LAST, v.id DESC
+		LIMIT 1
+	`, model.MatchaPackageStatusActive, model.MatchaPackageVersionStatusPublished, payload.PackageSHA256, payload.Kind, payload.Runtime, userID, payload.Key).Scan(
+		&version.id,
+		&version.packageID,
+		&owner,
+		&version.priceAmount,
+		&version.priceCurrency,
+		&version.entitlementID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if owner.Valid {
+		ownerID := owner.Int64
+		version.ownerUserID = &ownerID
+	}
+	version.priceCurrency = strings.ToUpper(strings.TrimSpace(version.priceCurrency))
+	if version.priceCurrency == "" {
+		version.priceCurrency = "USD"
+	}
+	version.priceAmountValue, _ = strconv.ParseFloat(version.priceAmount, 64)
+	return version, nil
+}
+
+func packageMeteringUnit(payload service.PackageMeteringBindingPayload) string {
+	if payload.Use != "" {
+		return payload.Use
+	}
+	if payload.Kind == model.MatchaPackageKindAgent {
+		return "session"
+	}
+	return "turn"
+}
+
+func insertPackageMeteringUsageRecord(ctx context.Context, tx *sql.Tx, version *packageMeteringVersion, userID int64, requestID, binding, unit string) (int64, bool, error) {
+	var id int64
+	err := tx.QueryRowContext(ctx, `
+		INSERT INTO matcha_package_usage_records (
+			package_id, version_id, user_id, entitlement_id, request_id, binding, quantity, unit, amount, currency, metadata
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8, $9, '{}'::jsonb)
+		ON CONFLICT (version_id, user_id, request_id, binding) DO NOTHING
+		RETURNING id
+	`, version.packageID, version.id, userID, version.entitlementID, requestID, binding, unit, version.priceAmount, version.priceCurrency).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
+}
+
+func insertPackageMeteringRevenueLedger(ctx context.Context, tx *sql.Tx, version *packageMeteringVersion, usageRecordID, userID int64) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO matcha_package_revenue_ledger (
+			package_id, version_id, usage_record_id, owner_user_id, user_id, entry_type, amount, currency, status, metadata
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '{}'::jsonb)
+		ON CONFLICT (usage_record_id) WHERE usage_record_id IS NOT NULL DO NOTHING
+	`, version.packageID, version.id, usageRecordID, nullableInt64(version.ownerUserID), userID, model.MatchaPackageRevenueEntryUsage, version.priceAmount, version.priceCurrency, model.MatchaPackageRevenueStatusPending)
+	return err
 }
 
 func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBillingCommand) (_ *service.UsageBillingApplyResult, err error) {
@@ -50,7 +183,22 @@ func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBi
 		return &service.UsageBillingApplyResult{Applied: false}, nil
 	}
 
-	result := &service.UsageBillingApplyResult{Applied: true}
+	packageCost, err := recordPackageMeteringUsage(ctx, tx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	if packageCost > 0 {
+		addPackageMeteringCost(cmd, packageCost)
+	}
+
+	result := &service.UsageBillingApplyResult{
+		Applied:                    true,
+		PackageMeteringCost:        packageCost,
+		BalanceCostApplied:         cmd.BalanceCost,
+		SubscriptionCostApplied:    cmd.SubscriptionCost,
+		APIKeyRateLimitCostApplied: cmd.APIKeyRateLimitCost,
+		AccountQuotaCostApplied:    cmd.AccountQuotaCost,
+	}
 	if err := r.applyUsageBillingEffects(ctx, tx, cmd, result); err != nil {
 		return nil, err
 	}
@@ -169,6 +317,23 @@ func (r *usageBillingRepository) applyBatchImageBalanceHold(
 	}
 	tx = nil
 	return result, nil
+}
+
+func addPackageMeteringCost(cmd *service.UsageBillingCommand, amount float64) {
+	if cmd.SubscriptionID != nil && cmd.BillingType == service.BillingTypeSubscription {
+		cmd.SubscriptionCost = service.QuantizeUsageBillingAmount(cmd.SubscriptionCost + amount)
+	} else {
+		cmd.BalanceCost = service.QuantizeUsageBillingAmount(cmd.BalanceCost + amount)
+	}
+	if cmd.ApplyAPIKeyQuota {
+		cmd.APIKeyQuotaCost = service.QuantizeUsageBillingAmount(cmd.APIKeyQuotaCost + amount)
+	}
+	if cmd.ApplyAPIKeyRateLimit {
+		cmd.APIKeyRateLimitCost = service.QuantizeUsageBillingAmount(cmd.APIKeyRateLimitCost + amount)
+	}
+	if cmd.ApplyAccountQuota {
+		cmd.AccountQuotaCost = service.QuantizeUsageBillingAmount(cmd.AccountQuotaCost + amount)
+	}
 }
 
 func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand, result *service.UsageBillingApplyResult) error {

@@ -1058,6 +1058,26 @@ rate_limit:
   overload_cooldown_minutes: 10
 
 # =============================================================================
+# Sealed Resource Packages (Optional)
+# 密封资源包（可选）
+# =============================================================================
+sealed_package:
+  # For a new installation without an existing key, generate one in Admin → Package Management.
+  # 尚无已有密钥的新部署，可在后台「资源包管理」生成；私钥加密保存到数据库。
+  # The database key is preferred for new exports; existing packages resolve keys by envelope keyId.
+  # 数据库密钥优先用于新导出；旧包按信封 keyId 选择密钥，不随当前公钥切换。
+  # Keep config key K1 (ID AND private key) on EVERY instance and in secure backups, even with DB key K2.
+  # 即使已有数据库密钥 K2，也不能删除配置 K1（ID 和旧私钥）；多实例配置必须一致并安全备份。
+  # Unknown IDs are unavailable; different private keys with the same ID require operator recovery.
+  # 未知 keyId 无法授权；同 ID 对应不同私钥时必须由运维恢复，不能靠再次生成密钥修复。
+  # If K2 has not been generated, operators may encrypt and store K1 in DB; there is no import API.
+  # 尚未生成 K2 时，可由运维把 K1 加密写入数据库；这不是自动导入或轮换功能。
+  # DB-key generation requires a fixed TOTP encryption key shared by all instances; back it up too.
+  # 数据库密钥生成依赖所有实例一致的固定 TOTP 加密密钥；该加密密钥也必须备份。
+  cloud_key_id: ""
+  cloud_private_key_pem: ""
+
+# =============================================================================
 # Local OAuth Transport Plugins (Optional)
 # 本地 OAuth 出站传输插件（可选）
 # =============================================================================

@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterUserRoutes 注册用户相关路由（需要认证）
+// RegisterUserRoutes 注册用户相关路由（封包公钥匿名，其余需要认证）
 func RegisterUserRoutes(
 	v1 *gin.RouterGroup,
 	h *handler.Handlers,
@@ -17,6 +17,8 @@ func RegisterUserRoutes(
 	settingService *service.SettingService,
 	panelRateLimiter *middleware.PanelRateLimiter,
 ) {
+	v1.GET("/packages/sealed-cloud-key", panelRateLimiter.PublicIP(), h.Package.SealedCloudKey)
+
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))
 	authenticated.Use(middleware.BackendModeUserGuard(settingService))
@@ -101,6 +103,8 @@ func RegisterUserRoutes(
 			channels.GET("/available", h.AvailableChannel.List)
 		}
 
+		registerUserPackageRoutes(authenticated, h)
+
 		// 使用记录（聚合统计属重查询，叠加更严格的按用户限流）
 		usage := authenticated.Group("/usage")
 		usage.Use(panelRateLimiter.Heavy())
@@ -160,5 +164,17 @@ func RegisterUserRoutes(
 			monitorV2.GET("/errors", h.ChannelMonitorV2.Errors)
 			monitorV2.GET("/users", h.ChannelMonitorV2.Users)
 		}
+	}
+}
+
+func registerUserPackageRoutes(authenticated *gin.RouterGroup, h *handler.Handlers) {
+	packages := authenticated.Group("/packages")
+	{
+		packages.GET("/mine", h.Package.ListMine)
+		packages.GET("/market", h.Package.ListMarket)
+		packages.POST("/upload", h.Package.Upload)
+		packages.POST("/:packageVersionId/publish", h.Package.Publish)
+		packages.POST("/:packageVersionId/authorization", h.Package.Authorize)
+		packages.GET("/:packageVersionId/download", h.Package.Download)
 	}
 }

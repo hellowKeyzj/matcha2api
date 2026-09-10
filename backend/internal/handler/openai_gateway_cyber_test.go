@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -19,13 +22,82 @@ func newTestGinContext() *gin.Context {
 	return c
 }
 
+type cyberPolicyBillingRepo struct {
+	service.UsageBillingRepository
+	commands chan *service.UsageBillingCommand
+	release  chan struct{}
+}
+
+func (r *cyberPolicyBillingRepo) Apply(_ context.Context, cmd *service.UsageBillingCommand) (*service.UsageBillingApplyResult, error) {
+	r.commands <- cmd
+	<-r.release
+	return &service.UsageBillingApplyResult{Applied: false}, nil
+}
+
+func TestRecordCyberPolicyIfMarked_FailedPackageUsageRetainsWSReservation(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Billing.InflightReservation = config.InflightReservationConfig{Enabled: true, TTLSeconds: 60}
+	cache := newHandlerInflightCache(1)
+	billingCache := service.NewBillingCacheService(cache, nil, nil, nil, nil, nil, cfg, nil)
+	t.Cleanup(billingCache.Stop)
+	groupID := int64(3)
+	apiKey := &service.APIKey{ID: 4, UserID: 5, User: &service.User{ID: 5}, GroupID: &groupID,
+		Group: &service.Group{ID: groupID, Platform: service.PlatformOpenAI, RateMultiplier: 1, SubscriptionType: service.SubscriptionTypeSubscriptionBalance}}
+	account := &service.Account{ID: 6, Platform: service.PlatformOpenAI, Type: service.AccountTypeAPIKey}
+	subscription := &service.UserSubscription{ID: 7}
+	// Like WS, only the explicit local parent carries the reservation, not c.Request.
+	parent, done, err := reserveInflightBalanceCtx(context.Background(), billingCache, &countingEstimator{cost: 0.9, priced: true}, apiKey, subscription, service.BillingSourceBalance, tokenInflightEstimate("gpt-5", nil))
+	require.NoError(t, err)
+	defer done()
+	pool := service.NewUsageRecordWorkerPoolWithOptions(service.UsageRecordWorkerPoolOptions{WorkerCount: 1, QueueSize: 1, TaskTimeout: time.Second, OverflowPolicy: "drop"})
+	t.Cleanup(pool.Stop)
+	started, unblock := make(chan struct{}), make(chan struct{})
+	defer close(unblock)
+	pool.Submit(func(context.Context) { close(started); <-unblock })
+	<-started
+	repo := &cyberPolicyBillingRepo{commands: make(chan *service.UsageBillingCommand, 2), release: make(chan struct{})}
+	defer close(repo.release)
+	billing := service.NewBillingService(cfg, nil)
+	gw := service.NewOpenAIGatewayService(nil, nil, nil, nil, repo, nil, nil, nil, nil, cfg, nil, nil, billing, nil, nil, nil, nil, nil, nil, service.NewModelPricingResolver(nil, billing), nil, nil, nil, nil)
+	h := &OpenAIGatewayHandler{gatewayService: gw, usageRecordWorkerPool: pool}
+	c := newTestGinContext()
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	c.Writer.Header().Set("X-Request-Id", "cyber-package")
+	binding, ok := service.BuildPackageMeteringBinding(service.PackageMeteringBindingPayload{V: 1, Kind: "skill", Runtime: "matcha", PackageSHA256: strings.Repeat("a", 64), Key: "test"})
+	require.True(t, ok)
+	metering := service.PackageMeteringUsage{Bindings: []string{binding}}
+	mark := service.CyberPolicyMark{Message: "blocked", UpstreamStatus: http.StatusBadRequest}
+	service.MarkOpsCyberPolicy(c, mark)
+	h.recordCyberPolicyIfMarked(c, parent, apiKey, account, subscription, service.BillingSourceBalance, metering, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
+	require.Empty(t, repo.commands, "successful forwards use the normal usage path, not cyber billing")
+	clearCyberPolicyTurnState(c)
+	service.MarkOpsCyberPolicy(c, mark)
+	h.recordCyberPolicyIfMarked(c, parent, apiKey, account, subscription, service.BillingSourceBalance, metering, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
+	h.recordCyberPolicyIfMarked(c, parent, apiKey, account, subscription, service.BillingSourceBalance, metering, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
+	done()
+	require.Equal(t, 1, cache.count(), "queued failed-forward billing must acquire before WS handler retires")
+	unblock <- struct{}{}
+	select {
+	case cmd := <-repo.commands:
+		require.Equal(t, service.BillingTypeBalance, cmd.BillingType)
+		require.Nil(t, cmd.SubscriptionID, "explicit balance source overrides the retained subscription")
+		require.Equal(t, []string{binding}, cmd.PackageMetering.Bindings, "zero-token failure still meters packages")
+		require.Equal(t, 1, cache.count(), "reservation remains until atomic billing completes")
+	case <-time.After(3 * time.Second):
+		t.Fatal("failed-forward package billing was not submitted")
+	}
+	repo.release <- struct{}{}
+	require.Eventually(t, func() bool { return cache.count() == 0 }, time.Second, time.Millisecond)
+	require.Empty(t, repo.commands, "recorded guard prevents double billing")
+}
+
 // TestRecordCyberPolicyIfMarked_NoMark verifies that when no cyber mark is set,
 // the function returns immediately and does NOT set the recorded flag.
 func TestRecordCyberPolicyIfMarked_NoMark(t *testing.T) {
 	c := newTestGinContext()
 	h := &OpenAIGatewayHandler{}
 
-	h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
+	h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
 
 	// Flag must NOT be set when there was no mark.
 	require.False(t, c.GetBool(cyberPolicyRecordedKey),
@@ -48,14 +120,14 @@ func TestRecordCyberPolicyIfMarked_WithMark(t *testing.T) {
 
 	// First call: should set the flag.
 	require.NotPanics(t, func() {
-		h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
+		h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
 	})
 	require.True(t, c.GetBool(cyberPolicyRecordedKey),
 		"cyberPolicyRecordedKey must be true after first call with a mark")
 
 	// Second call: flag already set — must be a no-op (idempotent).
 	require.NotPanics(t, func() {
-		h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
+		h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
 	})
 	// Flag should still be true (not toggled or cleared).
 	require.True(t, c.GetBool(cyberPolicyRecordedKey),
@@ -76,7 +148,7 @@ func TestRecordCyberPolicyIfMarked_ForwardSuccessSkipsUsageLog(t *testing.T) {
 	h := &OpenAIGatewayHandler{}
 
 	require.NotPanics(t, func() {
-		h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", false /* forwardErrored=false */, nil, service.ChannelUsageFields{}, "")
+		h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", false /* forwardErrored=false */, nil, service.ChannelUsageFields{}, "")
 	})
 	require.True(t, c.GetBool(cyberPolicyRecordedKey))
 }
@@ -89,7 +161,7 @@ func TestClearCyberPolicyTurnState(t *testing.T) {
 	h := &OpenAIGatewayHandler{}
 
 	service.MarkOpsCyberPolicy(c, service.CyberPolicyMark{Message: "turn1", UpstreamStatus: 200})
-	h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
+	h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
 	require.True(t, c.GetBool(cyberPolicyRecordedKey))
 
 	clearCyberPolicyTurnState(c)
@@ -98,7 +170,7 @@ func TestClearCyberPolicyTurnState(t *testing.T) {
 
 	// turn2: a fresh cyber hit must be recordable again.
 	service.MarkOpsCyberPolicy(c, service.CyberPolicyMark{Message: "turn2", UpstreamStatus: 200})
-	h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
+	h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", false, nil, service.ChannelUsageFields{}, "")
 	require.True(t, c.GetBool(cyberPolicyRecordedKey))
 	require.Equal(t, "turn2", service.GetOpsCyberPolicy(c).Message)
 }
@@ -124,7 +196,7 @@ func TestClearCyberPolicyAttemptStatePreservesRecordedGuardDuringFailover(t *tes
 	h := &OpenAIGatewayHandler{}
 
 	service.MarkOpsCyberPolicy(c, service.CyberPolicyMark{Message: "account-a", UpstreamStatus: http.StatusOK})
-	h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
+	h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
 	require.True(t, c.GetBool(cyberPolicyRecordedKey))
 
 	clearCyberPolicyAttemptState(c, false)
@@ -132,7 +204,7 @@ func TestClearCyberPolicyAttemptStatePreservesRecordedGuardDuringFailover(t *tes
 	require.True(t, c.GetBool(cyberPolicyRecordedKey), "the same logical turn must not record again after failover")
 
 	service.MarkOpsCyberPolicy(c, service.CyberPolicyMark{Message: "account-b", UpstreamStatus: http.StatusOK})
-	h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
+	h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", true, nil, service.ChannelUsageFields{}, "")
 	require.Equal(t, "account-b", service.GetOpsCyberPolicy(c).Message)
 	require.True(t, c.GetBool(cyberPolicyRecordedKey))
 
@@ -203,7 +275,7 @@ func TestRecordCyberPolicyIfMarked_BlockKeyPlumbed(t *testing.T) {
 	service.MarkOpsCyberPolicy(c, service.CyberPolicyMark{Message: "x", UpstreamStatus: 400})
 	h := &OpenAIGatewayHandler{}
 	require.NotPanics(t, func() {
-		h.recordCyberPolicyIfMarked(c, nil, nil, nil, "gpt-5", true, []byte(`{"input":"deadbeef"}`), service.ChannelUsageFields{}, "")
+		h.recordCyberPolicyIfMarked(c, context.Background(), nil, nil, nil, service.BillingSourceBalance, service.PackageMeteringUsage{}, "gpt-5", true, []byte(`{"input":"deadbeef"}`), service.ChannelUsageFields{}, "")
 	})
 }
 

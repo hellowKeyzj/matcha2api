@@ -106,6 +106,9 @@ func RegisterAdminRoutes(
 		// 本地进程插件管理
 		registerPluginRoutes(admin, h, stepUpAuth)
 
+		// 资源包管理
+		registerPackageRoutes(admin, h, stepUpAuth)
+
 		// API Key 管理
 		registerAdminAPIKeyRoutes(admin, h)
 
@@ -783,6 +786,26 @@ func registerPluginRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAut
 		plugins.PUT("/:id/config", gin.HandlerFunc(stepUpAuth), h.Admin.Plugin.SaveConfig)
 		plugins.POST("/:id/test", gin.HandlerFunc(stepUpAuth), h.Admin.Plugin.Test)
 		plugins.POST("/:id/ui-session", h.Admin.Plugin.CreateUISession)
+	}
+}
+
+func registerPackageRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
+	packages := admin.Group("/packages")
+	{
+		packages.GET("", h.Admin.Package.List)
+		packages.POST("", gin.HandlerFunc(stepUpAuth), h.Admin.Package.Create)
+		packages.GET("/audits", h.Admin.Package.ListDownloadAudits)
+		packages.GET("/storage", h.Admin.Package.GetStorage)
+		packages.PUT("/storage", gin.HandlerFunc(stepUpAuth), h.Admin.Package.UpdateStorage)
+		packages.GET("/cloud-key", h.Admin.Package.GetCloudKey)
+		packages.POST("/cloud-key/generate", gin.HandlerFunc(stepUpAuth), h.Admin.Package.GenerateCloudKey)
+		packages.GET("/:id", h.Admin.Package.Get)
+		packages.PUT("/:id", gin.HandlerFunc(stepUpAuth), h.Admin.Package.Update)
+		packages.DELETE("/:id", gin.HandlerFunc(stepUpAuth), h.Admin.Package.Delete)
+		packages.PUT("/:id/bindings", gin.HandlerFunc(stepUpAuth), h.Admin.Package.UpdateBindings)
+		packages.POST("/:id/review", gin.HandlerFunc(stepUpAuth), h.Admin.Package.Review)
+		packages.POST("/:id/takedown", gin.HandlerFunc(stepUpAuth), h.Admin.Package.TakeDown)
+		packages.POST("/:id/download-audits", h.Admin.Package.RecordDownloadAudit)
 	}
 }
 

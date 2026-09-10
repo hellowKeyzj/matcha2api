@@ -56,7 +56,7 @@ func TestInflightReservation_ConcurrentAdmitsOnlyWhatBalanceCovers(t *testing.T)
 		go func() {
 			defer wg.Done()
 			<-start
-			release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 0.3)
+			release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.3)
 			if err != nil {
 				if !errors.Is(err, service.ErrInsufficientBalance) {
 					t.Errorf("unexpected error: %v", err)
@@ -84,7 +84,7 @@ func TestInflightReservation_ConcurrentAdmitsOnlyWhatBalanceCovers(t *testing.T)
 	require.Equal(t, int64(0), inflightCount(t, cache, user.ID))
 
 	// After release, capacity is available again.
-	release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 0.3)
+	release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.3)
 	require.NoError(t, err)
 	release()
 }
@@ -95,12 +95,12 @@ func TestInflightReservation_FirstRequestAlwaysAdmitted(t *testing.T) {
 	user := &service.User{ID: 7}
 	require.NoError(t, cache.SetUserBalance(ctx, user.ID, 0.01))
 
-	release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 5)
+	release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 5)
 	require.NoError(t, err, "a lone request keeps legacy behavior even if estimate exceeds balance")
-	_, err = svc.ReserveInflightBalance(ctx, user, nil, nil, 0.001)
+	_, err = svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.001)
 	require.ErrorIs(t, err, service.ErrInsufficientBalance)
 	release()
-	release2, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 0.001)
+	release2, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.001)
 	require.NoError(t, err)
 	release2()
 }
@@ -111,13 +111,13 @@ func TestInflightReservation_TTLExpiryFreesLeakedReservation(t *testing.T) {
 	user := &service.User{ID: 9}
 	require.NoError(t, cache.SetUserBalance(ctx, user.ID, 1.0))
 
-	_, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 0.8) // leaked: never released
+	_, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.8) // leaked: never released
 	require.NoError(t, err)
-	_, err = svc.ReserveInflightBalance(ctx, user, nil, nil, 0.8)
+	_, err = svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.8)
 	require.ErrorIs(t, err, service.ErrInsufficientBalance)
 
 	time.Sleep(1100 * time.Millisecond)
-	release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 0.8)
+	release, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0.8)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), inflightCount(t, cache, user.ID))
 	release()
@@ -130,7 +130,7 @@ func TestInflightReservation_DisabledKeepsLegacyBehavior(t *testing.T) {
 	require.NoError(t, cache.SetUserBalance(ctx, user.ID, 0.01))
 	require.False(t, svc.InflightReservationEnabled())
 	for i := 0; i < 5; i++ {
-		_, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 10)
+		_, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 10)
 		require.NoError(t, err)
 	}
 	require.Equal(t, int64(0), inflightCount(t, cache, user.ID))
@@ -144,7 +144,7 @@ func TestInflightReservation_SubscriptionUnaffected(t *testing.T) {
 	group := &service.Group{ID: 1, SubscriptionType: service.SubscriptionTypeSubscription}
 	sub := &service.UserSubscription{ID: 1}
 	for i := 0; i < 5; i++ {
-		_, err := svc.ReserveInflightBalance(ctx, user, group, sub, 10)
+		_, err := svc.ReserveInflightBalance(ctx, user, group, sub, service.BillingSourceSubscription, 10)
 		require.NoError(t, err)
 	}
 	require.Equal(t, int64(0), inflightCount(t, cache, user.ID))
@@ -155,7 +155,7 @@ func TestInflightReservation_ZeroEstimateSkips(t *testing.T) {
 	ctx := context.Background()
 	user := &service.User{ID: 13}
 	require.NoError(t, cache.SetUserBalance(ctx, user.ID, 1))
-	_, err := svc.ReserveInflightBalance(ctx, user, nil, nil, 0)
+	_, err := svc.ReserveInflightBalance(ctx, user, nil, nil, service.BillingSourceBalance, 0)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), inflightCount(t, cache, user.ID))
 }
@@ -193,7 +193,7 @@ func TestInflightReservation_RedisDownFailsOpen(t *testing.T) {
 
 	user := &service.User{ID: 5}
 	for i := 0; i < 3; i++ {
-		release, err := svc.ReserveInflightBalance(context.Background(), user, nil, nil, 100)
+		release, err := svc.ReserveInflightBalance(context.Background(), user, nil, nil, service.BillingSourceBalance, 100)
 		require.NoError(t, err)
 		release()
 	}
@@ -223,7 +223,7 @@ func TestInflightReservation_SequentialInBillingWindowAdmitsOnlyWhatBalanceCover
 	var pendingBilling []func()
 	admitted := 0
 	for i := 0; i < 5; i++ {
-		res, err := svc.ReserveInflight(ctx, user, nil, nil, cost)
+		res, err := svc.ReserveInflight(ctx, user, nil, nil, service.BillingSourceBalance, cost)
 		if err != nil {
 			require.ErrorIs(t, err, service.ErrInsufficientBalance)
 			continue
@@ -253,10 +253,10 @@ func TestInflightReservation_RenewalKeepsStreamingReservationAlive(t *testing.T)
 	user := &service.User{ID: 78}
 	require.NoError(t, cache.SetUserBalance(ctx, user.ID, 1.0))
 
-	res, err := svc.ReserveInflight(ctx, user, nil, nil, 0.8)
+	res, err := svc.ReserveInflight(ctx, user, nil, nil, service.BillingSourceBalance, 0.8)
 	require.NoError(t, err)
 	time.Sleep(2500 * time.Millisecond) // streaming well past the 1s TTL
-	_, err = svc.ReserveInflight(ctx, user, nil, nil, 0.8)
+	_, err = svc.ReserveInflight(ctx, user, nil, nil, service.BillingSourceBalance, 0.8)
 	require.ErrorIs(t, err, service.ErrInsufficientBalance, "renewed reservation must still count")
 	require.Equal(t, int64(1), inflightCount(t, cache, user.ID))
 

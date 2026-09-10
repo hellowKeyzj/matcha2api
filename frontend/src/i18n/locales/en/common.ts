@@ -167,6 +167,8 @@ export default {
     announcements: 'Announcements',
     apiKeys: 'API Keys',
     batchImage: 'Batch Images',
+    resourcePackages: 'Resource Packages',
+    packageManagement: 'Package Management',
     usage: 'Usage',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',

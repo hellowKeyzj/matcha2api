@@ -5,10 +5,14 @@ package handler
 import (
 	"bytes"
 	"context"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
@@ -61,6 +65,86 @@ func (r *groupMapRepo) GetByID(_ context.Context, id int64) (*service.Group, err
 
 func (r *groupMapRepo) GetByIDLite(ctx context.Context, id int64) (*service.Group, error) {
 	return r.GetByID(ctx, id)
+}
+
+type fallbackReservationUpstream struct {
+	service.HTTPUpstream
+	t       *testing.T
+	calls   []int64
+	amounts []float64
+	oldTask service.UsageRecordTask
+}
+
+func (s *fallbackReservationUpstream) Do(req *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
+	s.calls = append(s.calls, accountID)
+	s.amounts = append(s.amounts, service.InflightReservationFromContext(req.Context()).Amount())
+	if accountID == 9310 {
+		// A task captured before the group switch retains only the original reservation.
+		s.oldTask, _ = wrapUsageRecordTaskContext(req.Context(), func(context.Context) {})
+		return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"Prompt is too long"}}`))}, nil
+	}
+	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}, "X-Request-Id": {"fallback-billing"}}, Body: io.NopCloser(strings.NewReader(`{"id":"msg_fallback","type":"message","role":"assistant","model":"claude-opus-4-6","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{"input_tokens":12,"output_tokens":3}}`))}, nil
+}
+func (s *fallbackReservationUpstream) DoWithTLS(req *http.Request, proxy string, accountID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return s.Do(req, proxy, accountID, concurrency)
+}
+
+func TestMessagesInvalidRequestFallbackReplacesReservation(t *testing.T) {
+	for _, source := range []service.BillingSource{service.BillingSourceSubscription, service.BillingSourceBalance} {
+		t.Run(string(source), func(t *testing.T) {
+			cfg := &config.Config{Gateway: config.GatewayConfig{MaxBodySize: 1 << 20}}
+			cfg.Billing.InflightReservation = config.InflightReservationConfig{Enabled: true, TTLSeconds: 60, FailClosedOnUnpriced: true}
+			cache := &systemOneBillingCache{newHandlerInflightCache(100)}
+			billingCache := service.NewBillingCacheService(cache, nil, nil, nil, nil, nil, cfg, nil)
+			t.Cleanup(billingCache.Stop)
+			fallbackID := int64(9301)
+			primary := &service.Group{ID: 9300, Hydrated: true, Platform: service.PlatformAntigravity, Status: service.StatusActive, RateMultiplier: 0.1, SubscriptionType: service.SubscriptionTypeSubscriptionBalance, FallbackGroupIDOnInvalidRequest: &fallbackID}
+			fallback := &service.Group{ID: fallbackID, Hydrated: true, Platform: service.PlatformAnthropic, Status: service.StatusActive, RateMultiplier: 2}
+			accounts := []*service.Account{
+				{ID: 9310, Platform: service.PlatformAntigravity, Type: service.AccountTypeOAuth, Status: service.StatusActive, Schedulable: true, Concurrency: 1, AccountGroups: []service.AccountGroup{{GroupID: primary.ID}}, Credentials: map[string]any{"access_token": "token", "project_id": "proj", "expires_at": time.Now().Add(time.Hour).Format(time.RFC3339)}},
+				{ID: 9311, Platform: service.PlatformAnthropic, Type: service.AccountTypeAPIKey, Status: service.StatusActive, Schedulable: true, Concurrency: 1, AccountGroups: []service.AccountGroup{{GroupID: fallbackID}}, Credentials: map[string]any{"api_key": "token"}},
+			}
+			snapshot := service.NewSchedulerSnapshotService(&groupScopedSchedulerCache{fakeSchedulerCache: &fakeSchedulerCache{accounts: accounts}}, nil, nil, nil, nil)
+			upstream := &fallbackReservationUpstream{t: t}
+			commands := &systemOneBillingRepo{}
+			billing := service.NewBillingService(cfg, nil)
+			gw := service.NewGatewayService(nil, &groupMapRepo{groups: map[int64]*service.Group{primary.ID: primary, fallbackID: fallback}}, nil, nil, commands, nil, nil, nil, nil, cfg, snapshot, nil, billing, nil, billingCache, nil, upstream, &service.DeferredService{}, nil, nil, nil, nil, nil, nil, nil, service.NewModelPricingResolver(nil, billing), nil, nil, nil)
+			h := &GatewayHandler{cfg: cfg, gatewayService: gw, billingCacheService: billingCache, antigravityGatewayService: service.NewAntigravityGatewayService(nil, nil, snapshot, service.NewAntigravityTokenProvider(nil, nil, nil), nil, upstream, nil, nil), concurrencyHelper: NewConcurrencyHelper(service.NewConcurrencyService(&fakeConcurrencyCache{}), SSEPingFormatClaude, 0)}
+			body := []byte(`{"model":"claude-opus-4-6","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`)
+			apiKey := &service.APIKey{ID: 4, UserID: 5, User: &service.User{ID: 5, Balance: 100}, GroupID: &primary.ID, Group: primary}
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body)).WithContext(context.WithValue(context.Background(), ctxkey.Group, primary))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Set(string(middleware.ContextKeyAPIKey), apiKey)
+			c.Set(string(middleware.ContextKeyUser), middleware.AuthSubject{UserID: 5, Concurrency: 1})
+			c.Set(string(middleware.ContextKeySubscription), &service.UserSubscription{ID: 7})
+			c.Set(string(middleware.ContextKeyBillingSource), source)
+
+			h.Messages(c)
+
+			require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+			require.Equal(t, []int64{9310, 9311}, upstream.calls)
+			if source.IsSubscription() {
+				require.Zero(t, upstream.amounts[0])
+			} else {
+				require.Positive(t, upstream.amounts[0])
+			}
+			expected, priced := gw.EstimateInflightReservation(c.Request.Context(), cloneAPIKeyWithGroup(apiKey, fallback), tokenInflightEstimate("claude-opus-4-6", body))
+			require.True(t, priced)
+			require.InDelta(t, expected, upstream.amounts[1], 1e-12, "new reservation must use fallback group multiplier")
+			require.Len(t, commands.commands, 1)
+			require.Equal(t, service.BillingTypeBalance, commands.commands[0].BillingType)
+			require.Nil(t, commands.commands[0].SubscriptionID)
+			if source.IsSubscription() {
+				require.Zero(t, cache.count())
+			} else {
+				require.Equal(t, 1, cache.count(), "only original task reference may survive")
+			}
+			upstream.oldTask(context.Background())
+			require.Zero(t, cache.count(), "both groups' handler/task references must be reclaimed")
+		})
+	}
 }
 
 func TestGatewayOpenAICompatibleHandlersClaudeCodeOnlyFallback(t *testing.T) {
@@ -130,7 +214,7 @@ func TestGatewayOpenAICompatibleHandlersClaudeCodeOnlyFallback(t *testing.T) {
 					nil, &groupMapRepo{fakeGroupRepo: &fakeGroupRepo{}, groups: map[int64]*service.Group{
 						primaryGroupID:  primary,
 						fallbackGroupID: fallback,
-					}}, nil, nil, nil, nil, nil, nil, nil,
+					}}, nil, nil, nil, nil, nil, nil, nil, nil,
 					service.NewSchedulerSnapshotService(schedulerCache, nil, nil, nil, nil),
 					nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 				)

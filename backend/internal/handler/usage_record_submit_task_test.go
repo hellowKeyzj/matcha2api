@@ -31,7 +31,7 @@ func TestGatewayHandlerSubmitUsageRecordTask_WithPool(t *testing.T) {
 	done := make(chan struct{})
 	h.submitUsageRecordTask(context.Background(), func(ctx context.Context) {
 		close(done)
-	})
+	}, service.PackageMeteringUsage{})
 
 	select {
 	case <-done:
@@ -49,7 +49,7 @@ func TestGatewayHandlerSubmitUsageRecordTask_WithoutPoolSyncFallback(t *testing.
 			t.Fatal("expected deadline in fallback context")
 		}
 		called.Store(true)
-	})
+	}, service.PackageMeteringUsage{})
 
 	require.True(t, called.Load())
 }
@@ -57,7 +57,7 @@ func TestGatewayHandlerSubmitUsageRecordTask_WithoutPoolSyncFallback(t *testing.
 func TestGatewayHandlerSubmitUsageRecordTask_NilTask(t *testing.T) {
 	h := &GatewayHandler{}
 	require.NotPanics(t, func() {
-		h.submitUsageRecordTask(context.Background(), nil)
+		h.submitUsageRecordTask(context.Background(), nil, service.PackageMeteringUsage{})
 	})
 }
 
@@ -68,12 +68,12 @@ func TestGatewayHandlerSubmitUsageRecordTask_WithoutPool_TaskPanicRecovered(t *t
 	require.NotPanics(t, func() {
 		h.submitUsageRecordTask(context.Background(), func(ctx context.Context) {
 			panic("usage task panic")
-		})
+		}, service.PackageMeteringUsage{})
 	})
 
 	h.submitUsageRecordTask(context.Background(), func(ctx context.Context) {
 		called.Store(true)
-	})
+	}, service.PackageMeteringUsage{})
 	require.True(t, called.Load(), "panic 后后续任务应仍可执行")
 }
 
@@ -184,7 +184,7 @@ func TestOpenAIGatewayHandlerSubmitOpenAIUsageRecordTask_ImageResultUsesMandator
 	var called atomic.Bool
 	h.submitOpenAIUsageRecordTask(context.Background(), &service.OpenAIForwardResult{ImageCount: 1}, func(ctx context.Context) {
 		called.Store(true)
-	})
+	}, service.PackageMeteringUsage{})
 	close(release)
 
 	require.True(t, called.Load(), "image usage task must be mandatory when async submit is dropped")
@@ -214,7 +214,7 @@ func TestOpenAIGatewayHandlerSubmitOpenAIUsageRecordTask_SearchCountUsesMandator
 	var called atomic.Bool
 	h.submitOpenAIUsageRecordTask(context.Background(), &service.OpenAIForwardResult{SearchCount: 3}, func(ctx context.Context) {
 		called.Store(true)
-	})
+	}, service.PackageMeteringUsage{})
 	close(release)
 
 	require.True(t, called.Load(), "search surcharge usage task must be mandatory when async submit is dropped")

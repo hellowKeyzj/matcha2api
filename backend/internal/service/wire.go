@@ -109,6 +109,23 @@ func ProvideBatchImageCleanupService(repo BatchImageRepository, accountRepo Acco
 	return svc
 }
 
+func ProvideMatchaPackageStorageSettingService(
+	settingRepo SettingRepository,
+	encryptor SecretEncryptor,
+	backup *BackupService,
+	factory MatchaPackageObjectStoreFactory,
+) *MatchaPackageStorageSettingService {
+	return NewMatchaPackageStorageSettingService(settingRepo, encryptor, backup, factory)
+}
+
+func ProvideMatchaPackageCloudKeyService(settingRepo MatchaPackageCloudKeyRepository, encryptor SecretEncryptor, cfg *config.Config) *MatchaPackageCloudKeyService {
+	return NewMatchaPackageCloudKeyService(settingRepo, encryptor, cfg)
+}
+
+func ProvideMatchaPackageRegistryService(repo MatchaPackageRepository, storage *MatchaPackageStorageSettingService, cloudKeys *MatchaPackageCloudKeyService) *MatchaPackageRegistryService {
+	return NewMatchaPackageRegistryService(repo, storage.Resolver(), "", cloudKeys)
+}
+
 // ProvideOpenAIOAuthService creates OpenAIOAuthService with privacy/account enrichment support.
 func ProvideOpenAIOAuthService(
 	proxyRepo ProxyRepository,
@@ -881,6 +898,9 @@ var ProviderSet = wire.NewSet(
 	NewBatchImagePublicService,
 	NewBatchImageDownloadService,
 	ProvideBatchImageCleanupService,
+	ProvideMatchaPackageStorageSettingService,
+	ProvideMatchaPackageCloudKeyService,
+	ProvideMatchaPackageRegistryService,
 	ProvideBatchImageWorkerRuntime,
 	wire.Bind(new(AccountRuntimeBlocker), new(*OpenAIGatewayService)),
 	NewOAuthService,

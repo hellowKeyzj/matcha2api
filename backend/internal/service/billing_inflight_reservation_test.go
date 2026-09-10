@@ -52,7 +52,7 @@ func TestReserveInflightBalance_NoReservationCacheFailsOpen(t *testing.T) {
 	cfg.Billing.InflightReservation.Enabled = true
 	svc := NewBillingCacheService(nil, nil, nil, nil, nil, nil, cfg, nil)
 	t.Cleanup(svc.Stop)
-	release, err := svc.ReserveInflightBalance(context.Background(), &User{ID: 1}, nil, nil, 100)
+	release, err := svc.ReserveInflightBalance(context.Background(), &User{ID: 1}, nil, nil, BillingSourceBalance, 100)
 	require.NoError(t, err)
 	release()
 }
@@ -262,14 +262,14 @@ func TestInflightReservation_HeldUntilBillingTaskDone(t *testing.T) {
 	svc := newInflightSvc(t, cache, 60)
 	user := &User{ID: 1}
 
-	res, err := svc.ReserveInflight(context.Background(), user, nil, nil, 0.9)
+	res, err := svc.ReserveInflight(context.Background(), user, nil, nil, BillingSourceBalance, 0.9)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	taskDone := res.Acquire() // billing task submitted
 	res.HandlerDone()         // handler returned
 	require.Equal(t, 1, cache.count(), "reservation must survive handler return while billing is pending")
 
-	_, err = svc.ReserveInflight(context.Background(), user, nil, nil, 0.9)
+	_, err = svc.ReserveInflight(context.Background(), user, nil, nil, BillingSourceBalance, 0.9)
 	require.ErrorIs(t, err, ErrInsufficientBalance)
 
 	taskDone()
@@ -278,7 +278,7 @@ func TestInflightReservation_HeldUntilBillingTaskDone(t *testing.T) {
 	require.Equal(t, int32(1), cache.releaseCt.Load(), "released exactly once")
 
 	// No billing task → HandlerDone releases immediately; Acquire after release is a no-op.
-	res2, err := svc.ReserveInflight(context.Background(), user, nil, nil, 0.1)
+	res2, err := svc.ReserveInflight(context.Background(), user, nil, nil, BillingSourceBalance, 0.1)
 	require.NoError(t, err)
 	res2.HandlerDone()
 	res2.HandlerDone()
@@ -298,12 +298,12 @@ func TestInflightReservation_RenewedWhileHandlerActive(t *testing.T) {
 	svc := newInflightSvc(t, cache, 1)
 	user := &User{ID: 2}
 
-	res, err := svc.ReserveInflight(context.Background(), user, nil, nil, 0.9)
+	res, err := svc.ReserveInflight(context.Background(), user, nil, nil, BillingSourceBalance, 0.9)
 	require.NoError(t, err)
 	time.Sleep(2500 * time.Millisecond) // > 2 × TTL
 	require.Equal(t, 1, cache.count(), "renewal keeps the reservation alive past its TTL")
 	require.Greater(t, cache.renews.Load(), int32(3))
-	_, err = svc.ReserveInflight(context.Background(), user, nil, nil, 0.9)
+	_, err = svc.ReserveInflight(context.Background(), user, nil, nil, BillingSourceBalance, 0.9)
 	require.ErrorIs(t, err, ErrInsufficientBalance)
 
 	done := res.Acquire()
@@ -315,11 +315,86 @@ func TestInflightReservation_RenewedWhileHandlerActive(t *testing.T) {
 	done()
 }
 
+func TestWithInflightReservation_ClearsInheritedHandle(t *testing.T) {
+	reservation := &InflightReservation{}
+	parent := WithInflightReservation(context.Background(), reservation)
+	cleared := WithInflightReservation(parent, nil)
+	require.Nil(t, InflightReservationFromContext(cleared))
+	require.Same(t, reservation, InflightReservationFromContext(parent))
+}
+
+func TestReserveInflight_UsesExplicitBillingSource(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source BillingSource
+		kind   string
+		skip   bool
+	}{
+		{"hybrid_subscription_zero_balance", BillingSourceSubscription, SubscriptionTypeSubscriptionBalance, true},
+		{"balance_with_subscription", BillingSourceBalance, SubscriptionTypeSubscription, false},
+		{"empty_source_with_subscription", "", SubscriptionTypeSubscription, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cache := newMemInflightCache(0)
+			svc := newInflightSvc(t, cache, 60)
+			user := &User{ID: 1}
+			group := &Group{ID: 2, SubscriptionType: tc.kind}
+			sub := &UserSubscription{ID: 3}
+			res, err := svc.ReserveInflight(context.Background(), user, group, sub, tc.source, 0.5)
+			require.NoError(t, err)
+			if tc.skip {
+				require.Nil(t, res)
+			} else {
+				require.NotNil(t, res)
+				require.Equal(t, 1, cache.count())
+			}
+			res.HandlerDone()
+			release, err := svc.ReserveInflightBalance(context.Background(), user, group, sub, tc.source, 0.5)
+			require.NoError(t, err)
+			if tc.skip {
+				require.Zero(t, cache.count(), "subscription source never reads/reserves balance")
+			} else {
+				require.Equal(t, 1, cache.count())
+			}
+			release()
+		})
+	}
+}
+
+func TestFinalizePostUsageBilling_AppliedPackageCostUpdatesBalanceCache(t *testing.T) {
+	for _, llmCost := range []float64{0.25, 0} {
+		for _, syncDeduct := range []bool{true, false} {
+			t.Run(fmt.Sprintf("llm=%g/sync=%t", llmCost, syncDeduct), func(t *testing.T) {
+				cache := newMemInflightCache(1)
+				cfg := &config.Config{}
+				cfg.Billing.InflightReservation.Enabled = syncDeduct
+				writes := make(chan cacheWriteTask, 1)
+				svc := &BillingCacheService{cache: cache, cfg: cfg, cacheWriteChan: writes}
+				applied := llmCost + 0.5
+				finalizePostUsageBilling(context.Background(), &postUsageBillingParams{
+					Cost: &CostBreakdown{ActualCost: llmCost}, User: &User{ID: 3}, Account: &Account{ID: 4},
+				}, &billingDeps{billingCacheService: svc, deferredService: &DeferredService{}}, &UsageBillingApplyResult{
+					Applied: true, BalanceCostApplied: applied, PackageMeteringCost: 0.5,
+				})
+				if syncDeduct {
+					require.Equal(t, int32(1), cache.deducts.Load(), "deduction lands before billing task returns")
+					bal, _ := cache.GetUserBalance(context.Background(), 3)
+					require.InDelta(t, 1-applied, bal, 1e-12)
+					require.Empty(t, writes)
+				} else {
+					require.Len(t, writes, 1)
+					require.InDelta(t, applied, (<-writes).amount, 1e-12)
+				}
+			})
+		}
+	}
+}
+
 func TestSyncBalanceCacheAfterDeduction_SynchronousWhenInflightEnabled(t *testing.T) {
 	cache := newMemInflightCache(1)
 	svc := newInflightSvc(t, cache, 60)
 	p := &postUsageBillingParams{Cost: &CostBreakdown{ActualCost: 0.25}, User: &User{ID: 3}}
-	syncBalanceCacheAfterDeduction(context.Background(), p, &billingDeps{billingCacheService: svc}, nil)
+	syncBalanceCacheAfterDeduction(context.Background(), p, &billingDeps{billingCacheService: svc}, nil, 0.25)
 	require.Equal(t, int32(1), cache.deducts.Load(), "cache deduction must land before the billing task returns")
 	bal, _ := cache.GetUserBalance(context.Background(), 3)
 	require.InDelta(t, 0.75, bal, 1e-12)
@@ -479,6 +554,70 @@ func TestInflightEstimate_NoGroupKeyUsesUngroupedAccountMapping(t *testing.T) {
 	direct, ok := svc.EstimateInflightReservation(ctx, apiKey, InflightEstimateRequest{Model: "claude-opus-4-1", BodyBytes: 4000, MaxTokens: 1000})
 	require.True(t, ok)
 	require.InDelta(t, direct, est, 1e-12)
+}
+
+func TestInflightEstimate_AccountAliasesRespectShardScope(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		openAI        bool
+		groupPlatform string
+		target        string
+		scopePlatform string
+	}{
+		{"native_mixed", false, PlatformAnthropic, PlatformAnthropic, ""},
+		{"native_composite", false, PlatformComposite, PlatformAnthropic, PlatformAnthropic},
+		{"openai_composite_grok", true, PlatformComposite, PlatformGrok, PlatformGrok},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			groupID := int64(42)
+			native := newInflightEstimateGateway(t, nil)
+			snap := &inflightSnapshotCacheStub{byBucket: map[string][]Account{inflightBucketKey(groupID, tc.target): {
+				{ID: 1, Platform: tc.target, Credentials: map[string]any{"model_mapping": map[string]any{"shard-alias-42": "claude-sonnet-4-5"}}},
+				{ID: 2, Platform: tc.target, Credentials: map[string]any{"model_mapping": map[string]any{"shard-alias-42": "claude-opus-4-1"}}},
+			}}}
+			attachInflightSnapshot(native, snap)
+			shards := &testGroupShardRepo{scope: &GroupShardAccountScope{Enabled: true, AccountIDs: map[int64]struct{}{1: {}}}}
+			native.groupShardRepo = shards
+			apiKey := &APIKey{User: &User{ID: 7}, GroupID: &groupID, Group: &Group{ID: groupID, Platform: tc.groupPlatform, ShardEnabled: true, RateMultiplier: 1}}
+			ctx := WithResolvedTargetPlatform(context.Background(), tc.target)
+			req := InflightEstimateRequest{Model: "shard-alias-42", BodyBytes: 4000, MaxTokens: 1000}
+			estimate := native.EstimateInflightReservation
+			if tc.openAI {
+				openAI := &OpenAIGatewayService{cfg: native.cfg, billingService: native.billingService, resolver: native.resolver, schedulerSnapshot: native.schedulerSnapshot, groupShardRepo: shards}
+				estimate = openAI.EstimateInflightReservation
+			}
+			est, priced := estimate(ctx, apiKey, req)
+			require.True(t, priced)
+			require.Equal(t, groupID, shards.lastGroupID)
+			require.Equal(t, int64(7), shards.lastUserID)
+			require.Equal(t, tc.scopePlatform, shards.lastPlatform)
+			req.Model = "claude-sonnet-4-5"
+			cheap, ok := estimate(ctx, apiKey, req)
+			require.True(t, ok)
+			req.Model = "claude-opus-4-1"
+			expensive, ok := estimate(ctx, apiKey, req)
+			require.True(t, ok)
+			require.Greater(t, expensive, cheap)
+			require.InDelta(t, cheap, est, 1e-12, "other shard's expensive alias must not inflate admission cost")
+
+			cache := newMemInflightCache((cheap + expensive) / 2)
+			billing := newInflightSvc(t, cache, 60)
+			held, err := billing.ReserveInflight(ctx, apiKey.User, apiKey.Group, nil, BillingSourceBalance, 0.000001)
+			require.NoError(t, err)
+			defer held.HandlerDone()
+			res, err := billing.ReserveInflight(ctx, apiKey.User, apiKey.Group, nil, BillingSourceBalance, est)
+			require.NoError(t, err, "allowed shard alias is affordable despite another shard's higher price")
+			res.HandlerDone()
+
+			shards.scope.AccountIDs = map[int64]struct{}{}
+			req.Model = "shard-alias-42"
+			_, priced = estimate(ctx, apiKey, req)
+			require.False(t, priced, "empty shard cannot price aliases from other shards")
+			shards.err = fmt.Errorf("shard lookup failed")
+			_, priced = estimate(ctx, apiKey, req)
+			require.False(t, priced, "scope errors cannot fall back to the full group pool")
+		})
+	}
 }
 
 // 管理员新增账号映射后立即生效（不缓存负结果）。
