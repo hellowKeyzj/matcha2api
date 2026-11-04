@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
-    <TablePageLayout>
-      <template #filters>
+    <div class="space-y-6" data-testid="group-shards-page">
+      <section>
         <div class="space-y-4">
           <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
             <div class="min-w-0 space-y-2">
@@ -56,10 +56,10 @@
             {{ t("admin.groups.shards.disabledHint") }}
           </div>
         </div>
-      </template>
+      </section>
 
-      <template #table>
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(280px,360px)_1fr]">
+      <section>
+        <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
           <section class="rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-dark-700">
               <div>
@@ -75,6 +75,15 @@
               </span>
             </div>
 
+            <div class="border-b border-gray-200 p-3 dark:border-dark-700">
+              <button type="button" class="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition-colors"
+                :class="poolView === 'shared' || !selectedShard ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-dark-800'"
+                :aria-pressed="poolView === 'shared' || !selectedShard"
+                @click="poolView = 'shared'">
+                <span class="font-semibold">{{ t('admin.groups.shards.sharedNav') }}</span>
+                <span class="rounded-md bg-white px-2 py-0.5 text-xs tabular-nums dark:bg-dark-800">{{ sharedAccountDrafts.length }}</span>
+              </button>
+            </div>
             <div v-if="loading" class="space-y-2 p-4">
               <div v-for="i in 4" :key="i" class="h-20 animate-pulse rounded-lg bg-gray-100 dark:bg-dark-800" />
             </div>
@@ -93,8 +102,8 @@
                 v-for="shard in shards"
                 :key="shard.id"
                 type="button"
-                class="mb-2 w-full rounded-xl border px-4 py-3 text-left transition-colors"
-                :class="selectedShardId === shard.id
+                class="mb-2 w-full rounded-lg border px-3 py-3 text-left transition-colors"
+                :class="poolView === 'shard' && selectedShardId === shard.id
                   ? 'border-primary-300 bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20'
                   : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:bg-dark-800'"
                 @click="selectShard(shard.id)"
@@ -113,12 +122,12 @@
                   </div>
                   <span class="shrink-0 font-mono text-xs text-gray-400">#{{ shard.id }}</span>
                 </div>
-                <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div class="rounded-lg bg-gray-100 px-2 py-1.5 dark:bg-dark-800">
+                <div class="mt-2 flex gap-4 text-xs">
+                  <div class="py-1">
                     <span class="text-gray-500 dark:text-gray-400">{{ t("admin.groups.shards.users") }}</span>
                     <span class="ml-1 font-semibold text-gray-900 dark:text-white">{{ shard.user_count }}/{{ maxUsersPerShard }}</span>
                   </div>
-                  <div class="rounded-lg bg-gray-100 px-2 py-1.5 dark:bg-dark-800">
+                  <div class="py-1">
                     <span class="text-gray-500 dark:text-gray-400">{{ t("admin.groups.shards.accounts") }}</span>
                     <span class="ml-1 font-semibold text-gray-900 dark:text-white">{{ shard.account_count }}</span>
                   </div>
@@ -128,14 +137,30 @@
           </section>
 
           <section class="min-w-0 rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-            <div v-if="!selectedShard" class="p-10">
+            <div v-show="poolView === 'shared' || !selectedShard" data-testid="shared-pool-panel">
+            <GroupShardAccountPoolEditor
+              v-if="group"
+              v-model="sharedAccountDrafts"
+              class="!rounded-xl !border-0"
+              :group-id="groupID"
+              :platform="group.platform"
+              :excluded-account-ids="exclusiveAccountIDs"
+              :saving="savingSharedAccounts"
+              :disabled="loading || detailsLoading"
+              title-key="admin.groups.shards.sharedAccountSectionTitle"
+              hint-key="admin.groups.shards.sharedAccountSectionHint"
+              @save="saveSharedAccounts"
+            />
+            </div>
+
+            <div v-if="!selectedShard && !group" class="p-10">
               <EmptyState
                 :title="t('admin.groups.shards.selectTitle')"
                 :description="t('admin.groups.shards.selectDescription')"
               />
             </div>
 
-            <div v-else>
+            <div v-if="selectedShard" v-show="poolView === 'shard'">
               <div class="flex flex-col justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-dark-700 lg:flex-row lg:items-start">
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
@@ -146,8 +171,8 @@
                       {{ shardStatusLabel(selectedShard.status) }}
                     </span>
                   </div>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ selectedShard.description || t("admin.groups.shards.noDescription") }}
+                  <p v-if="selectedShard.description" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{ selectedShard.description }}
                   </p>
                   <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
                     {{ t("admin.groups.shards.updatedAt", { time: formatDateTime(selectedShard.updated_at) }) }}
@@ -169,8 +194,8 @@
                 <div v-for="i in 3" :key="i" class="h-28 animate-pulse rounded-xl bg-gray-100 dark:bg-dark-800" />
               </div>
 
-              <div v-else class="space-y-5 p-5">
-                <section class="rounded-xl border border-gray-200 dark:border-dark-700">
+              <div v-else class="space-y-5 p-4 sm:p-5">
+                <section class="border-b border-gray-200 pb-4 dark:border-dark-700">
                   <div class="flex flex-col justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-dark-700 lg:flex-row lg:items-center">
                     <div>
                       <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -229,7 +254,7 @@
                     <div
                       v-for="user in assignedUsers"
                       :key="user.user_id"
-                      class="flex flex-col justify-between gap-3 px-4 py-3 sm:flex-row sm:items-center"
+                      class="flex flex-col justify-between gap-2 px-4 py-2 sm:flex-row sm:items-center"
                     >
                       <div class="min-w-0">
                         <div class="truncate text-sm font-medium text-gray-900 dark:text-white">
@@ -254,134 +279,24 @@
                   </div>
                 </section>
 
-                <section class="rounded-xl border border-gray-200 dark:border-dark-700">
-                  <div class="flex flex-col justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-dark-700 lg:flex-row lg:items-center">
-                    <div>
-                      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                        {{ t("admin.groups.shards.accountSectionTitle") }}
-                      </h3>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.groups.shards.accountSectionHint") }}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      class="btn btn-primary"
-                      :disabled="savingAccounts"
-                      @click="saveAccounts"
-                    >
-                      <Icon name="check" size="sm" class="mr-2" />
-                      {{ savingAccounts ? t("admin.groups.shards.savingAccounts") : t("admin.groups.shards.saveAccounts") }}
-                    </button>
-                  </div>
-
-                  <div class="space-y-4 p-4">
-                    <div
-                      v-for="provider in providerSections"
-                      :key="provider.value"
-                      class="rounded-xl border border-gray-200 p-4 dark:border-dark-700"
-                    >
-                      <div class="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
-                        <div class="flex items-center gap-2">
-                          <PlatformIcon :platform="provider.value" size="sm" />
-                          <div>
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
-                              {{ provider.label }}
-                            </h4>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                              {{ t("admin.groups.shards.providerAccountCount", { count: selectedAccountsByProvider(provider.value).length }) }}
-                            </p>
-                          </div>
-                        </div>
-                        <div class="relative w-full lg:w-80">
-                          <Icon name="search" size="sm" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input
-                            v-model="accountSearchQueries[provider.value]"
-                            type="text"
-                            autocomplete="off"
-                            class="input input-sm w-full pl-9"
-                            :placeholder="t('admin.groups.shards.searchAccounts')"
-                            @input="debounceAccountSearch(provider.value)"
-                            @focus="loadAccountCandidates(provider.value)"
-                          />
-                          <div
-                            v-if="accountSearchDropdownVisible(provider.value)"
-                            class="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                          >
-                            <div v-if="accountSearchLoading[provider.value]" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                              {{ t("common.loading") }}
-                            </div>
-                            <div v-else-if="availableAccountResults(provider.value).length === 0" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                              {{ t("admin.groups.shards.noAccountResults") }}
-                            </div>
-                            <template v-else>
-                              <button
-                                v-for="account in availableAccountResults(provider.value)"
-                                :key="account.id"
-                                type="button"
-                                class="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
-                                @click="addAccount(account)"
-                              >
-                                <span class="min-w-0 truncate">
-                                  <span class="font-medium text-gray-900 dark:text-white">{{ account.name }}</span>
-                                  <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">{{ accountTypeLabel(account.type) }}</span>
-                                </span>
-                                <span class="shrink-0 font-mono text-xs text-gray-400">#{{ account.id }}</span>
-                              </button>
-                            </template>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="mt-4 overflow-hidden rounded-lg border border-gray-200 dark:border-dark-700">
-                        <div class="grid grid-cols-[1fr_7rem_4rem] gap-3 bg-gray-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-dark-800 dark:text-gray-400">
-                          <span>{{ t("admin.groups.shards.accountName") }}</span>
-                          <span>{{ t("admin.groups.shards.priority") }}</span>
-                          <span class="text-right">{{ t("common.actions") }}</span>
-                        </div>
-                        <div v-if="selectedAccountsByProvider(provider.value).length === 0" class="px-3 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.groups.shards.noProviderAccounts") }}
-                        </div>
-                        <div
-                          v-for="draft in selectedAccountsByProvider(provider.value)"
-                          :key="draft.account_id"
-                          class="grid grid-cols-[1fr_7rem_4rem] items-center gap-3 border-t border-gray-200 px-3 py-2 dark:border-dark-700"
-                        >
-                          <div class="min-w-0">
-                            <div class="truncate text-sm font-medium text-gray-900 dark:text-white">
-                              {{ draft.name }}
-                            </div>
-                            <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                              <span class="font-mono">#{{ draft.account_id }}</span>
-                              <span>{{ accountTypeLabel(draft.type) }}</span>
-                              <span>{{ accountStatusLabel(draft.status) }}</span>
-                            </div>
-                          </div>
-                          <input
-                            v-model.number="draft.priority"
-                            type="number"
-                            step="1"
-                            class="input input-sm"
-                          />
-                          <button
-                            type="button"
-                            class="justify-self-end rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                            :title="t('common.remove')"
-                            @click="removeAccount(draft.account_id)"
-                          >
-                            <Icon name="trash" size="sm" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
+                <GroupShardAccountPoolEditor
+                  v-if="group"
+                  :key="selectedShard.id"
+                  v-model="accountDrafts"
+                  :group-id="groupID"
+                  :platform="group.platform"
+                  :excluded-account-ids="sharedAccountIDs"
+                  :saving="savingAccounts"
+                  title-key="admin.groups.shards.accountSectionTitle"
+                  hint-key="admin.groups.shards.accountSectionHint"
+                  @save="saveAccounts"
+                />
               </div>
             </div>
           </section>
         </div>
-      </template>
-    </TablePageLayout>
+      </section>
+    </div>
 
     <BaseDialog
       :show="showShardDialog"
@@ -439,7 +354,6 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { adminAPI } from "@/api/admin";
 import type {
-  Account,
   AccountPlatform,
   AccountType,
   AdminGroup,
@@ -453,11 +367,11 @@ import { CONCRETE_PLATFORM_OPTIONS } from "@/constants/platforms";
 import { useAppStore } from "@/stores/app";
 import { extractApiErrorMessage } from "@/utils/apiError";
 import AppLayout from "@/components/layout/AppLayout.vue";
-import TablePageLayout from "@/components/layout/TablePageLayout.vue";
 import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 import PlatformIcon from "@/components/common/PlatformIcon.vue";
+import GroupShardAccountPoolEditor from "./GroupShardAccountPoolEditor.vue";
 import Icon from "@/components/icons/Icon.vue";
 
 interface AccountDraft {
@@ -483,8 +397,15 @@ const appStore = useAppStore();
 const group = ref<AdminGroup | null>(null);
 const shards = ref<GroupShard[]>([]);
 const selectedShardId = ref<number | null>(null);
+const poolView = ref<"shared" | "shard">("shard");
 const assignedUsers = ref<GroupShardUser[]>([]);
 const accountDrafts = ref<AccountDraft[]>([]);
+const sharedAccountDrafts = ref<AccountDraft[]>([]);
+const savedSharedAccountIDs = ref<number[]>([]);
+const savedExclusiveAccountIDs = ref<number[]>([]);
+const savingSharedAccounts = ref(false);
+const sharedAccountIDs = computed(() => [...savedSharedAccountIDs.value, ...sharedAccountDrafts.value.map((account) => account.account_id)]);
+const exclusiveAccountIDs = computed(() => [...savedExclusiveAccountIDs.value, ...accountDrafts.value.map((account) => account.account_id)]);
 const loading = ref(false);
 const detailsLoading = ref(false);
 const savingShard = ref(false);
@@ -503,13 +424,6 @@ const shardForm = reactive<ShardForm>({
   description: "",
   status: "active",
 });
-const accountSearchQueries = ref<Record<AccountPlatform, string>>({} as Record<AccountPlatform, string>);
-const accountSearchResults = ref<Record<AccountPlatform, Account[]>>({} as Record<AccountPlatform, Account[]>);
-const accountSearchLoading = ref<Record<AccountPlatform, boolean>>({} as Record<AccountPlatform, boolean>);
-const accountSearchOpen = ref<Record<AccountPlatform, boolean>>({} as Record<AccountPlatform, boolean>);
-const accountSearchTimers: Partial<Record<AccountPlatform, ReturnType<typeof setTimeout>>> = {};
-const accountSearchSequences: Partial<Record<AccountPlatform, number>> = {};
-const accountSearchAbort: Partial<Record<AccountPlatform, AbortController>> = {};
 let userSearchTimer: ReturnType<typeof setTimeout> | null = null;
 let userSearchSequence = 0;
 let userSearchAbort: AbortController | null = null;
@@ -533,7 +447,6 @@ const providerSections = computed(() => {
 });
 
 const assignedUserIDs = computed(() => new Set(assignedUsers.value.map((user) => user.user_id)));
-const selectedAccountIDs = computed(() => new Set(accountDrafts.value.map((account) => account.account_id)));
 const availableUserResults = computed(() =>
   userSearchResults.value.filter((user) => !assignedUserIDs.value.has(user.id)),
 );
@@ -548,17 +461,6 @@ function platformLabel(platform: GroupPlatform | AccountPlatform): string {
 
 function shardStatusLabel(status: string): string {
   return status === "inactive" ? t("admin.groups.shards.statusInactive") : t("admin.groups.shards.statusActive");
-}
-
-function accountStatusLabel(status: string): string {
-  return t(`admin.accounts.status.${status}`, status);
-}
-
-function accountTypeLabel(type: AccountType | string): string {
-  if (type === "oauth") return t("admin.accounts.oauthType");
-  if (type === "setup-token") return t("admin.accounts.setupToken");
-  if (type === "apikey") return t("admin.accounts.apiKey");
-  return type;
 }
 
 function statusBadgeClass(status: string): string {
@@ -604,29 +506,9 @@ function accountDraftFromShardAccount(account: GroupShardAccount): AccountDraft 
   };
 }
 
-function accountDraftFromAccount(account: Account): AccountDraft {
-  return {
-    account_id: account.id,
-    name: account.name,
-    platform: account.platform,
-    type: account.type,
-    status: account.status,
-    priority: 100,
-  };
-}
-
 function normalizePriority(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.trunc(parsed) : 100;
-}
-
-function syncAccountSearchState(): void {
-  for (const provider of providerSections.value) {
-    accountSearchQueries.value[provider.value] ??= "";
-    accountSearchResults.value[provider.value] ??= [];
-    accountSearchLoading.value[provider.value] ??= false;
-    accountSearchOpen.value[provider.value] ??= false;
-  }
 }
 
 function clearSearchState(): void {
@@ -639,17 +521,6 @@ function clearSearchState(): void {
   if (userSearchTimer) {
     clearTimeout(userSearchTimer);
     userSearchTimer = null;
-  }
-  for (const provider of CONCRETE_PLATFORM_OPTIONS) {
-    const platform = provider.value;
-    if (accountSearchTimers[platform]) clearTimeout(accountSearchTimers[platform]);
-    accountSearchAbort[platform]?.abort();
-    delete accountSearchTimers[platform];
-    delete accountSearchAbort[platform];
-    accountSearchQueries.value[platform] = "";
-    accountSearchResults.value[platform] = [];
-    accountSearchLoading.value[platform] = false;
-    accountSearchOpen.value[platform] = false;
   }
 }
 
@@ -667,13 +538,15 @@ async function loadPage(): Promise<void> {
   }
   loading.value = true;
   try {
-    const [loadedGroup, loadedShards] = await Promise.all([
+    const [loadedGroup, loadedShards, sharedAccounts] = await Promise.all([
       adminAPI.groups.getById(groupID.value),
       adminAPI.groups.listShards(groupID.value),
+      adminAPI.groups.listSharedAccounts(groupID.value),
     ]);
     group.value = loadedGroup;
     shards.value = sortShards(loadedShards);
-    syncAccountSearchState();
+    sharedAccountDrafts.value = sortAccountDrafts(sharedAccounts.map(accountDraftFromShardAccount));
+    savedSharedAccountIDs.value = sharedAccounts.map((account) => account.account_id);
     if (!selectedShardId.value || !shards.value.some((shard) => shard.id === selectedShardId.value)) {
       selectedShardId.value = shards.value[0]?.id ?? null;
     }
@@ -698,6 +571,7 @@ async function loadSelectedShardDetails(): Promise<void> {
     cancelDetailRequest();
     assignedUsers.value = [];
     accountDrafts.value = [];
+    savedExclusiveAccountIDs.value = [];
     return;
   }
 
@@ -720,7 +594,7 @@ async function loadSelectedShardDetails(): Promise<void> {
     }
     assignedUsers.value = sortUsers(users);
     accountDrafts.value = sortAccountDrafts(accounts.map(accountDraftFromShardAccount));
-    syncAccountSearchState();
+    savedExclusiveAccountIDs.value = accounts.map((account) => account.account_id);
   } catch (error: unknown) {
     if (controller.signal.aborted || sequence !== detailRequestSequence) return;
     appStore.showError(extractApiErrorMessage(error, t("admin.groups.shards.loadDetailsFailed")));
@@ -733,6 +607,7 @@ async function loadSelectedShardDetails(): Promise<void> {
 }
 
 function selectShard(shardID: number): void {
+  poolView.value = "shard";
   if (selectedShardId.value === shardID) return;
   selectedShardId.value = shardID;
   clearSearchState();
@@ -783,6 +658,7 @@ async function saveShard(): Promise<void> {
     editingShard.value = null;
     await refreshShards();
     selectedShardId.value = saved.id;
+    poolView.value = "shard";
     await loadSelectedShardDetails();
   } catch (error: unknown) {
     appStore.showError(extractApiErrorMessage(error, t("admin.groups.shards.saveFailed")));
@@ -872,7 +748,8 @@ async function removeUser(user: GroupShardUser): Promise<void> {
   try {
     await adminAPI.groups.removeShardUser(groupID.value, selectedShard.value.id, user.user_id);
     appStore.showSuccess(t("admin.groups.shards.userRemoved"));
-    await Promise.all([loadSelectedShardDetails(), refreshShards()]);
+    await refreshShards();
+    await loadSelectedShardDetails();
   } catch (error: unknown) {
     appStore.showError(extractApiErrorMessage(error, t("admin.groups.shards.userRemoveFailed")));
   } finally {
@@ -880,83 +757,40 @@ async function removeUser(user: GroupShardUser): Promise<void> {
   }
 }
 
-function selectedAccountsByProvider(platform: AccountPlatform): AccountDraft[] {
-  return accountDrafts.value.filter((account) => account.platform === platform);
-}
-
-function accountSearchDropdownVisible(platform: AccountPlatform): boolean {
-  return Boolean(accountSearchOpen.value[platform]);
-}
-
-function availableAccountResults(platform: AccountPlatform): Account[] {
-  return (accountSearchResults.value[platform] || []).filter((account) => !selectedAccountIDs.value.has(account.id));
-}
-
-function debounceAccountSearch(platform: AccountPlatform): void {
-  if (accountSearchTimers[platform]) clearTimeout(accountSearchTimers[platform]);
-  accountSearchOpen.value[platform] = true;
-  accountSearchSequences[platform] = (accountSearchSequences[platform] || 0) + 1;
-  const sequence = accountSearchSequences[platform] || 0;
-  accountSearchTimers[platform] = setTimeout(() => {
-    void loadAccountCandidates(platform, sequence);
-  }, 300);
-}
-
-async function loadAccountCandidates(platform: AccountPlatform, sequence?: number): Promise<void> {
+async function saveSharedAccounts(): Promise<void> {
   if (groupID.value <= 0) return;
-  accountSearchOpen.value[platform] = true;
-  const nextSequence = sequence ?? ((accountSearchSequences[platform] || 0) + 1);
-  accountSearchSequences[platform] = nextSequence;
-  accountSearchAbort[platform]?.abort();
-  const controller = new AbortController();
-  accountSearchAbort[platform] = controller;
-  accountSearchLoading.value[platform] = true;
+  savingSharedAccounts.value = true;
   try {
-    const result = await adminAPI.accounts.list(
-      1,
-      30,
-      {
-        platform,
-        group: String(groupID.value),
-        search: accountSearchQueries.value[platform]?.trim() || undefined,
-        lite: "true",
-        sort_by: "priority",
-        sort_order: "asc",
-      },
-      { signal: controller.signal },
-    );
-    if (accountSearchSequences[platform] === nextSequence) {
-      accountSearchResults.value[platform] = result.items || [];
-    }
+    const saved = await adminAPI.groups.setSharedAccounts(groupID.value, sharedAccountDrafts.value.map((account) => ({
+      account_id: account.account_id,
+      priority: normalizePriority(account.priority),
+    })));
+    sharedAccountDrafts.value = sortAccountDrafts(saved.map(accountDraftFromShardAccount));
+    savedSharedAccountIDs.value = saved.map((account) => account.account_id);
+    appStore.showSuccess(t("admin.groups.shards.accountsSaved"));
   } catch (error: unknown) {
-    if (!controller.signal.aborted) accountSearchResults.value[platform] = [];
+    appStore.showError(extractApiErrorMessage(error, t("admin.groups.shards.accountsSaveFailed")));
   } finally {
-    if (accountSearchSequences[platform] === nextSequence) accountSearchLoading.value[platform] = false;
+    savingSharedAccounts.value = false;
   }
-}
-
-function addAccount(account: Account): void {
-  if (selectedAccountIDs.value.has(account.id)) return;
-  accountDrafts.value = sortAccountDrafts([...accountDrafts.value, accountDraftFromAccount(account)]);
-  accountSearchQueries.value[account.platform] = "";
-  accountSearchResults.value[account.platform] = [];
-  accountSearchOpen.value[account.platform] = false;
-}
-
-function removeAccount(accountID: number): void {
-  accountDrafts.value = accountDrafts.value.filter((account) => account.account_id !== accountID);
 }
 
 async function saveAccounts(): Promise<void> {
   if (!selectedShard.value || groupID.value <= 0) return;
+  const requestGroupID = groupID.value;
+  const shardID = selectedShard.value.id;
   savingAccounts.value = true;
   try {
     const accounts = accountDrafts.value.map((account) => ({
       account_id: account.account_id,
       priority: normalizePriority(account.priority),
     }));
-    const saved = await adminAPI.groups.setShardAccounts(groupID.value, selectedShard.value.id, accounts);
-    accountDrafts.value = sortAccountDrafts(saved.map(accountDraftFromShardAccount));
+    const saved = await adminAPI.groups.setShardAccounts(requestGroupID, shardID, accounts);
+    if (groupID.value !== requestGroupID) return;
+    if (selectedShardId.value === shardID) {
+      accountDrafts.value = sortAccountDrafts(saved.map(accountDraftFromShardAccount));
+      savedExclusiveAccountIDs.value = saved.map((account) => account.account_id);
+    }
     appStore.showSuccess(t("admin.groups.shards.accountsSaved"));
     await refreshShards();
   } catch (error: unknown) {
@@ -972,8 +806,6 @@ watch(groupID, () => {
   clearSearchState();
   void loadPage();
 });
-
-watch(providerSections, syncAccountSearchState, { immediate: true });
 
 onMounted(() => {
   void loadPage();

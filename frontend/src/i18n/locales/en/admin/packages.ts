@@ -1,8 +1,10 @@
 export default {
   packages: {
     title: 'Package Management',
-    description: 'Manage resource packages, reviews, lifecycle, plan and permission bindings, download audits, and storage.',
+    description: 'Manage package publishing and access',
     actions: {
+      advanced: 'Advanced',
+      details: 'Details',
       refresh: 'Refresh',
       storageConfig: 'Storage Config',
       create: 'New Package',

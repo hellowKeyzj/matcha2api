@@ -55,6 +55,7 @@
           :class="[instanceId]"
           :style="dropdownStyle"
           role="listbox"
+          :aria-multiselectable="multiple || undefined"
           tabindex="-1"
           @click.stop
           @mousedown.stop
@@ -115,6 +116,7 @@
               {{ props.loading ? t('common.loading') : emptyTextDisplay }}
             </div>
           </div>
+          <slot name="footer" :options="filteredOptions" :close="close" />
         </div>
       </Transition>
     </Teleport>
@@ -157,6 +159,9 @@ interface Props {
   ariaDescribedby?: string
   /** 远程搜索模式：输入不在本地过滤 options，而是防抖后 emit('search', query)，由父组件请求数据更新 options */
   remote?: boolean
+  loadOnOpen?: boolean
+  multiple?: boolean
+  selectedValues?: Array<string | number | boolean | null>
   /** 远程搜索模式下的加载态：options 为空时下拉显示 loading 文案 */
   loading?: boolean
 }
@@ -165,6 +170,7 @@ interface Emits {
   (e: 'update:modelValue', value: string | number | boolean | null): void
   (e: 'change', value: string | number | boolean | null, option: SelectOption | null): void
   (e: 'search', query: string): void
+  (e: 'toggle', option: SelectOption): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -231,6 +237,10 @@ const dropdownStyle = computed(() => {
     maxWidth: `${availableWidth}px`,
     zIndex: '100000020'
   }
+  const availableHeight = dropdownPosition.value === 'top'
+    ? rect.top - dropdownViewportPadding - 4
+    : window.innerHeight - rect.bottom - dropdownViewportPadding - 4
+  style.maxHeight = `${Math.max(0, availableHeight)}px`
 
   if (dropdownPosition.value === 'top') {
     style.bottom = `${window.innerHeight - rect.top + 4}px`
@@ -311,6 +321,7 @@ const filteredOptions = computed(() => {
 })
 
 const isSelected = (option: any): boolean => {
+  if (props.multiple) return props.selectedValues?.includes(getOptionValue(option)) ?? false
   return getOptionValue(option) === props.modelValue
 }
 
@@ -349,6 +360,9 @@ const handleOptionMouseEnter = (option: any, index: number) => {
 const updateTriggerRect = () => {
   if (containerRef.value) {
     triggerRect.value = containerRef.value.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - triggerRect.value.bottom
+    const spaceAbove = triggerRect.value.top
+    dropdownPosition.value = spaceBelow < 420 && spaceAbove > spaceBelow ? 'top' : 'bottom'
   }
 }
 
@@ -356,18 +370,6 @@ const calculateDropdownPosition = () => {
   if (!containerRef.value) return
   updateTriggerRect()
 
-  nextTick(() => {
-    if (!dropdownRef.value || !triggerRect.value) return
-    const dropdownHeight = dropdownRef.value.offsetHeight || 240
-    const spaceBelow = window.innerHeight - triggerRect.value.bottom
-    const spaceAbove = triggerRect.value.top
-
-    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
-      dropdownPosition.value = 'top'
-    } else {
-      dropdownPosition.value = 'bottom'
-    }
-  })
 }
 
 const toggle = () => {
@@ -381,6 +383,7 @@ watch(() => props.disabled, (disabled) => {
 
 watch(isOpen, (open) => {
   if (open) {
+    if (props.remote && props.loadOnOpen) emit('search', searchQuery.value.trim())
     calculateDropdownPosition()
     // Reset focused index to current selection or first item
     if (filteredOptions.value.length === 0) {
@@ -425,9 +428,18 @@ watch(searchQuery, (query) => {
 })
 
 const selectOption = (option: any) => {
+  if (props.multiple) {
+    emit('toggle', option)
+    return
+  }
   const value = getOptionValue(option) ?? null
   emit('update:modelValue', value)
   emit('change', value, option)
+  isOpen.value = false
+  triggerRef.value?.focus()
+}
+
+const close = () => {
   isOpen.value = false
   triggerRef.value?.focus()
 }
@@ -459,6 +471,7 @@ const onDropdownKeyDown = (e: KeyboardEvent) => {
       if (focusedIndex.value >= 0) scrollToFocused()
       break
     case 'Enter':
+      if ((e.target as HTMLElement).closest('button')) return
       e.preventDefault()
       if (focusedIndex.value >= 0 && focusedIndex.value < filteredOptions.value.length) {
         const opt = filteredOptions.value[focusedIndex.value]
@@ -559,6 +572,7 @@ onUnmounted(() => {
 
 <style>
 .select-dropdown-portal {
+  @apply flex flex-col;
   @apply w-max min-w-[200px];
   @apply bg-white dark:bg-dark-800;
   @apply rounded-xl;
@@ -569,6 +583,7 @@ onUnmounted(() => {
 }
 
 .select-dropdown-portal .select-search {
+  @apply shrink-0;
   @apply flex items-center gap-2 px-3 py-2;
   @apply border-b border-gray-100 dark:border-dark-700;
 }
@@ -581,7 +596,7 @@ onUnmounted(() => {
 }
 
 .select-dropdown-portal .select-options {
-  @apply max-h-80 overflow-y-auto py-1 outline-none;
+  @apply min-h-0 max-h-80 overflow-y-auto overscroll-contain py-1 outline-none;
 }
 
 .select-dropdown-portal .select-option {

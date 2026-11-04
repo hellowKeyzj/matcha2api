@@ -28,6 +28,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
 	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharedaccount"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -647,6 +648,33 @@ func (f TraverseGroupShardUser) Traverse(ctx context.Context, q ent.Query) error
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.GroupShardUserQuery", q)
+}
+
+// The GroupSharedAccountFunc type is an adapter to allow the use of ordinary function as a Querier.
+type GroupSharedAccountFunc func(context.Context, *ent.GroupSharedAccountQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f GroupSharedAccountFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.GroupSharedAccountQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.GroupSharedAccountQuery", q)
+}
+
+// The TraverseGroupSharedAccount type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseGroupSharedAccount func(context.Context, *ent.GroupSharedAccountQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseGroupSharedAccount) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseGroupSharedAccount) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.GroupSharedAccountQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.GroupSharedAccountQuery", q)
 }
 
 // The IdempotencyRecordFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -1286,6 +1314,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.GroupShardAccountQuery, predicate.GroupShardAccount, groupshardaccount.OrderOption]{typ: ent.TypeGroupShardAccount, tq: q}, nil
 	case *ent.GroupShardUserQuery:
 		return &query[*ent.GroupShardUserQuery, predicate.GroupShardUser, groupsharduser.OrderOption]{typ: ent.TypeGroupShardUser, tq: q}, nil
+	case *ent.GroupSharedAccountQuery:
+		return &query[*ent.GroupSharedAccountQuery, predicate.GroupSharedAccount, groupsharedaccount.OrderOption]{typ: ent.TypeGroupSharedAccount, tq: q}, nil
 	case *ent.IdempotencyRecordQuery:
 		return &query[*ent.IdempotencyRecordQuery, predicate.IdempotencyRecord, idempotencyrecord.OrderOption]{typ: ent.TypeIdempotencyRecord, tq: q}, nil
 	case *ent.IdentityAdoptionDecisionQuery:

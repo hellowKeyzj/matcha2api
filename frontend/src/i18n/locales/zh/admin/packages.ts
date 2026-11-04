@@ -1,8 +1,10 @@
 export default {
   packages: {
     title: '资源包管理',
-    description: '管理员维护资源包、审核上下架、套餐/权限绑定、下载审计和存储入口。',
+    description: '管理资源包上架与授权',
     actions: {
+      advanced: '高级信息',
+      details: '详情',
       refresh: '刷新',
       storageConfig: '存储配置',
       create: '新增资源包',

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import PackagesPage from './PackagesPage.vue'
+import { adminAPI } from '@/api/admin'
 
 const { getCloudKey, generateCloudKey, showError, showSuccess } = vi.hoisted(() => ({
   getCloudKey: vi.fn(), generateCloudKey: vi.fn(), showError: vi.fn(), showSuccess: vi.fn()
@@ -28,7 +29,8 @@ function deferred<T>() {
 }
 function mountPage() {
   return mount(PackagesPage, { global: { stubs: {
-    AppLayout: { template: '<main><slot /></main>' }, BaseDialog: true, Icon: true
+    AppLayout: { template: '<main><slot /></main>' },
+    BaseDialog: { name: 'BaseDialog', props: ['show'], template: '<section v-if="show"><slot /><slot name="footer" /></section>' }, Icon: true
   } } })
 }
 function button(wrapper: ReturnType<typeof mountPage>, label: string) {
@@ -40,6 +42,29 @@ describe('package cloud key step-up', () => {
     vi.clearAllMocks()
     getCloudKey.mockResolvedValue(emptyKey)
     generateCloudKey.mockResolvedValue(configuredKey)
+  })
+
+  it('keeps long package content in collapsed details without duplicating the page heading', async () => {
+    vi.mocked(adminAPI.packages.list).mockResolvedValueOnce([{
+      id: 4, name: 'llm-wiki', version: 'a'.repeat(64), status: 'draft',
+      description: 'Long package description '.repeat(30), storage_key: 'nested/'.repeat(50),
+      download_count: 0, plan_bindings: [], permission_bindings: [],
+    } as Awaited<ReturnType<typeof adminAPI.packages.list>>[number]])
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(wrapper.find('h2').exists()).toBe(false)
+    expect(wrapper.get('h3').text()).toBe('llm-wiki')
+    expect(wrapper.get('[data-testid="package-description"]').classes()).toContain('line-clamp-2')
+    expect(wrapper.get('[data-testid="package-details"]').attributes('open')).toBeUndefined()
+    expect(wrapper.get('[data-testid="package-details"]').text()).toContain('nested/')
+    expect(wrapper.get('article').text()).not.toContain('a'.repeat(64))
+    await button(wrapper, 'admin.packages.actions.edit').trigger('click')
+    const advanced = wrapper.get('[data-testid="package-advanced"]')
+    expect(advanced.attributes('open')).toBeUndefined()
+    expect(advanced.findAll('input')).toHaveLength(5)
+    expect((advanced.find('input').element as HTMLInputElement).value).toBe('a'.repeat(64))
+    expect(wrapper.get('#package-form').findAll('input')).toHaveLength(8)
+    wrapper.unmount()
   })
 
   it('serializes status loading and generation through the existing step-up dialog', async () => {
