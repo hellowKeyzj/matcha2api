@@ -450,6 +450,21 @@ func (_c *AccountCreate) AddGroupShards(v ...*GroupShard) *AccountCreate {
 	return _c.AddGroupShardIDs(ids...)
 }
 
+// AddSharedGroupIDs adds the "shared_groups" edge to the Group entity by IDs.
+func (_c *AccountCreate) AddSharedGroupIDs(ids ...int64) *AccountCreate {
+	_c.mutation.AddSharedGroupIDs(ids...)
+	return _c
+}
+
+// AddSharedGroups adds the "shared_groups" edges to the Group entity.
+func (_c *AccountCreate) AddSharedGroups(v ...*Group) *AccountCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddSharedGroupIDs(ids...)
+}
+
 // SetProxy sets the "proxy" edge to the Proxy entity.
 func (_c *AccountCreate) SetProxy(v *Proxy) *AccountCreate {
 	return _c.SetProxyID(v.ID)
@@ -852,6 +867,26 @@ func (_c *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		createE := &GroupShardAccountCreate{config: _c.config, mutation: newGroupShardAccountMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.SharedGroupsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _c.config, mutation: newGroupSharedAccountMutation(_c.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields

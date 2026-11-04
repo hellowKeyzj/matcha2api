@@ -68,6 +68,8 @@ type AdminService interface {
 	AssignGroupShardUser(ctx context.Context, groupID, shardID, userID int64) error
 	RemoveGroupShardUser(ctx context.Context, groupID, shardID, userID int64) error
 	ListGroupShardAccounts(ctx context.Context, groupID, shardID int64) ([]GroupShardAccount, error)
+	ListSharedAccounts(ctx context.Context, groupID int64) ([]GroupShardAccount, error)
+	SetSharedAccounts(ctx context.Context, groupID int64, input GroupShardAccountsInput) ([]GroupShardAccount, error)
 	SetGroupShardAccounts(ctx context.Context, groupID, shardID int64, input GroupShardAccountsInput) ([]GroupShardAccount, error)
 	GetGroupAPIKeys(ctx context.Context, groupID int64, page, pageSize int) ([]APIKey, int64, error)
 	GetGroupRateMultipliers(ctx context.Context, groupID int64) ([]UserGroupRateEntry, error)

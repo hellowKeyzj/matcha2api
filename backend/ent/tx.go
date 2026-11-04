@@ -54,6 +54,8 @@ type Tx struct {
 	GroupShardAccount *GroupShardAccountClient
 	// GroupShardUser is the client for interacting with the GroupShardUser builders.
 	GroupShardUser *GroupShardUserClient
+	// GroupSharedAccount is the client for interacting with the GroupSharedAccount builders.
+	GroupSharedAccount *GroupSharedAccountClient
 	// IdempotencyRecord is the client for interacting with the IdempotencyRecord builders.
 	IdempotencyRecord *IdempotencyRecordClient
 	// IdentityAdoptionDecision is the client for interacting with the IdentityAdoptionDecision builders.
@@ -249,6 +251,7 @@ func (tx *Tx) init() {
 	tx.GroupShard = NewGroupShardClient(tx.config)
 	tx.GroupShardAccount = NewGroupShardAccountClient(tx.config)
 	tx.GroupShardUser = NewGroupShardUserClient(tx.config)
+	tx.GroupSharedAccount = NewGroupSharedAccountClient(tx.config)
 	tx.IdempotencyRecord = NewIdempotencyRecordClient(tx.config)
 	tx.IdentityAdoptionDecision = NewIdentityAdoptionDecisionClient(tx.config)
 	tx.PaymentAuditLog = NewPaymentAuditLogClient(tx.config)

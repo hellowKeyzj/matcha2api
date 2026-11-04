@@ -4409,3 +4409,10 @@ func TestOpenAIGatewayService_SelectAccountWithLoadAwareness_EmptyShardDoesNotFa
 	require.ErrorContains(t, err, "group_shard_empty")
 	require.Nil(t, selection)
 }
+
+func (r *openAISchedulerShardRepoStub) ListSharedAccounts(context.Context, int64) ([]GroupShardAccount, error) {
+	panic("unexpected ListSharedAccounts call")
+}
+func (r *openAISchedulerShardRepoStub) SetSharedAccounts(context.Context, int64, []GroupShardAccount) error {
+	panic("unexpected SetSharedAccounts call")
+}

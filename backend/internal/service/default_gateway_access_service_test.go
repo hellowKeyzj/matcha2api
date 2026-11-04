@@ -185,3 +185,10 @@ func TestDefaultGatewayAccessService_RequireDefaultShardGroupRejectsMissingGroup
 	_, err := svc.RequireDefaultShardGroup(context.Background())
 	require.ErrorIs(t, err, ErrDefaultShardGroupNotConfigured)
 }
+
+func (r *defaultAccessGroupShardRepoStub) ListSharedAccounts(context.Context, int64) ([]GroupShardAccount, error) {
+	panic("unexpected ListSharedAccounts call")
+}
+func (r *defaultAccessGroupShardRepoStub) SetSharedAccounts(context.Context, int64, []GroupShardAccount) error {
+	panic("unexpected SetSharedAccounts call")
+}

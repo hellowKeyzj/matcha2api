@@ -14,6 +14,8 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/authidentitychannel"
 	dbgroup "github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/ent/groupshard"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/schema/mixins"
@@ -496,6 +498,28 @@ func (r *userRepository) Delete(ctx context.Context, id int64) error {
 
 // deleteUser 在给定 client（可能是外部事务 client）上删除用户及其身份关联记录，自身不开启/提交事务。
 func (r *userRepository) deleteUser(ctx context.Context, exec *dbent.Client, id int64) error {
+	if _, err := exec.User.Query().Where(dbuser.IDEQ(id), func(s *entsql.Selector) {
+		if s.Dialect() == "postgres" {
+			s.ForUpdate()
+		}
+	}).Select(dbuser.FieldID).Only(ctx); err != nil {
+		return translatePersistenceError(err, service.ErrUserNotFound, nil)
+	}
+	// Use the same shard locks as member assignment before changing occupancy.
+	memberships, err := exec.GroupShardUser.Query().Where(groupsharduser.UserIDEQ(id)).All(ctx)
+	if err != nil {
+		return translatePersistenceError(err, service.ErrUserNotFound, nil)
+	}
+	shardIDs := make([]int64, len(memberships))
+	for i, membership := range memberships {
+		shardIDs[i] = membership.GroupShardID
+	}
+	if len(shardIDs) > 0 {
+		if _, err := exec.GroupShard.Query().Where(groupshard.IDIn(shardIDs...)).
+			Select(groupshard.FieldID).Order(dbent.Asc(groupshard.FieldID)).ForUpdate().All(ctx); err != nil {
+			return translatePersistenceError(err, service.ErrUserNotFound, nil)
+		}
+	}
 	identityIDs, err := exec.AuthIdentity.Query().
 		Where(authidentity.UserIDEQ(id)).
 		IDs(ctx)
@@ -527,6 +551,18 @@ func (r *userRepository) deleteUser(ctx context.Context, exec *dbent.Client, id 
 	}
 	if affected == 0 {
 		return service.ErrUserNotFound
+	}
+	// Soft deletion does not trigger the membership foreign key's ON DELETE CASCADE.
+	if _, err := exec.GroupShardUser.Delete().Where(groupsharduser.UserIDEQ(id)).Exec(ctx); err != nil {
+		return translatePersistenceError(err, service.ErrUserNotFound, nil)
+	}
+	if len(shardIDs) > 0 {
+		if _, err := exec.GroupShard.Delete().Where(
+			groupshard.IDIn(shardIDs...),
+			groupshard.Not(groupshard.HasUsersWith(dbuser.DeletedAtIsNil())),
+		).Exec(ctx); err != nil {
+			return translatePersistenceError(err, service.ErrUserNotFound, nil)
+		}
 	}
 	return nil
 }
