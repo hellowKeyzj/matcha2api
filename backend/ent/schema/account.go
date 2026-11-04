@@ -214,6 +214,8 @@ func (Account) Edges() []ent.Edge {
 			Through("account_groups", AccountGroup.Type),
 		edge.To("group_shards", GroupShard.Type).
 			Through("group_shard_accounts", GroupShardAccount.Type),
+		edge.To("shared_groups", Group.Type).
+			Through("group_shared_accounts", GroupSharedAccount.Type),
 		// proxy: 账户使用的代理配置（可选的一对一关系）
 		// 使用已有的 proxy_id 外键字段
 		edge.To("proxy", Proxy.Type).

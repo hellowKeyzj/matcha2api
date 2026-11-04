@@ -595,6 +595,21 @@ func (_u *AccountUpdate) AddGroupShards(v ...*GroupShard) *AccountUpdate {
 	return _u.AddGroupShardIDs(ids...)
 }
 
+// AddSharedGroupIDs adds the "shared_groups" edge to the Group entity by IDs.
+func (_u *AccountUpdate) AddSharedGroupIDs(ids ...int64) *AccountUpdate {
+	_u.mutation.AddSharedGroupIDs(ids...)
+	return _u
+}
+
+// AddSharedGroups adds the "shared_groups" edges to the Group entity.
+func (_u *AccountUpdate) AddSharedGroups(v ...*Group) *AccountUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSharedGroupIDs(ids...)
+}
+
 // SetProxy sets the "proxy" edge to the Proxy entity.
 func (_u *AccountUpdate) SetProxy(v *Proxy) *AccountUpdate {
 	return _u.SetProxyID(v.ID)
@@ -694,6 +709,27 @@ func (_u *AccountUpdate) RemoveGroupShards(v ...*GroupShard) *AccountUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveGroupShardIDs(ids...)
+}
+
+// ClearSharedGroups clears all "shared_groups" edges to the Group entity.
+func (_u *AccountUpdate) ClearSharedGroups() *AccountUpdate {
+	_u.mutation.ClearSharedGroups()
+	return _u
+}
+
+// RemoveSharedGroupIDs removes the "shared_groups" edge to Group entities by IDs.
+func (_u *AccountUpdate) RemoveSharedGroupIDs(ids ...int64) *AccountUpdate {
+	_u.mutation.RemoveSharedGroupIDs(ids...)
+	return _u
+}
+
+// RemoveSharedGroups removes "shared_groups" edges to Group entities.
+func (_u *AccountUpdate) RemoveSharedGroups(v ...*Group) *AccountUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSharedGroupIDs(ids...)
 }
 
 // ClearProxy clears the "proxy" edge to the Proxy entity.
@@ -1092,6 +1128,63 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SharedGroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSharedGroupsIDs(); len(nodes) > 0 && !_u.mutation.SharedGroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SharedGroupsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
@@ -1828,6 +1921,21 @@ func (_u *AccountUpdateOne) AddGroupShards(v ...*GroupShard) *AccountUpdateOne {
 	return _u.AddGroupShardIDs(ids...)
 }
 
+// AddSharedGroupIDs adds the "shared_groups" edge to the Group entity by IDs.
+func (_u *AccountUpdateOne) AddSharedGroupIDs(ids ...int64) *AccountUpdateOne {
+	_u.mutation.AddSharedGroupIDs(ids...)
+	return _u
+}
+
+// AddSharedGroups adds the "shared_groups" edges to the Group entity.
+func (_u *AccountUpdateOne) AddSharedGroups(v ...*Group) *AccountUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSharedGroupIDs(ids...)
+}
+
 // SetProxy sets the "proxy" edge to the Proxy entity.
 func (_u *AccountUpdateOne) SetProxy(v *Proxy) *AccountUpdateOne {
 	return _u.SetProxyID(v.ID)
@@ -1927,6 +2035,27 @@ func (_u *AccountUpdateOne) RemoveGroupShards(v ...*GroupShard) *AccountUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveGroupShardIDs(ids...)
+}
+
+// ClearSharedGroups clears all "shared_groups" edges to the Group entity.
+func (_u *AccountUpdateOne) ClearSharedGroups() *AccountUpdateOne {
+	_u.mutation.ClearSharedGroups()
+	return _u
+}
+
+// RemoveSharedGroupIDs removes the "shared_groups" edge to Group entities by IDs.
+func (_u *AccountUpdateOne) RemoveSharedGroupIDs(ids ...int64) *AccountUpdateOne {
+	_u.mutation.RemoveSharedGroupIDs(ids...)
+	return _u
+}
+
+// RemoveSharedGroups removes "shared_groups" edges to Group entities.
+func (_u *AccountUpdateOne) RemoveSharedGroups(v ...*Group) *AccountUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSharedGroupIDs(ids...)
 }
 
 // ClearProxy clears the "proxy" edge to the Proxy entity.
@@ -2355,6 +2484,63 @@ func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err er
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		createE := &GroupShardAccountCreate{config: _u.config, mutation: newGroupShardAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SharedGroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSharedGroupsIDs(); len(nodes) > 0 && !_u.mutation.SharedGroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SharedGroupsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   account.SharedGroupsTable,
+			Columns: account.SharedGroupsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields

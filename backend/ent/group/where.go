@@ -2855,6 +2855,29 @@ func HasShardsWith(preds ...predicate.GroupShard) predicate.Group {
 	})
 }
 
+// HasSharedAccounts applies the HasEdge predicate on the "shared_accounts" edge.
+func HasSharedAccounts() predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, SharedAccountsTable, SharedAccountsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSharedAccountsWith applies the HasEdge predicate on the "shared_accounts" edge with a given conditions (other predicates).
+func HasSharedAccountsWith(preds ...predicate.Account) predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := newSharedAccountsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasAccounts applies the HasEdge predicate on the "accounts" edge.
 func HasAccounts() predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
@@ -2893,6 +2916,29 @@ func HasAllowedUsers() predicate.Group {
 func HasAllowedUsersWith(preds ...predicate.User) predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
 		step := newAllowedUsersStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasGroupSharedAccounts applies the HasEdge predicate on the "group_shared_accounts" edge.
+func HasGroupSharedAccounts() predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, GroupSharedAccountsTable, GroupSharedAccountsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasGroupSharedAccountsWith applies the HasEdge predicate on the "group_shared_accounts" edge with a given conditions (other predicates).
+func HasGroupSharedAccountsWith(preds ...predicate.GroupSharedAccount) predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := newGroupSharedAccountsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

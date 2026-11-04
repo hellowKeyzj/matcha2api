@@ -334,6 +334,9 @@ func (Group) Edges() []ent.Edge {
 		edge.To("usage_logs", UsageLog.Type),
 		edge.To("shards", GroupShard.Type).
 			Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.From("shared_accounts", Account.Type).
+			Ref("shared_groups").
+			Through("group_shared_accounts", GroupSharedAccount.Type),
 		edge.From("accounts", Account.Type).
 			Ref("groups").
 			Through("account_groups", AccountGroup.Type),

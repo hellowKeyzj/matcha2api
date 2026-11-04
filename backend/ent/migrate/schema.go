@@ -1187,6 +1187,46 @@ var (
 			},
 		},
 	}
+	// GroupSharedAccountsColumns holds the columns for the "group_shared_accounts" table.
+	GroupSharedAccountsColumns = []*schema.Column{
+		{Name: "platform", Type: field.TypeString, Size: 50},
+		{Name: "priority", Type: field.TypeInt, Default: 50},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "group_id", Type: field.TypeInt64},
+		{Name: "account_id", Type: field.TypeInt64},
+	}
+	// GroupSharedAccountsTable holds the schema information for the "group_shared_accounts" table.
+	GroupSharedAccountsTable = &schema.Table{
+		Name:       "group_shared_accounts",
+		Columns:    GroupSharedAccountsColumns,
+		PrimaryKey: []*schema.Column{GroupSharedAccountsColumns[4], GroupSharedAccountsColumns[3]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "group_shared_accounts_groups_group",
+				Columns:    []*schema.Column{GroupSharedAccountsColumns[3]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "group_shared_accounts_accounts_account",
+				Columns:    []*schema.Column{GroupSharedAccountsColumns[4]},
+				RefColumns: []*schema.Column{AccountsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "groupsharedaccount_account_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupSharedAccountsColumns[4]},
+			},
+			{
+				Name:    "groupsharedaccount_group_id_platform",
+				Unique:  false,
+				Columns: []*schema.Column{GroupSharedAccountsColumns[3], GroupSharedAccountsColumns[0]},
+			},
+		},
+	}
 	// IdempotencyRecordsColumns holds the columns for the "idempotency_records" table.
 	IdempotencyRecordsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -2280,6 +2320,7 @@ var (
 		GroupShardsTable,
 		GroupShardAccountsTable,
 		GroupShardUsersTable,
+		GroupSharedAccountsTable,
 		IdempotencyRecordsTable,
 		IdentityAdoptionDecisionsTable,
 		PaymentAuditLogsTable,
@@ -2386,6 +2427,11 @@ func init() {
 	GroupShardUsersTable.ForeignKeys[2].RefTable = UsersTable
 	GroupShardUsersTable.Annotation = &entsql.Annotation{
 		Table: "group_shard_users",
+	}
+	GroupSharedAccountsTable.ForeignKeys[0].RefTable = GroupsTable
+	GroupSharedAccountsTable.ForeignKeys[1].RefTable = AccountsTable
+	GroupSharedAccountsTable.Annotation = &entsql.Annotation{
+		Table: "group_shared_accounts",
 	}
 	IdempotencyRecordsTable.Annotation = &entsql.Annotation{
 		Table: "idempotency_records",

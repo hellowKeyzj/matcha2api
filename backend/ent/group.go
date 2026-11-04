@@ -180,17 +180,21 @@ type GroupEdges struct {
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// Shards holds the value of the shards edge.
 	Shards []*GroupShard `json:"shards,omitempty"`
+	// SharedAccounts holds the value of the shared_accounts edge.
+	SharedAccounts []*Account `json:"shared_accounts,omitempty"`
 	// Accounts holds the value of the accounts edge.
 	Accounts []*Account `json:"accounts,omitempty"`
 	// AllowedUsers holds the value of the allowed_users edge.
 	AllowedUsers []*User `json:"allowed_users,omitempty"`
+	// GroupSharedAccounts holds the value of the group_shared_accounts edge.
+	GroupSharedAccounts []*GroupSharedAccount `json:"group_shared_accounts,omitempty"`
 	// AccountGroups holds the value of the account_groups edge.
 	AccountGroups []*AccountGroup `json:"account_groups,omitempty"`
 	// UserAllowedGroups holds the value of the user_allowed_groups edge.
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [11]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -238,10 +242,19 @@ func (e GroupEdges) ShardsOrErr() ([]*GroupShard, error) {
 	return nil, &NotLoadedError{edge: "shards"}
 }
 
+// SharedAccountsOrErr returns the SharedAccounts value or an error if the edge
+// was not loaded in eager-loading.
+func (e GroupEdges) SharedAccountsOrErr() ([]*Account, error) {
+	if e.loadedTypes[5] {
+		return e.SharedAccounts, nil
+	}
+	return nil, &NotLoadedError{edge: "shared_accounts"}
+}
+
 // AccountsOrErr returns the Accounts value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.Accounts, nil
 	}
 	return nil, &NotLoadedError{edge: "accounts"}
@@ -250,16 +263,25 @@ func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
 // AllowedUsersOrErr returns the AllowedUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AllowedUsersOrErr() ([]*User, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.AllowedUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "allowed_users"}
 }
 
+// GroupSharedAccountsOrErr returns the GroupSharedAccounts value or an error if the edge
+// was not loaded in eager-loading.
+func (e GroupEdges) GroupSharedAccountsOrErr() ([]*GroupSharedAccount, error) {
+	if e.loadedTypes[8] {
+		return e.GroupSharedAccounts, nil
+	}
+	return nil, &NotLoadedError{edge: "group_shared_accounts"}
+}
+
 // AccountGroupsOrErr returns the AccountGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[9] {
 		return e.AccountGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "account_groups"}
@@ -268,7 +290,7 @@ func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e GroupEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[10] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -813,6 +835,11 @@ func (_m *Group) QueryShards() *GroupShardQuery {
 	return NewGroupClient(_m.config).QueryShards(_m)
 }
 
+// QuerySharedAccounts queries the "shared_accounts" edge of the Group entity.
+func (_m *Group) QuerySharedAccounts() *AccountQuery {
+	return NewGroupClient(_m.config).QuerySharedAccounts(_m)
+}
+
 // QueryAccounts queries the "accounts" edge of the Group entity.
 func (_m *Group) QueryAccounts() *AccountQuery {
 	return NewGroupClient(_m.config).QueryAccounts(_m)
@@ -821,6 +848,11 @@ func (_m *Group) QueryAccounts() *AccountQuery {
 // QueryAllowedUsers queries the "allowed_users" edge of the Group entity.
 func (_m *Group) QueryAllowedUsers() *UserQuery {
 	return NewGroupClient(_m.config).QueryAllowedUsers(_m)
+}
+
+// QueryGroupSharedAccounts queries the "group_shared_accounts" edge of the Group entity.
+func (_m *Group) QueryGroupSharedAccounts() *GroupSharedAccountQuery {
+	return NewGroupClient(_m.config).QueryGroupSharedAccounts(_m)
 }
 
 // QueryAccountGroups queries the "account_groups" edge of the Group entity.

@@ -66,6 +66,9 @@ type GroupShardAccount func(*sql.Selector)
 // GroupShardUser is the predicate function for groupsharduser builders.
 type GroupShardUser func(*sql.Selector)
 
+// GroupSharedAccount is the predicate function for groupsharedaccount builders.
+type GroupSharedAccount func(*sql.Selector)
+
 // IdempotencyRecord is the predicate function for idempotencyrecord builders.
 type IdempotencyRecord func(*sql.Selector)
 

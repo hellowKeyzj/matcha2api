@@ -171,6 +171,35 @@ func (s *adminServiceImpl) ensureGroupShardRepo() error {
 	return nil
 }
 
+func (s *adminServiceImpl) ListSharedAccounts(ctx context.Context, groupID int64) ([]GroupShardAccount, error) {
+	if err := s.ensureGroupShardRepo(); err != nil {
+		return nil, err
+	}
+	if _, err := s.groupRepo.GetByIDLite(ctx, groupID); err != nil {
+		return nil, err
+	}
+	return s.groupShardRepo.ListSharedAccounts(ctx, groupID)
+}
+
+func (s *adminServiceImpl) SetSharedAccounts(ctx context.Context, groupID int64, input GroupShardAccountsInput) ([]GroupShardAccount, error) {
+	if err := s.ensureGroupShardRepo(); err != nil {
+		return nil, err
+	}
+	group, err := s.groupRepo.GetByIDLite(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	accounts, err := s.normalizeGroupShardAccounts(ctx, group, input.Accounts)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.groupShardRepo.SetSharedAccounts(ctx, groupID, accounts); err != nil {
+		return nil, err
+	}
+	s.invalidateGroupShardAuthCaches(ctx, groupID)
+	return s.groupShardRepo.ListSharedAccounts(ctx, groupID)
+}
+
 func groupShardFromInput(groupID int64, input GroupShardInput) (*GroupShard, error) {
 	shard := &GroupShard{
 		GroupID:     groupID,

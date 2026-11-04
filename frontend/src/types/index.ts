@@ -770,6 +770,7 @@ export interface GroupShardUser {
 }
 
 export interface GroupShardAccount {
+  // Zero identifies an account in the parent group's shared pool.
   group_shard_id: number
   group_id: number
   account_id: number

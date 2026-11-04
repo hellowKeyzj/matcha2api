@@ -591,3 +591,10 @@ func TestGroupShardScheduling_CompositeUsesResolvedProviderForScope(t *testing.T
 	require.Equal(t, int64(32), result.Account.ID)
 	require.Equal(t, PlatformAnthropic, shardRepo.lastPlatform)
 }
+
+func (r *testGroupShardRepo) ListSharedAccounts(context.Context, int64) ([]GroupShardAccount, error) {
+	panic("unexpected ListSharedAccounts call")
+}
+func (r *testGroupShardRepo) SetSharedAccounts(context.Context, int64, []GroupShardAccount) error {
+	panic("unexpected SetSharedAccounts call")
+}

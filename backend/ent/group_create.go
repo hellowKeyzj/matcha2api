@@ -1044,6 +1044,21 @@ func (_c *GroupCreate) AddShards(v ...*GroupShard) *GroupCreate {
 	return _c.AddShardIDs(ids...)
 }
 
+// AddSharedAccountIDs adds the "shared_accounts" edge to the Account entity by IDs.
+func (_c *GroupCreate) AddSharedAccountIDs(ids ...int64) *GroupCreate {
+	_c.mutation.AddSharedAccountIDs(ids...)
+	return _c
+}
+
+// AddSharedAccounts adds the "shared_accounts" edges to the Account entity.
+func (_c *GroupCreate) AddSharedAccounts(v ...*Account) *GroupCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddSharedAccountIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_c *GroupCreate) AddAccountIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAccountIDs(ids...)
@@ -1925,6 +1940,26 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.SharedAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _c.config, mutation: newGroupSharedAccountMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.AccountsIDs(); len(nodes) > 0 {

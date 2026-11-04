@@ -356,6 +356,8 @@ func registerGroupRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		groups.POST("/:id/shards/:shard_id/users", h.Admin.Group.AssignShardUser)
 		groups.DELETE("/:id/shards/:shard_id/users/:user_id", h.Admin.Group.RemoveShardUser)
 		groups.GET("/:id/shards/:shard_id/accounts", h.Admin.Group.ListShardAccounts)
+		groups.GET("/:id/shared-accounts", h.Admin.Group.ListSharedAccounts)
+		groups.PUT("/:id/shared-accounts", h.Admin.Group.SetSharedAccounts)
 		groups.PUT("/:id/shards/:shard_id/accounts", h.Admin.Group.SetShardAccounts)
 		groups.GET("/:id", h.Admin.Group.GetByID)
 		groups.POST("", h.Admin.Group.Create)

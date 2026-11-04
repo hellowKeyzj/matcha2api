@@ -1363,6 +1363,21 @@ func (_u *GroupUpdate) AddShards(v ...*GroupShard) *GroupUpdate {
 	return _u.AddShardIDs(ids...)
 }
 
+// AddSharedAccountIDs adds the "shared_accounts" edge to the Account entity by IDs.
+func (_u *GroupUpdate) AddSharedAccountIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.AddSharedAccountIDs(ids...)
+	return _u
+}
+
+// AddSharedAccounts adds the "shared_accounts" edges to the Account entity.
+func (_u *GroupUpdate) AddSharedAccounts(v ...*Account) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSharedAccountIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *GroupUpdate) AddAccountIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAccountIDs(ids...)
@@ -1501,6 +1516,27 @@ func (_u *GroupUpdate) RemoveShards(v ...*GroupShard) *GroupUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveShardIDs(ids...)
+}
+
+// ClearSharedAccounts clears all "shared_accounts" edges to the Account entity.
+func (_u *GroupUpdate) ClearSharedAccounts() *GroupUpdate {
+	_u.mutation.ClearSharedAccounts()
+	return _u
+}
+
+// RemoveSharedAccountIDs removes the "shared_accounts" edge to Account entities by IDs.
+func (_u *GroupUpdate) RemoveSharedAccountIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.RemoveSharedAccountIDs(ids...)
+	return _u
+}
+
+// RemoveSharedAccounts removes "shared_accounts" edges to Account entities.
+func (_u *GroupUpdate) RemoveSharedAccounts(v ...*Account) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSharedAccountIDs(ids...)
 }
 
 // ClearAccounts clears all "accounts" edges to the Account entity.
@@ -2269,6 +2305,63 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SharedAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSharedAccountsIDs(); len(nodes) > 0 && !_u.mutation.SharedAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SharedAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.AccountsCleared() {
@@ -3730,6 +3823,21 @@ func (_u *GroupUpdateOne) AddShards(v ...*GroupShard) *GroupUpdateOne {
 	return _u.AddShardIDs(ids...)
 }
 
+// AddSharedAccountIDs adds the "shared_accounts" edge to the Account entity by IDs.
+func (_u *GroupUpdateOne) AddSharedAccountIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.AddSharedAccountIDs(ids...)
+	return _u
+}
+
+// AddSharedAccounts adds the "shared_accounts" edges to the Account entity.
+func (_u *GroupUpdateOne) AddSharedAccounts(v ...*Account) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSharedAccountIDs(ids...)
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (_u *GroupUpdateOne) AddAccountIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAccountIDs(ids...)
@@ -3868,6 +3976,27 @@ func (_u *GroupUpdateOne) RemoveShards(v ...*GroupShard) *GroupUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveShardIDs(ids...)
+}
+
+// ClearSharedAccounts clears all "shared_accounts" edges to the Account entity.
+func (_u *GroupUpdateOne) ClearSharedAccounts() *GroupUpdateOne {
+	_u.mutation.ClearSharedAccounts()
+	return _u
+}
+
+// RemoveSharedAccountIDs removes the "shared_accounts" edge to Account entities by IDs.
+func (_u *GroupUpdateOne) RemoveSharedAccountIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.RemoveSharedAccountIDs(ids...)
+	return _u
+}
+
+// RemoveSharedAccounts removes "shared_accounts" edges to Account entities.
+func (_u *GroupUpdateOne) RemoveSharedAccounts(v ...*Account) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSharedAccountIDs(ids...)
 }
 
 // ClearAccounts clears all "accounts" edges to the Account entity.
@@ -4666,6 +4795,63 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SharedAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSharedAccountsIDs(); len(nodes) > 0 && !_u.mutation.SharedAccountsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SharedAccountsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   group.SharedAccountsTable,
+			Columns: group.SharedAccountsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &GroupSharedAccountCreate{config: _u.config, mutation: newGroupSharedAccountMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.AccountsCleared() {
