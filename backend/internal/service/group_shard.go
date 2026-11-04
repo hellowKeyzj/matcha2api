@@ -12,7 +12,7 @@ var (
 	ErrGroupShardExists                  = infraerrors.Conflict("GROUP_SHARD_EXISTS", "group shard already exists")
 	ErrGroupShardFull                    = infraerrors.Conflict("GROUP_SHARD_FULL", "group shard is full")
 	ErrGroupShardUserConflict            = infraerrors.Conflict("GROUP_SHARD_USER_CONFLICT", "user already belongs to another shard in this group")
-	ErrGroupShardAccountConflict         = infraerrors.Conflict("GROUP_SHARD_ACCOUNT_CONFLICT", "account already belongs to another shard in this group")
+	ErrGroupShardAccountConflict         = infraerrors.Conflict("GROUP_SHARD_ACCOUNT_CONFLICT", "account already belongs to another shard or the shared pool in this group")
 	ErrGroupShardAccountNotInGroup       = infraerrors.BadRequest("GROUP_SHARD_ACCOUNT_NOT_IN_GROUP", "account does not belong to this group")
 	ErrGroupShardAccountPlatformMismatch = infraerrors.BadRequest("GROUP_SHARD_ACCOUNT_PLATFORM_MISMATCH", "account platform does not match group platform")
 	ErrGroupShardUnavailable             = infraerrors.BadRequest("GROUP_SHARD_UNAVAILABLE", "group shard is unavailable")
@@ -101,6 +101,8 @@ type GroupShardRepository interface {
 	RemoveUser(ctx context.Context, groupID, shardID, userID int64) error
 	ListAccounts(ctx context.Context, groupID, shardID int64) ([]GroupShardAccount, error)
 	SetAccounts(ctx context.Context, groupID, shardID int64, accounts []GroupShardAccount) error
+	ListSharedAccounts(ctx context.Context, groupID int64) ([]GroupShardAccount, error)
+	SetSharedAccounts(ctx context.Context, groupID int64, accounts []GroupShardAccount) error
 	EnsureUserShard(ctx context.Context, group *Group, userID int64) (*GroupShard, error)
 	ListAccountIDsForUserShard(ctx context.Context, group *Group, userID int64, platform string) (*GroupShardAccountScope, error)
 	AccountBelongsToUserShard(ctx context.Context, groupID, userID, accountID int64) (bool, error)

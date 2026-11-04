@@ -333,6 +333,9 @@ func (Group) Edges() []ent.Edge {
 		edge.To("subscriptions", UserSubscription.Type),
 		edge.To("usage_logs", UsageLog.Type),
 		edge.To("shards", GroupShard.Type),
+		edge.From("shared_accounts", Account.Type).
+			Ref("shared_groups").
+			Through("group_shared_accounts", GroupSharedAccount.Type),
 		edge.From("accounts", Account.Type).
 			Ref("groups").
 			Through("account_groups", AccountGroup.Type),

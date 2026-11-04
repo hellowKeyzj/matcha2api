@@ -893,3 +893,10 @@ func (s *stubAdminService) CreateShadow(ctx context.Context, parentID int64, opt
 
 // Ensure stub implements interface.
 var _ service.AdminService = (*stubAdminService)(nil)
+
+func (s *stubAdminService) ListSharedAccounts(context.Context, int64) ([]service.GroupShardAccount, error) {
+	return nil, nil
+}
+func (s *stubAdminService) SetSharedAccounts(context.Context, int64, service.GroupShardAccountsInput) ([]service.GroupShardAccount, error) {
+	return nil, nil
+}

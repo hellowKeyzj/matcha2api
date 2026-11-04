@@ -66,6 +66,15 @@ afterEach(() => {
 })
 
 describe('Select dropdown viewport constraints', () => {
+  it('opens above a low trigger and constrains the total dropdown height', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      top: window.innerHeight - 180, bottom: window.innerHeight - 140,
+      left: 20, right: 220, width: 200, height: 40,
+    } as DOMRect)
+    const dropdown = await openSelect()
+    expect(dropdown?.style.bottom).toBe('184px')
+    expect(dropdown?.style.maxHeight).toBe(`${window.innerHeight - 192}px`)
+  })
   it('preserves the existing 200px minimum width when space is available', async () => {
     setViewportWidth(1024)
     mockTriggerRect(20, 80)
@@ -146,6 +155,29 @@ describe('Select remote search', () => {
     input!.dispatchEvent(new Event('input'))
     await nextTick()
   }
+
+  it('loads remote options on open only when requested', async () => {
+    const wrapper = mountRemoteSelect({ loadOnOpen: true })
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('search')).toEqual([['']])
+    await wrapper.get('button').trigger('click')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('search')).toEqual([[''], ['']])
+  })
+
+  it('keeps multi-selection open and reports toggles without changing single-select values', async () => {
+    const wrapper = mountRemoteSelect({ multiple: true, selectedValues: ['alpha'] })
+    await wrapper.get('button').trigger('click')
+    const dropdown = await openDropdown()
+    expect(dropdown.getAttribute('aria-multiselectable')).toBe('true')
+    const options = dropdown.querySelectorAll<HTMLElement>('[role="option"]')
+    expect(options[0]!.getAttribute('aria-selected')).toBe('true')
+    options[1]!.click()
+    await nextTick()
+    expect(wrapper.emitted('toggle')?.[0]?.[0]).toMatchObject({ value: 'beta' })
+    expect(wrapper.emitted('change')).toBeUndefined()
+    expect(wrapper.get('button').attributes('aria-expanded')).toBe('true')
+  })
 
   it('emits debounced search events and skips local filtering in remote mode', async () => {
     vi.useFakeTimers()

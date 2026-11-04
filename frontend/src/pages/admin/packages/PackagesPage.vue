@@ -1,10 +1,18 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <section class="flex flex-col gap-4 border-b border-gray-200 pb-5 dark:border-dark-700 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.packages.title') }}</h2>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.packages.description') }}</p>
+      <section class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-1 flex-wrap gap-3">
+        <input
+          v-model="filters.search"
+          class="input max-w-sm"
+          :placeholder="t('admin.packages.filters.searchPlaceholder')"
+          @input="loadPackages"
+        />
+        <select v-model="filters.status" class="input w-44" @change="loadPackages">
+          <option value="">{{ t('admin.packages.filters.allStatuses') }}</option>
+          <option v-for="status in packageStatuses" :key="status" :value="status">{{ statusLabel(status) }}</option>
+        </select>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn btn-secondary" :disabled="loading" @click="loadAll">
@@ -22,19 +30,6 @@
         </div>
       </section>
 
-      <div class="flex flex-wrap gap-3">
-        <input
-          v-model="filters.search"
-          class="input max-w-sm"
-          :placeholder="t('admin.packages.filters.searchPlaceholder')"
-          @input="loadPackages"
-        />
-        <select v-model="filters.status" class="input w-44" @change="loadPackages">
-          <option value="">{{ t('admin.packages.filters.allStatuses') }}</option>
-          <option v-for="status in packageStatuses" :key="status" :value="status">{{ statusLabel(status) }}</option>
-        </select>
-      </div>
-
       <div class="card flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
@@ -43,10 +38,11 @@
               {{ cloudKeyStatus.configured ? t('admin.packages.cloudKey.configured') : t('admin.packages.cloudKey.notConfigured') }}
             </span>
           </div>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.packages.cloudKey.description') }}</p>
-          <p v-if="cloudKeyStatus.configured" class="mt-2 break-all font-mono text-xs text-gray-500">
-            {{ cloudKeyStatus.key_id }} · {{ cloudKeyStatus.algorithm }} · {{ sourceLabel(cloudKeyStatus.source) }}
-          </p>
+          <details class="mt-1 text-xs text-gray-500">
+            <summary class="cursor-pointer hover:text-primary-600">{{ t('admin.packages.actions.details') }}</summary>
+            <p class="mt-2">{{ t('admin.packages.cloudKey.description') }}</p>
+            <p v-if="cloudKeyStatus.configured" class="mt-2 break-all font-mono">{{ cloudKeyStatus.key_id }} · {{ cloudKeyStatus.algorithm }} · {{ sourceLabel(cloudKeyStatus.source) }}</p>
+          </details>
         </div>
         <button type="button" class="btn btn-primary shrink-0" :disabled="cloudKeyStatus.configured || loadingCloudKey || generatingCloudKey" @click="generateCloudKey">
           <Icon name="key" size="sm" />
@@ -54,22 +50,22 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div class="card p-4">
+      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 dark:border-dark-700 dark:bg-dark-700 md:grid-cols-4">
+        <div class="bg-white px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.total') }}</p>
-          <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ packages.length }}</p>
+          <p class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ packages.length }}</p>
         </div>
-        <div class="card p-4">
+        <div class="bg-white px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.pendingReview') }}</p>
-          <p class="mt-2 text-2xl font-semibold text-amber-600">{{ statusCount('pending_review') }}</p>
+          <p class="mt-1 text-xl font-semibold text-amber-600">{{ statusCount('pending_review') }}</p>
         </div>
-        <div class="card p-4">
+        <div class="bg-white px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.approved') }}</p>
-          <p class="mt-2 text-2xl font-semibold text-emerald-600">{{ statusCount('approved') }}</p>
+          <p class="mt-1 text-xl font-semibold text-emerald-600">{{ statusCount('approved') }}</p>
         </div>
-        <div class="card p-4">
+        <div class="bg-white px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.downloads') }}</p>
-          <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">{{ totalDownloads }}</p>
+          <p class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ totalDownloads }}</p>
         </div>
       </div>
 
@@ -80,59 +76,61 @@
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.packages.empty.description') }}</p>
       </div>
 
-      <div v-else class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div v-else class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
         <article v-for="item in packages" :key="item.id" class="card overflow-hidden border border-gray-200 dark:border-dark-700">
-          <div class="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 p-5 dark:border-dark-700">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <h3 class="truncate text-base font-semibold text-gray-900 dark:text-white">{{ item.name }}</h3>
-                <span v-if="item.version" class="font-mono text-xs text-gray-500">v{{ item.version }}</span>
-                <span class="rounded px-2 py-0.5 text-xs font-medium" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
+          <div class="p-5">
+            <div class="flex min-w-0 items-center justify-between gap-3">
+              <h3 class="min-w-0 truncate text-base font-semibold text-gray-900 dark:text-white" :title="item.name">{{ item.name }}</h3>
+              <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
+            </div>
+            <div class="mt-2 flex min-w-0 items-center gap-2 text-xs text-gray-500">
+              <span class="shrink-0">#{{ item.id }}</span>
+              <span class="truncate">{{ formatDate(item.updated_at) }}</span>
+            </div>
+            <p v-if="item.description" class="mt-3 line-clamp-2 break-words text-sm leading-6 text-gray-600 dark:text-gray-300" data-testid="package-description">{{ item.description }}</p>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <span class="text-xs text-gray-500">{{ t('admin.packages.labels.downloadCount', { count: item.download_count }) }}</span>
+              <div class="flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" @click="openAuditDialog(item)"><Icon name="chartBar" size="sm" />{{ t('admin.packages.actions.audit') }}</button>
+                <button type="button" class="btn btn-secondary btn-sm" @click="openEditDialog(item)"><Icon name="edit" size="sm" />{{ t('admin.packages.actions.edit') }}</button>
               </div>
-              <p class="mt-1 text-xs text-gray-500">#{{ item.id }} · {{ formatDate(item.updated_at) }}</p>
-              <p v-if="item.description" class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ item.description }}</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button type="button" class="btn btn-secondary btn-sm" @click="openEditDialog(item)">
-                <Icon name="edit" size="sm" />
-                {{ t('admin.packages.actions.edit') }}
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" @click="openAuditDialog(item)">
-                <Icon name="chartBar" size="sm" />
-                {{ t('admin.packages.actions.audit') }}
-              </button>
             </div>
           </div>
+          <details class="border-t border-gray-100 dark:border-dark-700" data-testid="package-details">
+            <summary class="cursor-pointer px-5 py-3 text-xs font-medium text-gray-500 hover:text-primary-600">{{ t('admin.packages.actions.details') }}</summary>
+            <div class="grid grid-cols-1 gap-4 p-5 text-sm md:grid-cols-2">
+              <div v-if="item.description" class="md:col-span-2">
+                <p class="text-sm leading-6 text-gray-600 dark:text-gray-300">{{ item.description }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.planBindings') }}</p>
+                <p class="mt-2 break-words text-gray-800 dark:text-gray-200">{{ listText(item.plan_bindings) }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.permissionBindings') }}</p>
+                <p class="mt-2 break-words text-gray-800 dark:text-gray-200">{{ listText(item.permission_bindings) }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.download') }}</p>
+                <p class="mt-2 break-words text-gray-800 dark:text-gray-200">
+                  {{ t('admin.packages.labels.downloadCount', { count: item.download_count }) }}<span v-if="item.last_downloaded_at"> · {{ formatDate(item.last_downloaded_at) }}</span>
+                </p>
+              </div>
+              <div>
+                <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.storage') }}</p>
+                <p class="mt-2 break-all text-gray-800 dark:text-gray-200">{{ item.storage_key || item.file_url || '-' }}</p>
+              </div>
+              <div v-if="item.review_note" class="md:col-span-2">
+                <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.reviewNote') }}</p>
+                <p class="mt-2 break-words text-gray-800 dark:text-gray-200">{{ item.review_note }}</p>
+              </div>
+              <div v-if="item.takedown_reason" class="md:col-span-2">
+                <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.takedownReason') }}</p>
+                <p class="mt-2 text-red-600 dark:text-red-400">{{ item.takedown_reason }}</p>
+              </div>
+            </div>
 
-          <div class="grid grid-cols-1 gap-4 p-5 text-sm md:grid-cols-2">
-            <div>
-              <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.planBindings') }}</p>
-              <p class="mt-2 text-gray-800 dark:text-gray-200">{{ listText(item.plan_bindings) }}</p>
-            </div>
-            <div>
-              <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.permissionBindings') }}</p>
-              <p class="mt-2 text-gray-800 dark:text-gray-200">{{ listText(item.permission_bindings) }}</p>
-            </div>
-            <div>
-              <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.download') }}</p>
-              <p class="mt-2 text-gray-800 dark:text-gray-200">
-                {{ t('admin.packages.labels.downloadCount', { count: item.download_count }) }}<span v-if="item.last_downloaded_at"> · {{ formatDate(item.last_downloaded_at) }}</span>
-              </p>
-            </div>
-            <div>
-              <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.storage') }}</p>
-              <p class="mt-2 break-all text-gray-800 dark:text-gray-200">{{ item.storage_key || item.file_url || '-' }}</p>
-            </div>
-            <div v-if="item.review_note" class="md:col-span-2">
-              <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.reviewNote') }}</p>
-              <p class="mt-2 text-gray-800 dark:text-gray-200">{{ item.review_note }}</p>
-            </div>
-            <div v-if="item.takedown_reason" class="md:col-span-2">
-              <p class="text-xs font-medium uppercase text-gray-500">{{ t('admin.packages.fields.takedownReason') }}</p>
-              <p class="mt-2 text-red-600 dark:text-red-400">{{ item.takedown_reason }}</p>
-            </div>
-          </div>
-
+          </details>
           <div class="flex flex-wrap justify-end gap-2 border-t border-gray-100 px-5 py-4 dark:border-dark-700">
             <button type="button" class="btn btn-secondary btn-sm" @click="recordDownload(item)">
               <Icon name="download" size="sm" />
@@ -157,37 +155,15 @@
               <input v-model="form.name" class="input" required />
             </div>
             <div>
-              <label class="input-label">{{ t('admin.packages.fields.version') }}</label>
-              <input v-model="form.version" class="input" :placeholder="t('admin.packages.placeholders.version')" />
-            </div>
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.packages.fields.description') }}</label>
-            <textarea v-model="form.description" class="input" rows="3"></textarea>
-          </div>
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
               <label class="input-label">{{ t('admin.packages.fields.status') }}</label>
               <select v-model="form.status" class="input">
                 <option v-for="status in packageStatuses" :key="status" :value="status">{{ statusLabel(status) }}</option>
               </select>
             </div>
-            <div>
-              <label class="input-label">{{ t('admin.packages.fields.sizeBytes') }}</label>
-              <input v-model.number="form.size_bytes" class="input" min="0" type="number" />
-            </div>
           </div>
           <div>
-            <label class="input-label">{{ t('admin.packages.fields.fileURL') }}</label>
-            <input v-model="form.file_url" class="input" :placeholder="t('admin.packages.placeholders.fileURL')" />
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.packages.fields.storageKey') }}</label>
-            <input v-model="form.storage_key" class="input" :placeholder="t('admin.packages.placeholders.storageKey')" />
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.packages.fields.checksum') }}</label>
-            <input v-model="form.checksum" class="input" :placeholder="t('admin.packages.placeholders.checksum')" />
+            <label class="input-label">{{ t('admin.packages.fields.description') }}</label>
+            <textarea v-model="form.description" class="input" rows="4"></textarea>
           </div>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
@@ -199,6 +175,33 @@
               <input v-model="permissionBindingsText" class="input" :placeholder="t('admin.packages.placeholders.commaPermissions')" />
             </div>
           </div>
+          <details :key="editingPackage?.id ?? 'new'" class="rounded-xl border border-gray-200 dark:border-dark-700" data-testid="package-advanced">
+            <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-gray-500 hover:text-primary-600">{{ t('admin.packages.actions.advanced') }}</summary>
+            <div class="space-y-4 border-t border-gray-100 p-4 dark:border-dark-700">
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="input-label">{{ t('admin.packages.fields.version') }}</label>
+                  <input v-model="form.version" class="input" :placeholder="t('admin.packages.placeholders.version')" />
+                </div>
+                <div>
+                  <label class="input-label">{{ t('admin.packages.fields.sizeBytes') }}</label>
+                  <input v-model.number="form.size_bytes" class="input" min="0" type="number" />
+                </div>
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.packages.fields.fileURL') }}</label>
+                <input v-model="form.file_url" class="input" :placeholder="t('admin.packages.placeholders.fileURL')" />
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.packages.fields.storageKey') }}</label>
+                <input v-model="form.storage_key" class="input" :placeholder="t('admin.packages.placeholders.storageKey')" />
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.packages.fields.checksum') }}</label>
+                <input v-model="form.checksum" class="input" :placeholder="t('admin.packages.placeholders.checksum')" />
+              </div>
+            </div>
+          </details>
         </form>
         <template #footer>
           <div class="flex justify-end gap-3">

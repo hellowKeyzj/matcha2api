@@ -168,10 +168,14 @@ const (
 	EdgeUsageLogs = "usage_logs"
 	// EdgeShards holds the string denoting the shards edge name in mutations.
 	EdgeShards = "shards"
+	// EdgeSharedAccounts holds the string denoting the shared_accounts edge name in mutations.
+	EdgeSharedAccounts = "shared_accounts"
 	// EdgeAccounts holds the string denoting the accounts edge name in mutations.
 	EdgeAccounts = "accounts"
 	// EdgeAllowedUsers holds the string denoting the allowed_users edge name in mutations.
 	EdgeAllowedUsers = "allowed_users"
+	// EdgeGroupSharedAccounts holds the string denoting the group_shared_accounts edge name in mutations.
+	EdgeGroupSharedAccounts = "group_shared_accounts"
 	// EdgeAccountGroups holds the string denoting the account_groups edge name in mutations.
 	EdgeAccountGroups = "account_groups"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
@@ -213,6 +217,11 @@ const (
 	ShardsInverseTable = "group_shards"
 	// ShardsColumn is the table column denoting the shards relation/edge.
 	ShardsColumn = "group_shards"
+	// SharedAccountsTable is the table that holds the shared_accounts relation/edge. The primary key declared below.
+	SharedAccountsTable = "group_shared_accounts"
+	// SharedAccountsInverseTable is the table name for the Account entity.
+	// It exists in this package in order to avoid circular dependency with the "account" package.
+	SharedAccountsInverseTable = "accounts"
 	// AccountsTable is the table that holds the accounts relation/edge. The primary key declared below.
 	AccountsTable = "account_groups"
 	// AccountsInverseTable is the table name for the Account entity.
@@ -223,6 +232,13 @@ const (
 	// AllowedUsersInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	AllowedUsersInverseTable = "users"
+	// GroupSharedAccountsTable is the table that holds the group_shared_accounts relation/edge.
+	GroupSharedAccountsTable = "group_shared_accounts"
+	// GroupSharedAccountsInverseTable is the table name for the GroupSharedAccount entity.
+	// It exists in this package in order to avoid circular dependency with the "groupsharedaccount" package.
+	GroupSharedAccountsInverseTable = "group_shared_accounts"
+	// GroupSharedAccountsColumn is the table column denoting the group_shared_accounts relation/edge.
+	GroupSharedAccountsColumn = "group_id"
 	// AccountGroupsTable is the table that holds the account_groups relation/edge.
 	AccountGroupsTable = "account_groups"
 	// AccountGroupsInverseTable is the table name for the AccountGroup entity.
@@ -316,6 +332,9 @@ var Columns = []string{
 }
 
 var (
+	// SharedAccountsPrimaryKey and SharedAccountsColumn2 are the table columns denoting the
+	// primary key for the shared_accounts relation (M2M).
+	SharedAccountsPrimaryKey = []string{"account_id", "group_id"}
 	// AccountsPrimaryKey and AccountsColumn2 are the table columns denoting the
 	// primary key for the accounts relation (M2M).
 	AccountsPrimaryKey = []string{"account_id", "group_id"}
@@ -860,6 +879,20 @@ func ByShards(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// BySharedAccountsCount orders the results by shared_accounts count.
+func BySharedAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSharedAccountsStep(), opts...)
+	}
+}
+
+// BySharedAccounts orders the results by shared_accounts terms.
+func BySharedAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSharedAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAccountsCount orders the results by accounts count.
 func ByAccountsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -885,6 +918,20 @@ func ByAllowedUsersCount(opts ...sql.OrderTermOption) OrderOption {
 func ByAllowedUsers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newAllowedUsersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByGroupSharedAccountsCount orders the results by group_shared_accounts count.
+func ByGroupSharedAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newGroupSharedAccountsStep(), opts...)
+	}
+}
+
+// ByGroupSharedAccounts orders the results by group_shared_accounts terms.
+func ByGroupSharedAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newGroupSharedAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -950,6 +997,13 @@ func newShardsStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2M, false, ShardsTable, ShardsColumn),
 	)
 }
+func newSharedAccountsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SharedAccountsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, SharedAccountsTable, SharedAccountsPrimaryKey...),
+	)
+}
 func newAccountsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -962,6 +1016,13 @@ func newAllowedUsersStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AllowedUsersInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, true, AllowedUsersTable, AllowedUsersPrimaryKey...),
+	)
+}
+func newGroupSharedAccountsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(GroupSharedAccountsInverseTable, GroupSharedAccountsColumn),
+		sqlgraph.Edge(sqlgraph.O2M, true, GroupSharedAccountsTable, GroupSharedAccountsColumn),
 	)
 }
 func newAccountGroupsStep() *sqlgraph.Step {

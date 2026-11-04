@@ -249,6 +249,18 @@ func (f GroupShardUserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupShardUserMutation", m)
 }
 
+// The GroupSharedAccountFunc type is an adapter to allow the use of ordinary
+// function as GroupSharedAccount mutator.
+type GroupSharedAccountFunc func(context.Context, *ent.GroupSharedAccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GroupSharedAccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GroupSharedAccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupSharedAccountMutation", m)
+}
+
 // The IdempotencyRecordFunc type is an adapter to allow the use of ordinary
 // function as IdempotencyRecord mutator.
 type IdempotencyRecordFunc func(context.Context, *ent.IdempotencyRecordMutation) (ent.Value, error)

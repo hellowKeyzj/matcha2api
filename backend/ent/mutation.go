@@ -32,6 +32,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
 	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharedaccount"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -87,6 +88,7 @@ const (
 	TypeGroupShard                    = "GroupShard"
 	TypeGroupShardAccount             = "GroupShardAccount"
 	TypeGroupShardUser                = "GroupShardUser"
+	TypeGroupSharedAccount            = "GroupSharedAccount"
 	TypeIdempotencyRecord             = "IdempotencyRecord"
 	TypeIdentityAdoptionDecision      = "IdentityAdoptionDecision"
 	TypePaymentAuditLog               = "PaymentAuditLog"
@@ -2332,6 +2334,9 @@ type AccountMutation struct {
 	group_shards                map[int64]struct{}
 	removedgroup_shards         map[int64]struct{}
 	clearedgroup_shards         bool
+	shared_groups               map[int64]struct{}
+	removedshared_groups        map[int64]struct{}
+	clearedshared_groups        bool
 	proxy                       *int64
 	clearedproxy                bool
 	parent                      *int64
@@ -3992,6 +3997,60 @@ func (m *AccountMutation) ResetGroupShards() {
 	m.removedgroup_shards = nil
 }
 
+// AddSharedGroupIDs adds the "shared_groups" edge to the Group entity by ids.
+func (m *AccountMutation) AddSharedGroupIDs(ids ...int64) {
+	if m.shared_groups == nil {
+		m.shared_groups = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.shared_groups[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSharedGroups clears the "shared_groups" edge to the Group entity.
+func (m *AccountMutation) ClearSharedGroups() {
+	m.clearedshared_groups = true
+}
+
+// SharedGroupsCleared reports if the "shared_groups" edge to the Group entity was cleared.
+func (m *AccountMutation) SharedGroupsCleared() bool {
+	return m.clearedshared_groups
+}
+
+// RemoveSharedGroupIDs removes the "shared_groups" edge to the Group entity by IDs.
+func (m *AccountMutation) RemoveSharedGroupIDs(ids ...int64) {
+	if m.removedshared_groups == nil {
+		m.removedshared_groups = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.shared_groups, ids[i])
+		m.removedshared_groups[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSharedGroups returns the removed IDs of the "shared_groups" edge to the Group entity.
+func (m *AccountMutation) RemovedSharedGroupsIDs() (ids []int64) {
+	for id := range m.removedshared_groups {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SharedGroupsIDs returns the "shared_groups" edge IDs in the mutation.
+func (m *AccountMutation) SharedGroupsIDs() (ids []int64) {
+	for id := range m.shared_groups {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSharedGroups resets all changes to the "shared_groups" edge.
+func (m *AccountMutation) ResetSharedGroups() {
+	m.shared_groups = nil
+	m.clearedshared_groups = false
+	m.removedshared_groups = nil
+}
+
 // ClearProxy clears the "proxy" edge to the Proxy entity.
 func (m *AccountMutation) ClearProxy() {
 	m.clearedproxy = true
@@ -4978,12 +5037,15 @@ func (m *AccountMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AccountMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.groups != nil {
 		edges = append(edges, account.EdgeGroups)
 	}
 	if m.group_shards != nil {
 		edges = append(edges, account.EdgeGroupShards)
+	}
+	if m.shared_groups != nil {
+		edges = append(edges, account.EdgeSharedGroups)
 	}
 	if m.proxy != nil {
 		edges = append(edges, account.EdgeProxy)
@@ -5016,6 +5078,12 @@ func (m *AccountMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case account.EdgeSharedGroups:
+		ids := make([]ent.Value, 0, len(m.shared_groups))
+		for id := range m.shared_groups {
+			ids = append(ids, id)
+		}
+		return ids
 	case account.EdgeProxy:
 		if id := m.proxy; id != nil {
 			return []ent.Value{*id}
@@ -5042,12 +5110,15 @@ func (m *AccountMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AccountMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.removedgroups != nil {
 		edges = append(edges, account.EdgeGroups)
 	}
 	if m.removedgroup_shards != nil {
 		edges = append(edges, account.EdgeGroupShards)
+	}
+	if m.removedshared_groups != nil {
+		edges = append(edges, account.EdgeSharedGroups)
 	}
 	if m.removedchildren != nil {
 		edges = append(edges, account.EdgeChildren)
@@ -5074,6 +5145,12 @@ func (m *AccountMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case account.EdgeSharedGroups:
+		ids := make([]ent.Value, 0, len(m.removedshared_groups))
+		for id := range m.removedshared_groups {
+			ids = append(ids, id)
+		}
+		return ids
 	case account.EdgeChildren:
 		ids := make([]ent.Value, 0, len(m.removedchildren))
 		for id := range m.removedchildren {
@@ -5092,12 +5169,15 @@ func (m *AccountMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AccountMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.clearedgroups {
 		edges = append(edges, account.EdgeGroups)
 	}
 	if m.clearedgroup_shards {
 		edges = append(edges, account.EdgeGroupShards)
+	}
+	if m.clearedshared_groups {
+		edges = append(edges, account.EdgeSharedGroups)
 	}
 	if m.clearedproxy {
 		edges = append(edges, account.EdgeProxy)
@@ -5122,6 +5202,8 @@ func (m *AccountMutation) EdgeCleared(name string) bool {
 		return m.clearedgroups
 	case account.EdgeGroupShards:
 		return m.clearedgroup_shards
+	case account.EdgeSharedGroups:
+		return m.clearedshared_groups
 	case account.EdgeProxy:
 		return m.clearedproxy
 	case account.EdgeParent:
@@ -5157,6 +5239,9 @@ func (m *AccountMutation) ResetEdge(name string) error {
 		return nil
 	case account.EdgeGroupShards:
 		m.ResetGroupShards()
+		return nil
+	case account.EdgeSharedGroups:
+		m.ResetSharedGroups()
 		return nil
 	case account.EdgeProxy:
 		m.ResetProxy()
@@ -22288,6 +22373,9 @@ type GroupMutation struct {
 	shards                                  map[int64]struct{}
 	removedshards                           map[int64]struct{}
 	clearedshards                           bool
+	shared_accounts                         map[int64]struct{}
+	removedshared_accounts                  map[int64]struct{}
+	clearedshared_accounts                  bool
 	accounts                                map[int64]struct{}
 	removedaccounts                         map[int64]struct{}
 	clearedaccounts                         bool
@@ -26131,6 +26219,60 @@ func (m *GroupMutation) ResetShards() {
 	m.removedshards = nil
 }
 
+// AddSharedAccountIDs adds the "shared_accounts" edge to the Account entity by ids.
+func (m *GroupMutation) AddSharedAccountIDs(ids ...int64) {
+	if m.shared_accounts == nil {
+		m.shared_accounts = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.shared_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSharedAccounts clears the "shared_accounts" edge to the Account entity.
+func (m *GroupMutation) ClearSharedAccounts() {
+	m.clearedshared_accounts = true
+}
+
+// SharedAccountsCleared reports if the "shared_accounts" edge to the Account entity was cleared.
+func (m *GroupMutation) SharedAccountsCleared() bool {
+	return m.clearedshared_accounts
+}
+
+// RemoveSharedAccountIDs removes the "shared_accounts" edge to the Account entity by IDs.
+func (m *GroupMutation) RemoveSharedAccountIDs(ids ...int64) {
+	if m.removedshared_accounts == nil {
+		m.removedshared_accounts = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.shared_accounts, ids[i])
+		m.removedshared_accounts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSharedAccounts returns the removed IDs of the "shared_accounts" edge to the Account entity.
+func (m *GroupMutation) RemovedSharedAccountsIDs() (ids []int64) {
+	for id := range m.removedshared_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SharedAccountsIDs returns the "shared_accounts" edge IDs in the mutation.
+func (m *GroupMutation) SharedAccountsIDs() (ids []int64) {
+	for id := range m.shared_accounts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSharedAccounts resets all changes to the "shared_accounts" edge.
+func (m *GroupMutation) ResetSharedAccounts() {
+	m.shared_accounts = nil
+	m.clearedshared_accounts = false
+	m.removedshared_accounts = nil
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by ids.
 func (m *GroupMutation) AddAccountIDs(ids ...int64) {
 	if m.accounts == nil {
@@ -28036,7 +28178,7 @@ func (m *GroupMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *GroupMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.api_keys != nil {
 		edges = append(edges, group.EdgeAPIKeys)
 	}
@@ -28051,6 +28193,9 @@ func (m *GroupMutation) AddedEdges() []string {
 	}
 	if m.shards != nil {
 		edges = append(edges, group.EdgeShards)
+	}
+	if m.shared_accounts != nil {
+		edges = append(edges, group.EdgeSharedAccounts)
 	}
 	if m.accounts != nil {
 		edges = append(edges, group.EdgeAccounts)
@@ -28095,6 +28240,12 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case group.EdgeSharedAccounts:
+		ids := make([]ent.Value, 0, len(m.shared_accounts))
+		for id := range m.shared_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	case group.EdgeAccounts:
 		ids := make([]ent.Value, 0, len(m.accounts))
 		for id := range m.accounts {
@@ -28113,7 +28264,7 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *GroupMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.removedapi_keys != nil {
 		edges = append(edges, group.EdgeAPIKeys)
 	}
@@ -28128,6 +28279,9 @@ func (m *GroupMutation) RemovedEdges() []string {
 	}
 	if m.removedshards != nil {
 		edges = append(edges, group.EdgeShards)
+	}
+	if m.removedshared_accounts != nil {
+		edges = append(edges, group.EdgeSharedAccounts)
 	}
 	if m.removedaccounts != nil {
 		edges = append(edges, group.EdgeAccounts)
@@ -28172,6 +28326,12 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case group.EdgeSharedAccounts:
+		ids := make([]ent.Value, 0, len(m.removedshared_accounts))
+		for id := range m.removedshared_accounts {
+			ids = append(ids, id)
+		}
+		return ids
 	case group.EdgeAccounts:
 		ids := make([]ent.Value, 0, len(m.removedaccounts))
 		for id := range m.removedaccounts {
@@ -28190,7 +28350,7 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *GroupMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.clearedapi_keys {
 		edges = append(edges, group.EdgeAPIKeys)
 	}
@@ -28205,6 +28365,9 @@ func (m *GroupMutation) ClearedEdges() []string {
 	}
 	if m.clearedshards {
 		edges = append(edges, group.EdgeShards)
+	}
+	if m.clearedshared_accounts {
+		edges = append(edges, group.EdgeSharedAccounts)
 	}
 	if m.clearedaccounts {
 		edges = append(edges, group.EdgeAccounts)
@@ -28229,6 +28392,8 @@ func (m *GroupMutation) EdgeCleared(name string) bool {
 		return m.clearedusage_logs
 	case group.EdgeShards:
 		return m.clearedshards
+	case group.EdgeSharedAccounts:
+		return m.clearedshared_accounts
 	case group.EdgeAccounts:
 		return m.clearedaccounts
 	case group.EdgeAllowedUsers:
@@ -28263,6 +28428,9 @@ func (m *GroupMutation) ResetEdge(name string) error {
 		return nil
 	case group.EdgeShards:
 		m.ResetShards()
+		return nil
+	case group.EdgeSharedAccounts:
+		m.ResetSharedAccounts()
 		return nil
 	case group.EdgeAccounts:
 		m.ResetAccounts()
@@ -30214,6 +30382,526 @@ func (m *GroupShardUserMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown GroupShardUser edge %s", name)
+}
+
+// GroupSharedAccountMutation represents an operation that mutates the GroupSharedAccount nodes in the graph.
+type GroupSharedAccountMutation struct {
+	config
+	op             Op
+	typ            string
+	platform       *string
+	priority       *int
+	addpriority    *int
+	created_at     *time.Time
+	clearedFields  map[string]struct{}
+	group          *int64
+	clearedgroup   bool
+	account        *int64
+	clearedaccount bool
+	done           bool
+	oldValue       func(context.Context) (*GroupSharedAccount, error)
+	predicates     []predicate.GroupSharedAccount
+}
+
+var _ ent.Mutation = (*GroupSharedAccountMutation)(nil)
+
+// groupsharedaccountOption allows management of the mutation configuration using functional options.
+type groupsharedaccountOption func(*GroupSharedAccountMutation)
+
+// newGroupSharedAccountMutation creates new mutation for the GroupSharedAccount entity.
+func newGroupSharedAccountMutation(c config, op Op, opts ...groupsharedaccountOption) *GroupSharedAccountMutation {
+	m := &GroupSharedAccountMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGroupSharedAccount,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GroupSharedAccountMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GroupSharedAccountMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *GroupSharedAccountMutation) SetGroupID(i int64) {
+	m.group = &i
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *GroupSharedAccountMutation) GroupID() (r int64, exists bool) {
+	v := m.group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *GroupSharedAccountMutation) ResetGroupID() {
+	m.group = nil
+}
+
+// SetAccountID sets the "account_id" field.
+func (m *GroupSharedAccountMutation) SetAccountID(i int64) {
+	m.account = &i
+}
+
+// AccountID returns the value of the "account_id" field in the mutation.
+func (m *GroupSharedAccountMutation) AccountID() (r int64, exists bool) {
+	v := m.account
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAccountID resets all changes to the "account_id" field.
+func (m *GroupSharedAccountMutation) ResetAccountID() {
+	m.account = nil
+}
+
+// SetPlatform sets the "platform" field.
+func (m *GroupSharedAccountMutation) SetPlatform(s string) {
+	m.platform = &s
+}
+
+// Platform returns the value of the "platform" field in the mutation.
+func (m *GroupSharedAccountMutation) Platform() (r string, exists bool) {
+	v := m.platform
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPlatform resets all changes to the "platform" field.
+func (m *GroupSharedAccountMutation) ResetPlatform() {
+	m.platform = nil
+}
+
+// SetPriority sets the "priority" field.
+func (m *GroupSharedAccountMutation) SetPriority(i int) {
+	m.priority = &i
+	m.addpriority = nil
+}
+
+// Priority returns the value of the "priority" field in the mutation.
+func (m *GroupSharedAccountMutation) Priority() (r int, exists bool) {
+	v := m.priority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// AddPriority adds i to the "priority" field.
+func (m *GroupSharedAccountMutation) AddPriority(i int) {
+	if m.addpriority != nil {
+		*m.addpriority += i
+	} else {
+		m.addpriority = &i
+	}
+}
+
+// AddedPriority returns the value that was added to the "priority" field in this mutation.
+func (m *GroupSharedAccountMutation) AddedPriority() (r int, exists bool) {
+	v := m.addpriority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPriority resets all changes to the "priority" field.
+func (m *GroupSharedAccountMutation) ResetPriority() {
+	m.priority = nil
+	m.addpriority = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *GroupSharedAccountMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *GroupSharedAccountMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *GroupSharedAccountMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (m *GroupSharedAccountMutation) ClearGroup() {
+	m.clearedgroup = true
+	m.clearedFields[groupsharedaccount.FieldGroupID] = struct{}{}
+}
+
+// GroupCleared reports if the "group" edge to the Group entity was cleared.
+func (m *GroupSharedAccountMutation) GroupCleared() bool {
+	return m.clearedgroup
+}
+
+// GroupIDs returns the "group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupID instead. It exists only for internal usage by the builders.
+func (m *GroupSharedAccountMutation) GroupIDs() (ids []int64) {
+	if id := m.group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroup resets all changes to the "group" edge.
+func (m *GroupSharedAccountMutation) ResetGroup() {
+	m.group = nil
+	m.clearedgroup = false
+}
+
+// ClearAccount clears the "account" edge to the Account entity.
+func (m *GroupSharedAccountMutation) ClearAccount() {
+	m.clearedaccount = true
+	m.clearedFields[groupsharedaccount.FieldAccountID] = struct{}{}
+}
+
+// AccountCleared reports if the "account" edge to the Account entity was cleared.
+func (m *GroupSharedAccountMutation) AccountCleared() bool {
+	return m.clearedaccount
+}
+
+// AccountIDs returns the "account" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AccountID instead. It exists only for internal usage by the builders.
+func (m *GroupSharedAccountMutation) AccountIDs() (ids []int64) {
+	if id := m.account; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAccount resets all changes to the "account" edge.
+func (m *GroupSharedAccountMutation) ResetAccount() {
+	m.account = nil
+	m.clearedaccount = false
+}
+
+// Where appends a list predicates to the GroupSharedAccountMutation builder.
+func (m *GroupSharedAccountMutation) Where(ps ...predicate.GroupSharedAccount) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GroupSharedAccountMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GroupSharedAccountMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GroupSharedAccount, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GroupSharedAccountMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GroupSharedAccountMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GroupSharedAccount).
+func (m *GroupSharedAccountMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GroupSharedAccountMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.group != nil {
+		fields = append(fields, groupsharedaccount.FieldGroupID)
+	}
+	if m.account != nil {
+		fields = append(fields, groupsharedaccount.FieldAccountID)
+	}
+	if m.platform != nil {
+		fields = append(fields, groupsharedaccount.FieldPlatform)
+	}
+	if m.priority != nil {
+		fields = append(fields, groupsharedaccount.FieldPriority)
+	}
+	if m.created_at != nil {
+		fields = append(fields, groupsharedaccount.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GroupSharedAccountMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case groupsharedaccount.FieldGroupID:
+		return m.GroupID()
+	case groupsharedaccount.FieldAccountID:
+		return m.AccountID()
+	case groupsharedaccount.FieldPlatform:
+		return m.Platform()
+	case groupsharedaccount.FieldPriority:
+		return m.Priority()
+	case groupsharedaccount.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GroupSharedAccountMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, errors.New("edge schema GroupSharedAccount does not support getting old values")
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupSharedAccountMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case groupsharedaccount.FieldGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case groupsharedaccount.FieldAccountID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccountID(v)
+		return nil
+	case groupsharedaccount.FieldPlatform:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPlatform(v)
+		return nil
+	case groupsharedaccount.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPriority(v)
+		return nil
+	case groupsharedaccount.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GroupSharedAccount field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GroupSharedAccountMutation) AddedFields() []string {
+	var fields []string
+	if m.addpriority != nil {
+		fields = append(fields, groupsharedaccount.FieldPriority)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GroupSharedAccountMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case groupsharedaccount.FieldPriority:
+		return m.AddedPriority()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupSharedAccountMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case groupsharedaccount.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPriority(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GroupSharedAccount numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GroupSharedAccountMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GroupSharedAccountMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GroupSharedAccountMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown GroupSharedAccount nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GroupSharedAccountMutation) ResetField(name string) error {
+	switch name {
+	case groupsharedaccount.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case groupsharedaccount.FieldAccountID:
+		m.ResetAccountID()
+		return nil
+	case groupsharedaccount.FieldPlatform:
+		m.ResetPlatform()
+		return nil
+	case groupsharedaccount.FieldPriority:
+		m.ResetPriority()
+		return nil
+	case groupsharedaccount.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupSharedAccount field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GroupSharedAccountMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.group != nil {
+		edges = append(edges, groupsharedaccount.EdgeGroup)
+	}
+	if m.account != nil {
+		edges = append(edges, groupsharedaccount.EdgeAccount)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GroupSharedAccountMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case groupsharedaccount.EdgeGroup:
+		if id := m.group; id != nil {
+			return []ent.Value{*id}
+		}
+	case groupsharedaccount.EdgeAccount:
+		if id := m.account; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GroupSharedAccountMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GroupSharedAccountMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GroupSharedAccountMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedgroup {
+		edges = append(edges, groupsharedaccount.EdgeGroup)
+	}
+	if m.clearedaccount {
+		edges = append(edges, groupsharedaccount.EdgeAccount)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GroupSharedAccountMutation) EdgeCleared(name string) bool {
+	switch name {
+	case groupsharedaccount.EdgeGroup:
+		return m.clearedgroup
+	case groupsharedaccount.EdgeAccount:
+		return m.clearedaccount
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GroupSharedAccountMutation) ClearEdge(name string) error {
+	switch name {
+	case groupsharedaccount.EdgeGroup:
+		m.ClearGroup()
+		return nil
+	case groupsharedaccount.EdgeAccount:
+		m.ClearAccount()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupSharedAccount unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GroupSharedAccountMutation) ResetEdge(name string) error {
+	switch name {
+	case groupsharedaccount.EdgeGroup:
+		m.ResetGroup()
+		return nil
+	case groupsharedaccount.EdgeAccount:
+		m.ResetAccount()
+		return nil
+	}
+	return fmt.Errorf("unknown GroupSharedAccount edge %s", name)
 }
 
 // IdempotencyRecordMutation represents an operation that mutates the IdempotencyRecord nodes in the graph.

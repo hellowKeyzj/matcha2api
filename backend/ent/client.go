@@ -35,6 +35,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
 	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharedaccount"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -106,6 +107,8 @@ type Client struct {
 	GroupShardAccount *GroupShardAccountClient
 	// GroupShardUser is the client for interacting with the GroupShardUser builders.
 	GroupShardUser *GroupShardUserClient
+	// GroupSharedAccount is the client for interacting with the GroupSharedAccount builders.
+	GroupSharedAccount *GroupSharedAccountClient
 	// IdempotencyRecord is the client for interacting with the IdempotencyRecord builders.
 	IdempotencyRecord *IdempotencyRecordClient
 	// IdentityAdoptionDecision is the client for interacting with the IdentityAdoptionDecision builders.
@@ -181,6 +184,7 @@ func (c *Client) init() {
 	c.GroupShard = NewGroupShardClient(c.config)
 	c.GroupShardAccount = NewGroupShardAccountClient(c.config)
 	c.GroupShardUser = NewGroupShardUserClient(c.config)
+	c.GroupSharedAccount = NewGroupSharedAccountClient(c.config)
 	c.IdempotencyRecord = NewIdempotencyRecordClient(c.config)
 	c.IdentityAdoptionDecision = NewIdentityAdoptionDecisionClient(c.config)
 	c.PaymentAuditLog = NewPaymentAuditLogClient(c.config)
@@ -315,6 +319,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		GroupShard:                    NewGroupShardClient(cfg),
 		GroupShardAccount:             NewGroupShardAccountClient(cfg),
 		GroupShardUser:                NewGroupShardUserClient(cfg),
+		GroupSharedAccount:            NewGroupSharedAccountClient(cfg),
 		IdempotencyRecord:             NewIdempotencyRecordClient(cfg),
 		IdentityAdoptionDecision:      NewIdentityAdoptionDecisionClient(cfg),
 		PaymentAuditLog:               NewPaymentAuditLogClient(cfg),
@@ -376,6 +381,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		GroupShard:                    NewGroupShardClient(cfg),
 		GroupShardAccount:             NewGroupShardAccountClient(cfg),
 		GroupShardUser:                NewGroupShardUserClient(cfg),
+		GroupSharedAccount:            NewGroupSharedAccountClient(cfg),
 		IdempotencyRecord:             NewIdempotencyRecordClient(cfg),
 		IdentityAdoptionDecision:      NewIdentityAdoptionDecisionClient(cfg),
 		PaymentAuditLog:               NewPaymentAuditLogClient(cfg),
@@ -432,12 +438,12 @@ func (c *Client) Use(hooks ...Hook) {
 		c.BatchImageJob, c.ChannelMonitor, c.ChannelMonitorDailyRollup,
 		c.ChannelMonitorHistory, c.ChannelMonitorRequestTemplate,
 		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.GroupShard,
-		c.GroupShardAccount, c.GroupShardUser, c.IdempotencyRecord,
-		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
-		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
-		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
-		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
-		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
+		c.GroupShardAccount, c.GroupShardUser, c.GroupSharedAccount,
+		c.IdempotencyRecord, c.IdentityAdoptionDecision, c.PaymentAuditLog,
+		c.PaymentOrder, c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode,
+		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
+		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
+		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
 		c.UserPlatformQuota, c.UserSubscription,
 	} {
 		n.Use(hooks...)
@@ -453,12 +459,12 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.BatchImageJob, c.ChannelMonitor, c.ChannelMonitorDailyRollup,
 		c.ChannelMonitorHistory, c.ChannelMonitorRequestTemplate,
 		c.CompositeModelRoute, c.ErrorPassthroughRule, c.Group, c.GroupShard,
-		c.GroupShardAccount, c.GroupShardUser, c.IdempotencyRecord,
-		c.IdentityAdoptionDecision, c.PaymentAuditLog, c.PaymentOrder,
-		c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode, c.PromoCodeUsage,
-		c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting, c.SubscriptionPlan,
-		c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
-		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
+		c.GroupShardAccount, c.GroupShardUser, c.GroupSharedAccount,
+		c.IdempotencyRecord, c.IdentityAdoptionDecision, c.PaymentAuditLog,
+		c.PaymentOrder, c.PaymentProviderInstance, c.PendingAuthSession, c.PromoCode,
+		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
+		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
+		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
 		c.UserPlatformQuota, c.UserSubscription,
 	} {
 		n.Intercept(interceptors...)
@@ -508,6 +514,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.GroupShardAccount.mutate(ctx, m)
 	case *GroupShardUserMutation:
 		return c.GroupShardUser.mutate(ctx, m)
+	case *GroupSharedAccountMutation:
+		return c.GroupSharedAccount.mutate(ctx, m)
 	case *IdempotencyRecordMutation:
 		return c.IdempotencyRecord.mutate(ctx, m)
 	case *IdentityAdoptionDecisionMutation:
@@ -880,6 +888,22 @@ func (c *AccountClient) QueryGroupShards(_m *Account) *GroupShardQuery {
 	return query
 }
 
+// QuerySharedGroups queries the shared_groups edge of a Account.
+func (c *AccountClient) QuerySharedGroups(_m *Account) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(account.Table, account.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, account.SharedGroupsTable, account.SharedGroupsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProxy queries the proxy edge of a Account.
 func (c *AccountClient) QueryProxy(_m *Account) *ProxyQuery {
 	query := (&ProxyClient{config: c.config}).Query()
@@ -969,6 +993,22 @@ func (c *AccountClient) QueryGroupShardAccounts(_m *Account) *GroupShardAccountQ
 			sqlgraph.From(account.Table, account.FieldID, id),
 			sqlgraph.To(groupshardaccount.Table, groupshardaccount.AccountColumn),
 			sqlgraph.Edge(sqlgraph.O2M, true, account.GroupShardAccountsTable, account.GroupShardAccountsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroupSharedAccounts queries the group_shared_accounts edge of a Account.
+func (c *AccountClient) QueryGroupSharedAccounts(_m *Account) *GroupSharedAccountQuery {
+	query := (&GroupSharedAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(account.Table, account.FieldID, id),
+			sqlgraph.To(groupsharedaccount.Table, groupsharedaccount.AccountColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, account.GroupSharedAccountsTable, account.GroupSharedAccountsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -3262,6 +3302,22 @@ func (c *GroupClient) QueryShards(_m *Group) *GroupShardQuery {
 	return query
 }
 
+// QuerySharedAccounts queries the shared_accounts edge of a Group.
+func (c *GroupClient) QuerySharedAccounts(_m *Group) *AccountQuery {
+	query := (&AccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(account.Table, account.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, group.SharedAccountsTable, group.SharedAccountsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAccounts queries the accounts edge of a Group.
 func (c *GroupClient) QueryAccounts(_m *Group) *AccountQuery {
 	query := (&AccountClient{config: c.config}).Query()
@@ -3287,6 +3343,22 @@ func (c *GroupClient) QueryAllowedUsers(_m *Group) *UserQuery {
 			sqlgraph.From(group.Table, group.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, group.AllowedUsersTable, group.AllowedUsersPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroupSharedAccounts queries the group_shared_accounts edge of a Group.
+func (c *GroupClient) QueryGroupSharedAccounts(_m *Group) *GroupSharedAccountQuery {
+	query := (&GroupSharedAccountClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(groupsharedaccount.Table, groupsharedaccount.GroupColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, group.GroupSharedAccountsTable, group.GroupSharedAccountsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -3809,6 +3881,122 @@ func (c *GroupShardUserClient) mutate(ctx context.Context, m *GroupShardUserMuta
 		return (&GroupShardUserDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown GroupShardUser mutation op: %q", m.Op())
+	}
+}
+
+// GroupSharedAccountClient is a client for the GroupSharedAccount schema.
+type GroupSharedAccountClient struct {
+	config
+}
+
+// NewGroupSharedAccountClient returns a client for the GroupSharedAccount from the given config.
+func NewGroupSharedAccountClient(c config) *GroupSharedAccountClient {
+	return &GroupSharedAccountClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `groupsharedaccount.Hooks(f(g(h())))`.
+func (c *GroupSharedAccountClient) Use(hooks ...Hook) {
+	c.hooks.GroupSharedAccount = append(c.hooks.GroupSharedAccount, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `groupsharedaccount.Intercept(f(g(h())))`.
+func (c *GroupSharedAccountClient) Intercept(interceptors ...Interceptor) {
+	c.inters.GroupSharedAccount = append(c.inters.GroupSharedAccount, interceptors...)
+}
+
+// Create returns a builder for creating a GroupSharedAccount entity.
+func (c *GroupSharedAccountClient) Create() *GroupSharedAccountCreate {
+	mutation := newGroupSharedAccountMutation(c.config, OpCreate)
+	return &GroupSharedAccountCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of GroupSharedAccount entities.
+func (c *GroupSharedAccountClient) CreateBulk(builders ...*GroupSharedAccountCreate) *GroupSharedAccountCreateBulk {
+	return &GroupSharedAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GroupSharedAccountClient) MapCreateBulk(slice any, setFunc func(*GroupSharedAccountCreate, int)) *GroupSharedAccountCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GroupSharedAccountCreateBulk{err: fmt.Errorf("calling to GroupSharedAccountClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GroupSharedAccountCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GroupSharedAccountCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for GroupSharedAccount.
+func (c *GroupSharedAccountClient) Update() *GroupSharedAccountUpdate {
+	mutation := newGroupSharedAccountMutation(c.config, OpUpdate)
+	return &GroupSharedAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GroupSharedAccountClient) UpdateOne(_m *GroupSharedAccount) *GroupSharedAccountUpdateOne {
+	mutation := newGroupSharedAccountMutation(c.config, OpUpdateOne)
+	mutation.account = &_m.AccountID
+	mutation.group = &_m.GroupID
+	return &GroupSharedAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for GroupSharedAccount.
+func (c *GroupSharedAccountClient) Delete() *GroupSharedAccountDelete {
+	mutation := newGroupSharedAccountMutation(c.config, OpDelete)
+	return &GroupSharedAccountDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Query returns a query builder for GroupSharedAccount.
+func (c *GroupSharedAccountClient) Query() *GroupSharedAccountQuery {
+	return &GroupSharedAccountQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGroupSharedAccount},
+		inters: c.Interceptors(),
+	}
+}
+
+// QueryGroup queries the group edge of a GroupSharedAccount.
+func (c *GroupSharedAccountClient) QueryGroup(_m *GroupSharedAccount) *GroupQuery {
+	return c.Query().
+		Where(groupsharedaccount.AccountID(_m.AccountID), groupsharedaccount.GroupID(_m.GroupID)).
+		QueryGroup()
+}
+
+// QueryAccount queries the account edge of a GroupSharedAccount.
+func (c *GroupSharedAccountClient) QueryAccount(_m *GroupSharedAccount) *AccountQuery {
+	return c.Query().
+		Where(groupsharedaccount.AccountID(_m.AccountID), groupsharedaccount.GroupID(_m.GroupID)).
+		QueryAccount()
+}
+
+// Hooks returns the client hooks.
+func (c *GroupSharedAccountClient) Hooks() []Hook {
+	return c.hooks.GroupSharedAccount
+}
+
+// Interceptors returns the client interceptors.
+func (c *GroupSharedAccountClient) Interceptors() []Interceptor {
+	return c.inters.GroupSharedAccount
+}
+
+func (c *GroupSharedAccountClient) mutate(ctx context.Context, m *GroupSharedAccountMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GroupSharedAccountCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GroupSharedAccountUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GroupSharedAccountUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GroupSharedAccountDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown GroupSharedAccount mutation op: %q", m.Op())
 	}
 }
 
@@ -7410,8 +7598,8 @@ type (
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
 		ChannelMonitorRequestTemplate, CompositeModelRoute, ErrorPassthroughRule,
-		Group, GroupShard, GroupShardAccount, GroupShardUser, IdempotencyRecord,
-		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		Group, GroupShard, GroupShardAccount, GroupShardUser, GroupSharedAccount,
+		IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
 		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
 		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
 		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,
@@ -7422,8 +7610,8 @@ type (
 		AuthIdentityChannel, BatchImageEvent, BatchImageItem, BatchImageJob,
 		ChannelMonitor, ChannelMonitorDailyRollup, ChannelMonitorHistory,
 		ChannelMonitorRequestTemplate, CompositeModelRoute, ErrorPassthroughRule,
-		Group, GroupShard, GroupShardAccount, GroupShardUser, IdempotencyRecord,
-		IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
+		Group, GroupShard, GroupShardAccount, GroupShardUser, GroupSharedAccount,
+		IdempotencyRecord, IdentityAdoptionDecision, PaymentAuditLog, PaymentOrder,
 		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
 		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
 		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,

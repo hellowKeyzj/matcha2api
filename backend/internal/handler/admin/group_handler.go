@@ -729,6 +729,37 @@ func (h *GroupHandler) SetShardAccounts(c *gin.Context) {
 	response.Success(c, dto.GroupShardAccountsFromService(accounts))
 }
 
+func (h *GroupHandler) ListSharedAccounts(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	accounts, err := h.adminService.ListSharedAccounts(c.Request.Context(), groupID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardAccountsFromService(accounts))
+}
+
+func (h *GroupHandler) SetSharedAccounts(c *gin.Context) {
+	groupID, ok := parsePositiveIDParam(c, "id")
+	if !ok {
+		return
+	}
+	var req SetGroupShardAccountsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body: "+err.Error())
+		return
+	}
+	accounts, err := h.adminService.SetSharedAccounts(c.Request.Context(), groupID, setGroupShardAccountsRequestToInput(req))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.GroupShardAccountsFromService(accounts))
+}
+
 func groupShardRequestToInput(req GroupShardRequest) service.GroupShardInput {
 	return service.GroupShardInput{
 		Name:        req.Name,

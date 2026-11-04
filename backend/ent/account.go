@@ -93,6 +93,8 @@ type AccountEdges struct {
 	Groups []*Group `json:"groups,omitempty"`
 	// GroupShards holds the value of the group_shards edge.
 	GroupShards []*GroupShard `json:"group_shards,omitempty"`
+	// SharedGroups holds the value of the shared_groups edge.
+	SharedGroups []*Group `json:"shared_groups,omitempty"`
 	// Proxy holds the value of the proxy edge.
 	Proxy *Proxy `json:"proxy,omitempty"`
 	// Parent holds the value of the parent edge.
@@ -105,9 +107,11 @@ type AccountEdges struct {
 	AccountGroups []*AccountGroup `json:"account_groups,omitempty"`
 	// GroupShardAccounts holds the value of the group_shard_accounts edge.
 	GroupShardAccounts []*GroupShardAccount `json:"group_shard_accounts,omitempty"`
+	// GroupSharedAccounts holds the value of the group_shared_accounts edge.
+	GroupSharedAccounts []*GroupSharedAccount `json:"group_shared_accounts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [10]bool
 }
 
 // GroupsOrErr returns the Groups value or an error if the edge
@@ -128,12 +132,21 @@ func (e AccountEdges) GroupShardsOrErr() ([]*GroupShard, error) {
 	return nil, &NotLoadedError{edge: "group_shards"}
 }
 
+// SharedGroupsOrErr returns the SharedGroups value or an error if the edge
+// was not loaded in eager-loading.
+func (e AccountEdges) SharedGroupsOrErr() ([]*Group, error) {
+	if e.loadedTypes[2] {
+		return e.SharedGroups, nil
+	}
+	return nil, &NotLoadedError{edge: "shared_groups"}
+}
+
 // ProxyOrErr returns the Proxy value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e AccountEdges) ProxyOrErr() (*Proxy, error) {
 	if e.Proxy != nil {
 		return e.Proxy, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: proxy.Label}
 	}
 	return nil, &NotLoadedError{edge: "proxy"}
@@ -144,7 +157,7 @@ func (e AccountEdges) ProxyOrErr() (*Proxy, error) {
 func (e AccountEdges) ParentOrErr() (*Account, error) {
 	if e.Parent != nil {
 		return e.Parent, nil
-	} else if e.loadedTypes[3] {
+	} else if e.loadedTypes[4] {
 		return nil, &NotFoundError{label: account.Label}
 	}
 	return nil, &NotLoadedError{edge: "parent"}
@@ -153,7 +166,7 @@ func (e AccountEdges) ParentOrErr() (*Account, error) {
 // ChildrenOrErr returns the Children value or an error if the edge
 // was not loaded in eager-loading.
 func (e AccountEdges) ChildrenOrErr() ([]*Account, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.Children, nil
 	}
 	return nil, &NotLoadedError{edge: "children"}
@@ -162,7 +175,7 @@ func (e AccountEdges) ChildrenOrErr() ([]*Account, error) {
 // UsageLogsOrErr returns the UsageLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e AccountEdges) UsageLogsOrErr() ([]*UsageLog, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
@@ -171,7 +184,7 @@ func (e AccountEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 // AccountGroupsOrErr returns the AccountGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e AccountEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.AccountGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "account_groups"}
@@ -180,10 +193,19 @@ func (e AccountEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
 // GroupShardAccountsOrErr returns the GroupShardAccounts value or an error if the edge
 // was not loaded in eager-loading.
 func (e AccountEdges) GroupShardAccountsOrErr() ([]*GroupShardAccount, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.GroupShardAccounts, nil
 	}
 	return nil, &NotLoadedError{edge: "group_shard_accounts"}
+}
+
+// GroupSharedAccountsOrErr returns the GroupSharedAccounts value or an error if the edge
+// was not loaded in eager-loading.
+func (e AccountEdges) GroupSharedAccountsOrErr() ([]*GroupSharedAccount, error) {
+	if e.loadedTypes[9] {
+		return e.GroupSharedAccounts, nil
+	}
+	return nil, &NotLoadedError{edge: "group_shared_accounts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -454,6 +476,11 @@ func (_m *Account) QueryGroupShards() *GroupShardQuery {
 	return NewAccountClient(_m.config).QueryGroupShards(_m)
 }
 
+// QuerySharedGroups queries the "shared_groups" edge of the Account entity.
+func (_m *Account) QuerySharedGroups() *GroupQuery {
+	return NewAccountClient(_m.config).QuerySharedGroups(_m)
+}
+
 // QueryProxy queries the "proxy" edge of the Account entity.
 func (_m *Account) QueryProxy() *ProxyQuery {
 	return NewAccountClient(_m.config).QueryProxy(_m)
@@ -482,6 +509,11 @@ func (_m *Account) QueryAccountGroups() *AccountGroupQuery {
 // QueryGroupShardAccounts queries the "group_shard_accounts" edge of the Account entity.
 func (_m *Account) QueryGroupShardAccounts() *GroupShardAccountQuery {
 	return NewAccountClient(_m.config).QueryGroupShardAccounts(_m)
+}
+
+// QueryGroupSharedAccounts queries the "group_shared_accounts" edge of the Account entity.
+func (_m *Account) QueryGroupSharedAccounts() *GroupSharedAccountQuery {
+	return NewAccountClient(_m.config).QueryGroupSharedAccounts(_m)
 }
 
 // Update returns a builder for updating this Account.

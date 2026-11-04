@@ -28,9 +28,10 @@ SELECT gs.id, gs.group_id, gs.name, gs.description, gs.status, gs.created_at, gs
        COALESCE(u.user_count, 0), COALESCE(a.account_count, 0)
 FROM group_shards gs
 LEFT JOIN (
-    SELECT group_shard_id, COUNT(*) AS user_count
-    FROM group_shard_users
-    GROUP BY group_shard_id
+    SELECT gsu.group_shard_id, COUNT(*) AS user_count
+    FROM group_shard_users gsu
+    JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL
+    GROUP BY gsu.group_shard_id
 ) u ON u.group_shard_id = gs.id
 LEFT JOIN (
     SELECT group_shard_id, COUNT(*) AS account_count
@@ -61,9 +62,10 @@ SELECT gs.id, gs.group_id, gs.name, gs.description, gs.status, gs.created_at, gs
        COALESCE(u.user_count, 0), COALESCE(a.account_count, 0)
 FROM group_shards gs
 LEFT JOIN (
-    SELECT group_shard_id, COUNT(*) AS user_count
-    FROM group_shard_users
-    GROUP BY group_shard_id
+    SELECT gsu.group_shard_id, COUNT(*) AS user_count
+    FROM group_shard_users gsu
+    JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL
+    GROUP BY gsu.group_shard_id
 ) u ON u.group_shard_id = gs.id
 LEFT JOIN (
     SELECT group_shard_id, COUNT(*) AS account_count
@@ -185,6 +187,10 @@ func (r *groupShardRepository) AssignUser(ctx context.Context, groupID, shardID,
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := lockLiveShardUser(ctx, tx, userID); err != nil {
+		return err
+	}
+
 	var status string
 	if err := tx.QueryRowContext(ctx, `SELECT status FROM group_shards WHERE group_id = $1 AND id = $2 FOR UPDATE`, groupID, shardID).Scan(&status); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -209,7 +215,7 @@ func (r *groupShardRepository) AssignUser(ctx context.Context, groupID, shardID,
 	}
 
 	var userCount int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM group_shard_users WHERE group_shard_id = $1`, shardID).Scan(&userCount); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM group_shard_users gsu JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL WHERE gsu.group_shard_id = $1`, shardID).Scan(&userCount); err != nil {
 		return err
 	}
 	if userCount >= maxUsers {
@@ -235,8 +241,32 @@ ON CONFLICT (group_id, user_id) DO NOTHING`, shardID, groupID, userID)
 }
 
 func (r *groupShardRepository) RemoveUser(ctx context.Context, groupID, shardID, userID int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM group_shard_users WHERE group_id = $1 AND group_shard_id = $2 AND user_id = $3`, groupID, shardID, userID)
-	return err
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var id int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM group_shards WHERE group_id = $1 AND id = $2 FOR UPDATE`, groupID, shardID).Scan(&id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return service.ErrGroupShardNotFound
+		}
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM group_shard_users WHERE group_id = $1 AND group_shard_id = $2 AND user_id = $3`, groupID, shardID, userID); err != nil {
+		return err
+	}
+	// Cascades remove bindings only; provider accounts remain in the parent group.
+	if _, err := tx.ExecContext(ctx, `
+DELETE FROM group_shards gs WHERE gs.group_id = $1 AND gs.id = $2
+AND NOT EXISTS (
+    SELECT 1 FROM group_shard_users gsu
+    JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL
+    WHERE gsu.group_shard_id = gs.id
+)`, groupID, shardID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *groupShardRepository) ListAccounts(ctx context.Context, groupID, shardID int64) ([]service.GroupShardAccount, error) {
@@ -263,21 +293,61 @@ ORDER BY gsa.platform, gsa.priority, gsa.account_id`, groupID, shardID)
 }
 
 func (r *groupShardRepository) SetAccounts(ctx context.Context, groupID, shardID int64, accounts []service.GroupShardAccount) error {
+	return r.setAccounts(ctx, groupID, shardID, accounts, false)
+}
+
+func (r *groupShardRepository) SetSharedAccounts(ctx context.Context, groupID int64, accounts []service.GroupShardAccount) error {
+	return r.setAccounts(ctx, groupID, 0, accounts, true)
+}
+
+func (r *groupShardRepository) ListSharedAccounts(ctx context.Context, groupID int64) ([]service.GroupShardAccount, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT 0, gsa.group_id, gsa.account_id, a.name, gsa.platform, a.type, a.status, gsa.priority, gsa.created_at
+FROM group_shared_accounts gsa
+JOIN accounts a ON a.id = gsa.account_id AND a.deleted_at IS NULL
+WHERE gsa.group_id = $1
+ORDER BY gsa.platform, gsa.priority, gsa.account_id`, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("list group shared accounts: %w", err)
+	}
+	defer rows.Close()
+	accounts := make([]service.GroupShardAccount, 0)
+	for rows.Next() {
+		var a service.GroupShardAccount
+		if err := rows.Scan(&a.GroupShardID, &a.GroupID, &a.AccountID, &a.Name, &a.Platform, &a.Type, &a.Status, &a.Priority, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, a)
+	}
+	return accounts, rows.Err()
+}
+
+func (r *groupShardRepository) setAccounts(ctx context.Context, groupID, shardID int64, accounts []service.GroupShardAccount, shared bool) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var status string
-	if err := tx.QueryRowContext(ctx, `SELECT status FROM group_shards WHERE group_id = $1 AND id = $2 FOR UPDATE`, groupID, shardID).Scan(&status); err != nil {
+	// Both binding tables use the parent row to serialize conflict checks and writes.
+	var parentID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM groups WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, groupID).Scan(&parentID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return service.ErrGroupShardNotFound
+			return service.ErrGroupNotFound
 		}
 		return err
 	}
-	if status != service.StatusActive {
-		return service.ErrGroupShardUnavailable
+	if !shared {
+		var status string
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM group_shards WHERE group_id = $1 AND id = $2 FOR UPDATE`, groupID, shardID).Scan(&status); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return service.ErrGroupShardNotFound
+			}
+			return err
+		}
+		if status != service.StatusActive {
+			return service.ErrGroupShardUnavailable
+		}
 	}
 
 	accountIDs, inputPriorities := uniqueShardAccountInputs(accounts)
@@ -291,7 +361,13 @@ func (r *groupShardRepository) SetAccounts(ctx context.Context, groupID, shardID
 		}
 	}
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM group_shard_accounts WHERE group_id = $1 AND group_shard_id = $2`, groupID, shardID); err != nil {
+	deleteQuery := `DELETE FROM group_shard_accounts WHERE group_id = $1 AND group_shard_id = $2`
+	deleteArgs := []any{groupID, shardID}
+	if shared {
+		deleteQuery = `DELETE FROM group_shared_accounts WHERE group_id = $1`
+		deleteArgs = []any{groupID}
+	}
+	if _, err := tx.ExecContext(ctx, deleteQuery, deleteArgs...); err != nil {
 		return err
 	}
 	if len(accountIDs) == 0 {
@@ -332,9 +408,15 @@ WHERE a.deleted_at IS NULL AND a.id = ANY($2)`, groupID, pq.Array(accountIDs))
 		if inputPriorities[accountID] > 0 {
 			priority = inputPriorities[accountID]
 		}
-		if _, err := tx.ExecContext(ctx, `
+		insertQuery := `
 INSERT INTO group_shard_accounts (group_shard_id, group_id, account_id, platform, priority)
-VALUES ($1, $2, $3, $4, $5)`, shardID, groupID, accountID, meta.Platform, priority); err != nil {
+VALUES ($1, $2, $3, $4, $5)`
+		insertArgs := []any{shardID, groupID, accountID, meta.Platform, priority}
+		if shared {
+			insertQuery = `INSERT INTO group_shared_accounts (group_id, account_id, platform, priority) VALUES ($1, $2, $3, $4)`
+			insertArgs = []any{groupID, accountID, meta.Platform, priority}
+		}
+		if _, err := tx.ExecContext(ctx, insertQuery, insertArgs...); err != nil {
 			if isUniqueViolation(err) {
 				return service.ErrGroupShardAccountConflict
 			}
@@ -371,7 +453,15 @@ func (r *groupShardRepository) ListAccountIDsForUserShard(ctx context.Context, g
 
 	platform = strings.TrimSpace(platform)
 	args := []any{group.ID, shard.ID}
-	query := `SELECT account_id FROM group_shard_accounts WHERE group_id = $1 AND group_shard_id = $2`
+	query := `SELECT account_id FROM (
+SELECT gsa.account_id, gsa.platform FROM group_shard_accounts gsa
+JOIN account_groups ag ON ag.group_id = gsa.group_id AND ag.account_id = gsa.account_id
+WHERE gsa.group_id = $1 AND gsa.group_shard_id = $2
+UNION ALL
+SELECT gsa.account_id, gsa.platform FROM group_shared_accounts gsa
+JOIN account_groups ag ON ag.group_id = gsa.group_id AND ag.account_id = gsa.account_id
+WHERE gsa.group_id = $1
+) eligible WHERE TRUE`
 	if platform != "" {
 		query += ` AND platform = $3`
 		args = append(args, platform)
@@ -399,9 +489,13 @@ func (r *groupShardRepository) AccountBelongsToUserShard(ctx context.Context, gr
 SELECT EXISTS (
     SELECT 1
     FROM group_shard_users gsu
-    JOIN group_shard_accounts gsa ON gsa.group_shard_id = gsu.group_shard_id AND gsa.group_id = gsu.group_id
+    JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL
+    JOIN account_groups ag ON ag.group_id = gsu.group_id AND ag.account_id = $3
     JOIN group_shards gs ON gs.id = gsu.group_shard_id AND gs.group_id = gsu.group_id AND gs.status = $4
-    WHERE gsu.group_id = $1 AND gsu.user_id = $2 AND gsa.account_id = $3
+    WHERE gsu.group_id = $1 AND gsu.user_id = $2 AND (
+        EXISTS (SELECT 1 FROM group_shard_accounts gsa WHERE gsa.group_shard_id = gsu.group_shard_id AND gsa.group_id = gsu.group_id AND gsa.account_id = $3)
+        OR EXISTS (SELECT 1 FROM group_shared_accounts gsa WHERE gsa.group_id = gsu.group_id AND gsa.account_id = $3)
+    )
 )`, groupID, userID, accountID, service.StatusActive).Scan(&ok)
 	return ok, err
 }
@@ -411,11 +505,13 @@ func (r *groupShardRepository) findUserShard(ctx context.Context, groupID, userI
 SELECT gs.id, gs.group_id, gs.name, gs.description, gs.status, gs.created_at, gs.updated_at,
        COALESCE(u.user_count, 0), COALESCE(a.account_count, 0)
 FROM group_shard_users gsu
+JOIN users live_user ON live_user.id = gsu.user_id AND live_user.deleted_at IS NULL
 JOIN group_shards gs ON gs.id = gsu.group_shard_id AND gs.group_id = gsu.group_id
 LEFT JOIN (
-    SELECT group_shard_id, COUNT(*) AS user_count
-    FROM group_shard_users
-    GROUP BY group_shard_id
+    SELECT gsu.group_shard_id, COUNT(*) AS user_count
+    FROM group_shard_users gsu
+    JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL
+    GROUP BY gsu.group_shard_id
 ) u ON u.group_shard_id = gs.id
 LEFT JOIN (
     SELECT group_shard_id, COUNT(*) AS account_count
@@ -443,6 +539,10 @@ func (r *groupShardRepository) assignUserToAvailableShard(ctx context.Context, g
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := lockLiveShardUser(ctx, tx, userID); err != nil {
+		return nil, err
+	}
+
 	var existingShardID int64
 	err = tx.QueryRowContext(ctx, `SELECT group_shard_id FROM group_shard_users WHERE group_id = $1 AND user_id = $2`, groupID, userID).Scan(&existingShardID)
 	if err == nil {
@@ -462,7 +562,7 @@ SELECT gs.id
 FROM group_shards gs
 WHERE gs.group_id = $1
   AND gs.status = $2
-  AND (SELECT COUNT(*) FROM group_shard_users gsu WHERE gsu.group_shard_id = gs.id) < $3
+  AND (SELECT COUNT(*) FROM group_shard_users gsu JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL WHERE gsu.group_shard_id = gs.id) < $3
 ORDER BY gs.id
 LIMIT 1
 FOR UPDATE SKIP LOCKED`, groupID, service.StatusActive, maxUsers).Scan(&shardID)
@@ -482,7 +582,7 @@ RETURNING id`, groupID, service.StatusActive).Scan(&shardID); err != nil {
 	}
 
 	var userCount int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM group_shard_users WHERE group_shard_id = $1`, shardID).Scan(&userCount); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM group_shard_users gsu JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL WHERE gsu.group_shard_id = $1`, shardID).Scan(&userCount); err != nil {
 		return nil, err
 	}
 	if userCount >= maxUsers {
@@ -511,7 +611,10 @@ func (r *groupShardRepository) listConflictingShardAccountIDs(ctx context.Contex
 	rows, err := tx.QueryContext(ctx, `
 SELECT account_id
 FROM group_shard_accounts
-WHERE group_id = $1 AND group_shard_id <> $2 AND account_id = ANY($3)`, groupID, shardID, pq.Array(accountIDs))
+WHERE group_id = $1 AND group_shard_id <> $2 AND account_id = ANY($3)
+UNION
+SELECT account_id FROM group_shared_accounts
+WHERE group_id = $1 AND $2 <> 0 AND account_id = ANY($3)`, groupID, shardID, pq.Array(accountIDs))
 	if err != nil {
 		return nil, err
 	}
@@ -525,6 +628,17 @@ WHERE group_id = $1 AND group_shard_id <> $2 AND account_id = ANY($3)`, groupID,
 		conflicts = append(conflicts, accountID)
 	}
 	return conflicts, rows.Err()
+}
+
+func lockLiveShardUser(ctx context.Context, tx *sql.Tx, userID int64) error {
+	var id int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, userID).Scan(&id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return service.ErrUserNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func uniqueShardAccountInputs(accounts []service.GroupShardAccount) ([]int64, map[int64]int) {
@@ -573,9 +687,10 @@ SELECT gs.id, gs.group_id, gs.name, gs.description, gs.status, gs.created_at, gs
        COALESCE(u.user_count, 0), COALESCE(a.account_count, 0)
 FROM group_shards gs
 LEFT JOIN (
-    SELECT group_shard_id, COUNT(*) AS user_count
-    FROM group_shard_users
-    GROUP BY group_shard_id
+    SELECT gsu.group_shard_id, COUNT(*) AS user_count
+    FROM group_shard_users gsu
+    JOIN users u ON u.id = gsu.user_id AND u.deleted_at IS NULL
+    GROUP BY gsu.group_shard_id
 ) u ON u.group_shard_id = gs.id
 LEFT JOIN (
     SELECT group_shard_id, COUNT(*) AS account_count

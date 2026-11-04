@@ -25,6 +25,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/groupshard"
 	"github.com/Wei-Shaw/sub2api/ent/groupshardaccount"
 	"github.com/Wei-Shaw/sub2api/ent/groupsharduser"
+	"github.com/Wei-Shaw/sub2api/ent/groupsharedaccount"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
@@ -1321,6 +1322,20 @@ func init() {
 	groupsharduserDescCreatedAt := groupsharduserFields[3].Descriptor()
 	// groupsharduser.DefaultCreatedAt holds the default value on creation for the created_at field.
 	groupsharduser.DefaultCreatedAt = groupsharduserDescCreatedAt.Default.(func() time.Time)
+	groupsharedaccountFields := schema.GroupSharedAccount{}.Fields()
+	_ = groupsharedaccountFields
+	// groupsharedaccountDescPlatform is the schema descriptor for platform field.
+	groupsharedaccountDescPlatform := groupsharedaccountFields[2].Descriptor()
+	// groupsharedaccount.PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
+	groupsharedaccount.PlatformValidator = groupsharedaccountDescPlatform.Validators[0].(func(string) error)
+	// groupsharedaccountDescPriority is the schema descriptor for priority field.
+	groupsharedaccountDescPriority := groupsharedaccountFields[3].Descriptor()
+	// groupsharedaccount.DefaultPriority holds the default value on creation for the priority field.
+	groupsharedaccount.DefaultPriority = groupsharedaccountDescPriority.Default.(int)
+	// groupsharedaccountDescCreatedAt is the schema descriptor for created_at field.
+	groupsharedaccountDescCreatedAt := groupsharedaccountFields[4].Descriptor()
+	// groupsharedaccount.DefaultCreatedAt holds the default value on creation for the created_at field.
+	groupsharedaccount.DefaultCreatedAt = groupsharedaccountDescCreatedAt.Default.(func() time.Time)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()
 	idempotencyrecordMixinFields0 := idempotencyrecordMixin[0].Fields()
 	_ = idempotencyrecordMixinFields0

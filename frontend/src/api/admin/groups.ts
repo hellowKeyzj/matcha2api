@@ -378,6 +378,16 @@ export async function removeShardUser(groupId: number, shardId: number, userId: 
   return data
 }
 
+export async function listSharedAccounts(groupId: number): Promise<GroupShardAccount[]> {
+  const { data } = await apiClient.get<GroupShardAccount[]>(`/admin/groups/${groupId}/shared-accounts`)
+  return data
+}
+
+export async function setSharedAccounts(groupId: number, accounts: GroupShardAccountInput[]): Promise<GroupShardAccount[]> {
+  const { data } = await apiClient.put<GroupShardAccount[]>(`/admin/groups/${groupId}/shared-accounts`, { accounts })
+  return data
+}
+
 export async function listShardAccounts(
   groupId: number,
   shardId: number,
@@ -566,6 +576,8 @@ export const groupsAPI = {
   assignShardUser,
   removeShardUser,
   listShardAccounts,
+  listSharedAccounts,
+  setSharedAccounts,
   setShardAccounts,
   getGroupRateMultipliers,
   clearGroupRateMultipliers,
