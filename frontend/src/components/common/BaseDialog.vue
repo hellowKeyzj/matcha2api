@@ -11,7 +11,7 @@
         @click.self="handleClose"
       >
         <!-- Modal panel -->
-        <div ref="dialogRef" :class="['modal-content', widthClasses]" @click.stop>
+        <div ref="dialogRef" :class="['modal-content', widthClasses, panelClass, componentTheme]" @click.stop>
           <!-- Header -->
           <div class="modal-header">
             <h3 :id="dialogId" class="modal-title">
@@ -49,7 +49,11 @@ const openDialogs = new Set<string>()
 
 <script setup lang="ts">
 import { computed, watch, onMounted, onUnmounted, ref, nextTick } from 'vue'
+import { useComponentTheme } from '@/composables/useComponentTheme'
+
 import Icon from '@/components/icons/Icon.vue'
+
+const componentTheme = useComponentTheme()
 
 // 生成唯一ID以避免多个对话框时ID冲突
 const dialogId = `modal-title-${++dialogIdCounter}`
@@ -65,6 +69,7 @@ interface Props {
   show: boolean
   title: string
   width?: DialogWidth
+  panelClass?: string
   closeOnEscape?: boolean
   closeOnClickOutside?: boolean
   showCloseButton?: boolean
@@ -165,3 +170,18 @@ onUnmounted(() => {
   updateScrollLock(false)
 })
 </script>
+
+<style scoped>
+.modal-content.theme-dala {
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  border: 1px solid var(--ui-line);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: none;
+}
+.theme-dala .modal-header, .theme-dala .modal-footer { background: var(--ui-canvas); border-color: var(--ui-line); }
+.theme-dala .modal-title { color: var(--ui-ink); font-size: 18px; font-weight: 400; }
+.theme-dala .modal-body { min-height: 0; padding: 24px; scrollbar-gutter: stable; }
+@media (max-width: 639px) { .theme-dala .modal-body { padding: 16px; } }
+</style>

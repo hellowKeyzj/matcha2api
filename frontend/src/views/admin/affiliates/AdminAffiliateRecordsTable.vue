@@ -431,7 +431,7 @@ const OverviewStat = defineComponent({
     mono: { type: Boolean, default: false },
   },
   setup(statProps) {
-    return () => h('div', { class: 'rounded-lg border border-gray-100 bg-white p-3 dark:border-dark-700 dark:bg-dark-900' }, [
+    return () => h('div', { class: 'rounded-lg border border-gray-100 bg-surface p-3 dark:border-dark-700 dark:bg-dark-900' }, [
       h('div', { class: 'text-sm text-gray-500 dark:text-dark-400' }, statProps.label),
       h('div', {
         class: statProps.mono

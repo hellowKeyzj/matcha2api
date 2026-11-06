@@ -5,6 +5,20 @@ export default {
   },
   // Home Page
   home: {
+    constellation: {
+      connectTitle: 'One connection',
+      connectAccent: 'Every possibility',
+      organizeTitle: 'Less fragmentation',
+      organizeAccent: 'More clarity',
+      buildTitle: 'Make room for',
+      buildAccent: 'your next idea',
+    },
+    orbit: {
+      navigation: 'Main navigation',
+      explore: 'Explore the gateway',
+      headline: 'Every model',
+      headlineAccent: 'One connection'
+    },
     viewOnGithub: 'View on GitHub',
     viewDocs: 'View Documentation',
     docs: 'Docs',
@@ -51,11 +65,11 @@ export default {
     },
     features: {
       unifiedGateway: 'One-Click Access',
-      unifiedGatewayDesc: 'Get a single API key to call all connected AI models. No separate applications needed.',
+      unifiedGatewayDesc: 'Get a single API key to call all connected AI models without separate applications',
       multiAccount: 'Always Reliable',
-      multiAccountDesc: 'Smart routing across multiple upstream accounts with automatic failover. Say goodbye to errors.',
+      multiAccountDesc: 'Smart routing across multiple upstream accounts with automatic failover, so you can say goodbye to errors',
       balanceQuota: 'Pay What You Use',
-      balanceQuotaDesc: 'Usage-based billing with quota limits. Full visibility into team consumption.'
+      balanceQuotaDesc: 'Usage-based billing with quota limits and full visibility into team consumption'
     },
     // Comparison section
     comparison: {

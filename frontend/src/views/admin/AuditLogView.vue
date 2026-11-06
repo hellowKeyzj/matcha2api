@@ -187,7 +187,7 @@
             </span>
           </div>
 
-          <div class="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-600">
+          <div class="mt-3 flex items-center gap-2 rounded-lg bg-surface px-3 py-2 ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-600">
             <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-dark-700 dark:text-gray-200">
               {{ detail.method }}
             </span>
