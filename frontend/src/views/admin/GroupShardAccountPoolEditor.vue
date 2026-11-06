@@ -1,5 +1,5 @@
 <template>
-  <section class="min-w-0 rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+  <section class="min-w-0 rounded-xl border border-gray-200 bg-surface dark:border-dark-700 dark:bg-dark-900">
     <div class="flex flex-col justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-dark-700 lg:flex-row lg:items-center">
       <div>
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white">

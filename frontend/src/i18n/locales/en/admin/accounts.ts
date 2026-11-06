@@ -1,6 +1,12 @@
 export default {
     accounts: {
       title: 'Account Management',
+      editorSections: {
+        identity: 'Account details',
+        connection: 'Connection & models',
+        availability: 'Availability',
+        scheduling: 'Routing & scheduling',
+      },
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',
       autoRefresh: 'Auto Refresh',

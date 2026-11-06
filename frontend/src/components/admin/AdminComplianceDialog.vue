@@ -21,7 +21,7 @@
       </div>
 
       <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
-        <section class="min-h-[320px] max-h-[46vh] overflow-y-auto rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-700 dark:bg-dark-900">
+        <section class="min-h-[320px] max-h-[46vh] overflow-y-auto rounded-lg border border-gray-200 bg-surface p-5 dark:border-dark-700 dark:bg-dark-900">
           <div class="legal-document-content" v-html="renderedDocument"></div>
         </section>
 

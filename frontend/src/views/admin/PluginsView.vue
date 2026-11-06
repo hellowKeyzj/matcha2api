@@ -58,7 +58,7 @@
       </p>
 
       <div
-        class="border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200"
+        class="border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-200"
       >
         <p>{{ t("admin.plugins.runtimeNotice") }}</p>
         <p class="mt-1">{{ t("admin.plugins.menuNotice") }}</p>
@@ -318,7 +318,7 @@
             :src="uiSession.url"
             sandbox="allow-scripts"
             referrerpolicy="no-referrer"
-            class="h-full w-full border-0 bg-white dark:bg-dark-900"
+            class="h-full w-full border-0 bg-surface dark:bg-dark-900"
             :title="
               t('admin.plugins.configTitle', { name: configPlugin?.name || '' })
             "

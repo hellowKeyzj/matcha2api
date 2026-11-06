@@ -511,7 +511,7 @@ onUnmounted(() => {
 
 .toc-toggle-btn {
   @apply absolute left-2 top-2 z-10 flex items-center px-2 py-1.5 rounded-md text-sm;
-  @apply bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-500;
+  @apply bg-surface dark:bg-dark-700 border border-gray-200 dark:border-dark-500;
   @apply text-gray-600 dark:text-dark-300 hover:bg-gray-100 dark:hover:bg-dark-600;
   @apply shadow-sm transition-colors cursor-pointer;
 }
@@ -525,7 +525,7 @@ onUnmounted(() => {
 
 .custom-open-fab {
   @apply absolute right-3 top-3 z-10 w-max max-w-full touch-none select-none transition-colors;
-  @apply shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-dark-800/80;
+  @apply shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/80 dark:supports-[backdrop-filter]:bg-dark-800/80;
 }
 
 .custom-embed-frame {

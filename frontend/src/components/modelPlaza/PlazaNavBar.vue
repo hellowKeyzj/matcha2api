@@ -7,9 +7,9 @@
       <div class="flex min-w-0 items-center gap-3">
         <template v-if="settings">
           <span
-            class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-700"
+            class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden"
           >
-            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
+            <SiteLogo :src="siteLogo" />
           </span>
           <span class="truncate text-base font-semibold text-gray-950 dark:text-white">
             {{ siteName }}
@@ -43,7 +43,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { sanitizeUrl } from '@/utils/url'
+import SiteLogo from '@/components/common/SiteLogo.vue'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 
@@ -53,9 +53,7 @@ const authStore = useAuthStore()
 
 const settings = computed(() => appStore.cachedPublicSettings)
 const siteName = computed(() => settings.value?.site_name || 'Sub2API')
-const siteLogo = computed(() =>
-  sanitizeUrl(settings.value?.site_logo || '', { allowRelative: true, allowDataUrl: true })
-)
+const siteLogo = computed(() => settings.value?.site_logo)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const backTarget = computed(() => (authStore.isAdmin ? '/admin/dashboard' : '/dashboard'))
 </script>

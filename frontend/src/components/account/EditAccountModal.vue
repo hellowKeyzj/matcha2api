@@ -3,14 +3,17 @@
     :show="show"
     :title="t('admin.accounts.editAccount')"
     width="wide"
+    panel-class="account-editor"
     @close="handleClose"
   >
     <form
       v-if="account"
       id="edit-account-form"
       @submit.prevent="handleSubmit"
-      class="space-y-5"
+      class="account-editor-form space-y-6"
     >
+      <h4 class="account-editor-section-title">{{ t('admin.accounts.editorSections.identity') }}</h4>
+      <div class="account-editor-identity">
       <div>
         <label class="input-label">{{ t('common.name') }}</label>
         <input v-model="form.name" type="text" required class="input" data-tour="edit-account-form-name" />
@@ -19,13 +22,15 @@
         <label class="input-label">{{ t('admin.accounts.notes') }}</label>
         <textarea
           v-model="form.notes"
-          rows="3"
+          rows="2"
           class="input"
           :placeholder="t('admin.accounts.notesPlaceholder')"
         ></textarea>
         <p class="input-hint">{{ t('admin.accounts.notesHint') }}</p>
       </div>
+      </div>
 
+      <h4 class="account-editor-section-title">{{ t('admin.accounts.editorSections.connection') }}</h4>
       <!-- API Key fields (only for apikey type) -->
       <div v-if="account.type === 'apikey'" class="space-y-4">
         <div v-if="!isCNApiKeyAccount || editApiProtocol !== 'adaptive'">
@@ -283,7 +288,7 @@
                   ? [
                       'rounded-lg px-3 py-2 text-sm',
                       modelRestrictionMode === 'whitelist'
-                        ? 'bg-white text-cyan-700 shadow-sm dark:bg-dark-800 dark:text-cyan-300'
+                        ? 'bg-surface text-cyan-700 shadow-sm dark:bg-dark-800 dark:text-cyan-300'
                         : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'
                     ]
                   : [
@@ -317,7 +322,7 @@
                   ? [
                       'rounded-lg px-3 py-2 text-sm',
                       modelRestrictionMode === 'mapping'
-                        ? 'bg-white text-purple-700 shadow-sm dark:bg-dark-800 dark:text-purple-300'
+                        ? 'bg-surface text-purple-700 shadow-sm dark:bg-dark-800 dark:text-purple-300'
                         : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'
                     ]
                   : [
@@ -540,8 +545,8 @@
               />
             </button>
           </div>
-          <div v-if="poolModeEnabled" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="poolModeEnabled" class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.poolModeInfo') }}
             </p>
@@ -598,8 +603,8 @@
               :aria-label="t('admin.accounts.explicitCacheUpstream')"
             />
           </div>
-          <div v-if="explicitCacheUpstreamEnabled" class="mt-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="explicitCacheUpstreamEnabled" class="mt-3 rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.explicitCacheUpstreamInfo') }}
             </p>
@@ -860,8 +865,8 @@
         </div>
 
         <div v-if="headerOverrideEnabled" class="space-y-3">
-          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.headerOverride.info') }}
             </p>
@@ -907,7 +912,7 @@
                 ? [
                     'rounded-lg px-3 py-2 text-sm',
                     modelRestrictionMode === 'whitelist'
-                      ? 'bg-white text-cyan-700 shadow-sm dark:bg-dark-800 dark:text-cyan-300'
+                      ? 'bg-surface text-cyan-700 shadow-sm dark:bg-dark-800 dark:text-cyan-300'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'
                   ]
                 : [
@@ -927,7 +932,7 @@
                 ? [
                     'rounded-lg px-3 py-2 text-sm',
                     modelRestrictionMode === 'mapping'
-                      ? 'bg-white text-purple-700 shadow-sm dark:bg-dark-800 dark:text-purple-300'
+                      ? 'bg-surface text-purple-700 shadow-sm dark:bg-dark-800 dark:text-purple-300'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'
                   ]
                 : [
@@ -1510,8 +1515,8 @@
               />
             </button>
           </div>
-          <div v-if="poolModeEnabled" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="poolModeEnabled" class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.poolModeInfo') }}
             </p>
@@ -1667,6 +1672,7 @@
       </div>
 
       <!-- Temp Unschedulable Rules -->
+      <h4 class="account-editor-section-title">{{ t('admin.accounts.editorSections.availability') }}</h4>
       <div class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4">
         <div class="mb-3 flex items-center justify-between">
           <div>
@@ -1693,8 +1699,8 @@
         </div>
 
         <div v-if="tempUnschedEnabled" class="space-y-3">
-          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.tempUnschedulable.notice') }}
             </p>
@@ -1918,6 +1924,7 @@
         </div>
       </div>
 
+      <h4 class="account-editor-section-title">{{ t('admin.accounts.editorSections.scheduling') }}</h4>
       <div v-if="!isSparkShadow">
         <div class="mb-1 flex items-center gap-2">
           <label class="input-label mb-0">{{ t('admin.accounts.proxy') }}</label>
@@ -2082,7 +2089,7 @@
       >
         <div class="overflow-hidden rounded-lg border border-sky-100 bg-sky-50/60 shadow-sm dark:border-sky-900/50 dark:bg-sky-950/20">
           <div class="flex items-start gap-3 px-4 py-3">
-            <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-sky-600 shadow-sm ring-1 ring-sky-100 dark:bg-dark-800 dark:text-sky-300 dark:ring-sky-900/60">
+            <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface text-sky-600 shadow-sm ring-1 ring-sky-100 dark:bg-dark-800 dark:text-sky-300 dark:ring-sky-900/60">
               <Icon name="sparkles" size="sm" />
             </div>
             <div class="min-w-0 flex-1">
@@ -2095,12 +2102,12 @@
                   {{ codexImageToolBadgeLabel }}
                 </span>
               </div>
-              <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+              <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">
                 {{ t('admin.accounts.openai.codexImageToolDesc') }}
               </p>
             </div>
           </div>
-          <div class="border-t border-sky-100 bg-white/70 p-2 dark:border-sky-900/50 dark:bg-dark-800/70">
+          <div class="border-t border-sky-100 bg-surface/70 p-2 dark:border-sky-900/50 dark:bg-dark-800/70">
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 v-for="option in codexImageToolOptions"
@@ -2112,7 +2119,7 @@
                   'group flex min-h-[62px] items-start gap-2 rounded-md border px-3 py-2 text-left transition-all',
                   codexImageToolMode === option.value
                     ? option.selectedCardClass
-                    : 'border-transparent bg-transparent text-slate-600 hover:border-gray-200 hover:bg-gray-50 dark:text-slate-300 dark:hover:border-dark-500 dark:hover:bg-dark-700'
+                    : 'border-transparent bg-transparent text-gray-600 hover:border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:hover:border-dark-500 dark:hover:bg-dark-700'
                 ]"
               >
                 <span
@@ -2127,7 +2134,7 @@
                 </span>
                 <span class="min-w-0">
                   <span class="block text-sm font-medium">{{ option.label }}</span>
-                  <span class="mt-0.5 block text-xs leading-4 text-slate-500 dark:text-slate-400">{{ option.description }}</span>
+                  <span class="mt-0.5 block text-xs leading-4 text-gray-500 dark:text-gray-400">{{ option.description }}</span>
                 </span>
               </button>
             </div>
@@ -3113,7 +3120,7 @@
                   'px-3 py-1.5 text-sm rounded-md border transition-colors',
                   userMsgQueueMode === opt.value
                     ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
+                    : 'bg-surface dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
                 ]">
                 {{ opt.label }}
               </button>
@@ -3212,7 +3219,7 @@
             <label class="input-label text-xs">{{ t('admin.accounts.quotaControl.cacheTTLOverride.target') }}</label>
             <select
               v-model="cacheTTLOverrideTarget"
-              class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-500 dark:bg-dark-700 dark:text-white"
+              class="mt-1 block w-full rounded-md border border-gray-300 bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-500 dark:bg-dark-700 dark:text-white"
             >
               <option value="5m">5m</option>
               <option value="1h">1h</option>
@@ -3387,6 +3394,8 @@
 </template>
 
 <script setup lang="ts">
+
+import '@/styles/account-workspace.css'
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -3424,6 +3433,7 @@ import {
 } from '@/components/account/openaiImageSizeTiers'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
+
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import ProxyAdBanner from '@/components/common/ProxyAdBanner.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
@@ -4296,7 +4306,7 @@ const codexImageToolBadgeClass = computed(() => {
     case 'block':
       return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
     default:
-      return 'bg-slate-100 text-slate-600 dark:bg-dark-600 dark:text-slate-300'
+      return 'bg-gray-100 text-gray-600 dark:bg-dark-600 dark:text-gray-300'
   }
 })
 const openAICompactModeOptions = computed(() => [

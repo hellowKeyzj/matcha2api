@@ -29,7 +29,7 @@
 
       <template #filters>
         <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 dark:border-dark-700 dark:bg-dark-800">
+          <div class="inline-flex rounded-lg border border-gray-200 bg-surface p-1 dark:border-dark-700 dark:bg-dark-800">
             <button
               v-for="tab in tabs"
               :key="tab.value"

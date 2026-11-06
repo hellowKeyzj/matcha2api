@@ -103,7 +103,7 @@
 
       <div
         v-if="outcomeUncertain"
-        class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-700/50 dark:bg-blue-900/20 dark:text-blue-300"
+        class="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-800 dark:border-primary-700/50 dark:bg-primary-900/20 dark:text-primary-300"
         data-test="withdraw-uncertain-hint"
       >
         {{ t('admin.affiliates.withdraw.uncertainHint') }}

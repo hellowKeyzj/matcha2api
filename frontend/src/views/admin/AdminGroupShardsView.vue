@@ -60,7 +60,7 @@
 
       <section>
         <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <section class="rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+          <section class="rounded-xl border border-gray-200 bg-surface dark:border-dark-700 dark:bg-dark-900">
             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-dark-700">
               <div>
                 <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -81,7 +81,7 @@
                 :aria-pressed="poolView === 'shared' || !selectedShard"
                 @click="poolView = 'shared'">
                 <span class="font-semibold">{{ t('admin.groups.shards.sharedNav') }}</span>
-                <span class="rounded-md bg-white px-2 py-0.5 text-xs tabular-nums dark:bg-dark-800">{{ sharedAccountDrafts.length }}</span>
+                <span class="rounded-md bg-surface px-2 py-0.5 text-xs tabular-nums dark:bg-dark-800">{{ sharedAccountDrafts.length }}</span>
               </button>
             </div>
             <div v-if="loading" class="space-y-2 p-4">
@@ -105,7 +105,7 @@
                 class="mb-2 w-full rounded-lg border px-3 py-3 text-left transition-colors"
                 :class="poolView === 'shard' && selectedShardId === shard.id
                   ? 'border-primary-300 bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20'
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:bg-dark-800'"
+                  : 'border-gray-200 bg-surface hover:border-gray-300 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:bg-dark-800'"
                 @click="selectShard(shard.id)"
               >
                 <div class="flex items-start justify-between gap-3">
@@ -136,7 +136,7 @@
             </div>
           </section>
 
-          <section class="min-w-0 rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+          <section class="min-w-0 rounded-xl border border-gray-200 bg-surface dark:border-dark-700 dark:bg-dark-900">
             <div v-show="poolView === 'shared' || !selectedShard" data-testid="shared-pool-panel">
             <GroupShardAccountPoolEditor
               v-if="group"
@@ -219,7 +219,7 @@
                       />
                       <div
                         v-if="userSearchQuery.trim()"
-                        class="absolute z-40 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                        class="absolute z-40 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-gray-200 bg-surface shadow-lg dark:border-dark-600 dark:bg-dark-800"
                       >
                         <div v-if="userSearchLoading" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                           {{ t("common.loading") }}

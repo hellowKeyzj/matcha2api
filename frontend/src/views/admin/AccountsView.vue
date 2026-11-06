@@ -1,8 +1,8 @@
 <template>
-  <AppLayout>
-    <TablePageLayout>
+  <AppLayout class="accounts-workspace">
+    <TablePageLayout class="accounts-page">
       <template #filters>
-        <div class="flex flex-wrap-reverse items-start justify-between gap-3">
+        <div class="accounts-toolbar">
           <AccountTableFilters
             v-model:searchQuery="params.search"
             :filters="params"
@@ -11,6 +11,8 @@
             @change="debouncedReload"
             @update:searchQuery="debouncedReload"
           />
+          <div class="accounts-heading">
+          <h1 class="accounts-title">{{ t('admin.accounts.title') }}</h1>
           <AccountTableActions
             :loading="loading"
             @refresh="handleManualRefresh"
@@ -38,7 +40,7 @@
                 </button>
                 <div
                   v-if="showAutoRefreshDropdown"
-                  class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg dark:border-dark-700 dark:bg-dark-800"
+                  class="component-menu absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-lg border border-gray-200 bg-surface shadow-lg dark:border-dark-700 dark:bg-dark-800"
                 >
                   <div class="p-2">
                     <button
@@ -78,7 +80,7 @@
                 <Teleport to="body">
                   <div
                     v-if="showAccountToolsDropdown"
-                    class="fixed z-[9999] origin-top-right overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-dark-700 dark:bg-dark-800"
+                    class="component-menu fixed z-[9999] origin-top-right overflow-hidden rounded-lg border border-gray-200 bg-surface shadow-xl dark:border-dark-700 dark:bg-dark-800"
                     :style="accountToolsDropdownStyle"
                     @click.stop
                   >
@@ -128,7 +130,7 @@
                         <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
                       </button>
                       <button class="account-tools-menu-item" @click="openTLSFingerprintProfiles">
-                        <span class="account-tools-menu-icon bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                        <span class="account-tools-menu-icon bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-200">
                           <Icon name="lock" size="sm" />
                         </span>
                         <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
@@ -160,6 +162,7 @@
               </div>
             </template>
           </AccountTableActions>
+          </div>
         </div>
         <div
           v-if="hasPendingListSync"
@@ -176,6 +179,7 @@
       </template>
       <template #table>
         <AccountBulkActionsBar
+          class="accounts-bulk-bar"
           :selected-ids="selIds"
           :total-results="pagination.total"
           :selecting-all="selectingAllResults"
@@ -193,6 +197,7 @@
         />
         <div ref="accountTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DataTable
+          class="accounts-data-table"
           ref="dataTableRef"
           :columns="cols"
           :data="accounts"
@@ -490,7 +495,9 @@
 </template>
 
 <script setup lang="ts">
+
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
+import '@/styles/account-workspace.css'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -528,6 +535,7 @@ import UpstreamBillingRateCell from '@/components/account/UpstreamBillingRateCel
 import AccountPriorityCell from '@/components/account/AccountPriorityCell.vue'
 import PlatformTypeBadge from '@/components/common/PlatformTypeBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
+
 import ErrorPassthroughRulesModal from '@/components/admin/ErrorPassthroughRulesModal.vue'
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
 import { fetchAllAccountIds } from '@/utils/accountSelection'
@@ -1796,8 +1804,8 @@ function getOpenAICompactMeta(row: any): { label: string; className: string; dot
     case 'auto':
       return {
         label: t('admin.accounts.openai.compactAuto'),
-        className: 'text-slate-500 dark:text-slate-400',
-        dotClass: 'bg-slate-300 dark:bg-slate-500'
+        className: 'text-gray-500 dark:text-gray-400',
+        dotClass: 'bg-gray-300 dark:bg-gray-500'
       }
   }
 }
@@ -2625,6 +2633,33 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.accounts-toolbar {
+  @apply flex flex-col gap-4;
+}
+
+.accounts-toolbar > :first-child {
+  order: 1;
+}
+
+.accounts-toolbar > :last-child {
+  @apply flex flex-wrap items-center justify-between gap-4;
+}
+
+.accounts-heading > :last-child {
+  @apply gap-2;
+}
+
+.accounts-title {
+  @apply text-2xl font-semibold tracking-tight;
+}
+
+@media (max-width: 639px) {
+  .accounts-toolbar > .accounts-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .account-tools-menu-item {
   @apply flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-dark-700;
 }

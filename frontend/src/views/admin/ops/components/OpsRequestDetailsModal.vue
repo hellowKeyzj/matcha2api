@@ -295,7 +295,7 @@ function accountLabel(row: OpsRequestDetail): string {
                   </th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-800">
+              <tbody class="divide-y divide-gray-200 bg-surface dark:divide-dark-700 dark:bg-dark-800">
                 <tr v-for="(row, idx) in items" :key="idx" class="hover:bg-gray-50 dark:hover:bg-dark-700/50">
                   <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
                     {{ formatDateTime(row.created_at) }}

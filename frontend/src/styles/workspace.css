@@ -1,0 +1,124 @@
+.app-layout,
+.dark .app-layout {
+  background: var(--ui-canvas);
+}
+
+.app-layout .sidebar {
+  background: var(--ui-chrome);
+  border-color: var(--ui-line);
+}
+
+.app-layout .sidebar:not(.w-\[72px\]) {
+  width: 216px;
+}
+
+.app-layout .sidebar-header {
+  gap: 10px;
+  padding-inline: 20px;
+  border-color: var(--ui-line);
+}
+
+.app-layout .sidebar-header-collapsed {
+  gap: 0;
+  padding-inline: 18px;
+}
+
+.app-layout .sidebar-brand-title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+  color: var(--ui-ink);
+}
+
+.app-layout .sidebar-nav {
+  padding: 16px 10px;
+}
+
+.app-layout .sidebar-link {
+  min-height: 34px;
+  margin-bottom: 2px;
+  padding: 7px 10px;
+  gap: 10px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-muted);
+  transition: background-color 150ms, color 150ms;
+}
+
+.app-layout .sidebar-link svg {
+  width: 17px;
+  height: 17px;
+}
+
+.app-layout .sidebar-link-collapsed {
+  justify-content: center;
+  gap: 0;
+}
+
+.app-layout .sidebar-link:hover,
+.app-layout .sidebar-link-active {
+  color: var(--ui-ink);
+  background: var(--ui-selected);
+}
+
+.app-layout .sidebar-link-active {
+  font-weight: 500;
+  color: var(--ui-accent);
+  box-shadow: none;
+}
+
+.app-layout .sidebar-section {
+  margin-bottom: 24px;
+}
+
+.app-layout .sidebar-section-title {
+  padding-inline: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ui-muted);
+}
+
+.app-layout header.glass {
+  background: var(--ui-chrome);
+  border-color: var(--ui-line);
+  backdrop-filter: none;
+  box-shadow: var(--ui-rim);
+}
+
+.app-layout .app-header-balance {
+  background: transparent;
+  border-radius: 24px;
+}
+
+.app-layout .app-header-balance > svg,
+.app-layout .app-header-balance > span:first-of-type {
+  color: var(--ui-muted);
+}
+
+.app-layout .app-header-avatar {
+  border-radius: 24px;
+  background: var(--ui-action);
+  color: var(--ui-action-ink);
+  box-shadow: none;
+}
+
+.app-layout main {
+  padding: 28px 32px;
+  background: transparent;
+}
+
+
+.app-layout .sidebar > :last-child { border-color: var(--ui-line); }
+.app-layout .app-header-title h1 { font-size: 24px; font-weight: 400; letter-spacing: -0.04em; color: var(--ui-ink); }
+.app-layout .app-header-title p { color: var(--ui-muted); }
+@media (min-width: 1024px) {
+  .app-layout .app-layout-content.lg\:ml-64 { margin-left: 216px; }
+}
+@media (max-width: 1023px) { .app-layout main { padding: 24px 20px; } }
+@media (max-width: 639px) { .app-layout main { padding: 24px 16px; } }
+
+/* Accounts has its own in-content title; other pages use the layout header. */
+.accounts-workspace .app-header-title h1 { font-size: 12px; letter-spacing: normal; color: var(--ui-muted); }
+.accounts-workspace .app-header-title p { display: none; }
