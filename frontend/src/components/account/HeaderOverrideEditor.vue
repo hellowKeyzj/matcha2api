@@ -110,7 +110,7 @@
         v-for="variable in HEADER_OVERRIDE_VARIABLES"
         :key="variable"
         type="button"
-        class="group flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition-colors hover:border-primary-400 hover:bg-primary-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-dark-500 dark:bg-dark-800 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
+        class="group flex items-start gap-2 rounded-lg border border-gray-200 bg-surface px-2.5 py-2 text-left transition-colors hover:border-primary-400 hover:bg-primary-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-dark-500 dark:bg-dark-800 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
         :data-testid="`header-override-variable-${variable}`"
         @mousedown.prevent
         @click="insertVariable(variable)"

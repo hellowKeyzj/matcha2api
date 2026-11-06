@@ -12,6 +12,7 @@
       :aria-describedby="ariaDescribedby"
       :class="[
         'select-trigger',
+        componentTheme,
         isOpen && 'select-trigger-open',
         error && 'select-trigger-error',
         disabled && 'select-trigger-disabled'
@@ -52,7 +53,7 @@
           v-if="isOpen"
           ref="dropdownRef"
           class="select-dropdown-portal"
-          :class="[instanceId]"
+          :class="[instanceId, componentTheme]"
           :style="dropdownStyle"
           role="listbox"
           :aria-multiselectable="multiple || undefined"
@@ -126,7 +127,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useComponentTheme } from '@/composables/useComponentTheme'
+
 import Icon from '@/components/icons/Icon.vue'
+
+const componentTheme = useComponentTheme()
 
 const { t } = useI18n()
 
@@ -516,11 +521,11 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('click', handleClickOutside, true)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('click', handleClickOutside, true)
   window.removeEventListener('scroll', updateTriggerRect, { capture: true })
   window.removeEventListener('resize', calculateDropdownPosition)
   if (remoteSearchTimer) {
@@ -534,7 +539,7 @@ onUnmounted(() => {
 .select-trigger {
   @apply flex w-full items-center justify-between gap-2;
   @apply rounded-xl px-4 py-2.5 text-sm;
-  @apply bg-white dark:bg-dark-800;
+  @apply bg-surface dark:bg-dark-800;
   @apply border border-gray-200 dark:border-dark-600;
   @apply text-gray-900 dark:text-gray-100;
   @apply transition-all duration-200;
@@ -574,7 +579,7 @@ onUnmounted(() => {
 .select-dropdown-portal {
   @apply flex flex-col;
   @apply w-max min-w-[200px];
-  @apply bg-white dark:bg-dark-800;
+  @apply bg-surface dark:bg-dark-800;
   @apply rounded-xl;
   @apply border border-gray-200 dark:border-dark-700;
   @apply shadow-lg shadow-black/10 dark:shadow-black/30;
@@ -651,4 +656,39 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-8px);
 }
+</style>
+
+<style>
+.select-trigger.theme-dala, .dark .select-trigger.theme-dala {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 24px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  border-color: var(--ui-line);
+  font-size: 13px;
+  box-shadow: none;
+}
+.select-trigger.theme-dala:hover { border-color: var(--ui-muted); }
+.select-trigger.theme-dala:focus-visible, .select-trigger.theme-dala.select-trigger-open {
+  border-color: var(--ui-accent); outline: 2px solid var(--ui-selected); outline-offset: 1px;
+}
+.select-trigger.theme-dala.select-trigger-error { border-color: #ef6868; outline-color: #ef686840; }
+.select-trigger.theme-dala.select-trigger-disabled { background: var(--ui-selected); }
+.select-dropdown-portal.theme-dala {
+  border-radius: 24px; border-color: var(--ui-line);
+  background: var(--ui-surface); box-shadow: none;
+}
+.select-dropdown-portal.theme-dala .select-search { border-color: var(--ui-line); }
+.select-dropdown-portal.theme-dala .select-search-input,
+.select-dropdown-portal.theme-dala .select-option { color: var(--ui-ink); }
+.select-dropdown-portal.theme-dala .select-empty { color: var(--ui-muted); }
+.select-dropdown-portal.theme-dala .select-option-selected svg { color: var(--ui-accent); }
+.select-dropdown-portal.theme-dala .select-option:hover,
+.select-dropdown-portal.theme-dala .select-option-focused,
+.select-dropdown-portal.theme-dala .select-option-selected {
+  background: var(--ui-selected); color: var(--ui-accent);
+}
+.select-dropdown-portal.theme-dala .select-option-group,
+.select-dropdown-portal.theme-dala .select-option-group:hover { background: var(--ui-canvas); color: var(--ui-muted); }
 </style>

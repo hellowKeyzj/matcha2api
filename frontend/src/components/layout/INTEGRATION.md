@@ -2,139 +2,49 @@
 
 ## Quick Start
 
-### 1. Import Layout Components
+### 1. Separate workspace and standalone routes
+
+`AppLayout` is a router parent, not a wrapper imported by each page.
+Authentication pages continue to use `AuthLayout` internally.
+
+### 2. Use a shared parent in routes
 
 ```typescript
-// In your view files
-import { AppLayout, AuthLayout } from '@/components/layout'
-```
-
-### 2. Use in Routes
-
-```typescript
-// src/router/index.ts
-import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
-
-// Views
-import DashboardView from '@/views/DashboardView.vue'
-import LoginView from '@/views/auth/LoginView.vue'
-import RegisterView from '@/views/auth/RegisterView.vue'
-
+// src/router/index.ts (abbreviated; keep the existing guards)
 const routes: RouteRecordRaw[] = [
-  // Auth routes (no layout needed - views use AuthLayout internally)
   {
     path: '/login',
-    name: 'Login',
-    component: LoginView,
+    component: () => import('@/views/auth/LoginView.vue'),
     meta: { requiresAuth: false }
   },
-  {
-    path: '/register',
-    name: 'Register',
-    component: RegisterView,
-    meta: { requiresAuth: false }
-  },
-
-  // User routes (use AppLayout)
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: DashboardView,
-    meta: { requiresAuth: true, title: 'Dashboard' }
-  },
-  {
-    path: '/api-keys',
-    name: 'ApiKeys',
-    component: () => import('@/views/ApiKeysView.vue'),
-    meta: { requiresAuth: true, title: 'API Keys' }
-  },
-  {
-    path: '/usage',
-    name: 'Usage',
-    component: () => import('@/views/UsageView.vue'),
-    meta: { requiresAuth: true, title: 'Usage Statistics' }
-  },
-  {
-    path: '/redeem',
-    name: 'Redeem',
-    component: () => import('@/views/RedeemView.vue'),
-    meta: { requiresAuth: true, title: 'Redeem Code' }
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('@/views/ProfileView.vue'),
-    meta: { requiresAuth: true, title: 'Profile Settings' }
-  },
-
-  // Admin routes (use AppLayout, admin only)
-  {
-    path: '/admin/dashboard',
-    name: 'AdminDashboard',
-    component: () => import('@/views/admin/DashboardView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Admin Dashboard' }
-  },
-  {
-    path: '/admin/users',
-    name: 'AdminUsers',
-    component: () => import('@/views/admin/UsersView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'User Management' }
-  },
-  {
-    path: '/admin/groups',
-    name: 'AdminGroups',
-    component: () => import('@/views/admin/GroupsView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Groups' }
-  },
-  {
-    path: '/admin/accounts',
-    name: 'AdminAccounts',
-    component: () => import('@/views/admin/AccountsView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Accounts' }
-  },
-  {
-    path: '/admin/proxies',
-    name: 'AdminProxies',
-    component: () => import('@/views/admin/ProxiesView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Proxies' }
-  },
-  {
-    path: '/admin/redeem-codes',
-    name: 'AdminRedeemCodes',
-    component: () => import('@/views/admin/RedeemCodesView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Redeem Codes' }
-  },
-
-  // Default redirect
   {
     path: '/',
-    redirect: '/dashboard'
+    component: () => import('@/components/layout/AppLayout.vue'),
+    children: [
+      {
+        path: '/dashboard',
+        component: () => import('@/views/user/DashboardView.vue'),
+        meta: { requiresAuth: true, title: 'Dashboard' }
+      },
+      {
+        path: '/admin/users',
+        component: () => import('@/views/admin/UsersView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: 'Users' }
+      }
+    ]
   }
 ]
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
-
-// Navigation guards
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Redirect to login if not authenticated
-    next('/login')
-  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    // Redirect to dashboard if not admin
-    next('/dashboard')
-  } else {
-    next()
-  }
-})
-
-export default router
 ```
+
+Keep standalone pages outside this parent. Layout membership is not inferred from
+`requiresAuth`: MCP consent is standalone; Airwallex payment uses the workspace.
+For fullscreen/popup query variants, use `hideAppChrome` on the child record so the
+page outlet stays mounted. See `router/index.ts` for the complete route set.
+
+Persistent components must not rely on page remounts to reset transient UI or retry
+failed requests. Overlay owners close on committed route changes; the sidebar retries
+failed access lookup on page navigation through the existing cached composable.
+Do not key the shell by route or use `KeepAlive` to work around lifecycle ownership.
 
 ### 3. Initialize Stores in main.ts
 
@@ -170,7 +80,7 @@ app.mount('#app')
 
 <script setup lang="ts">
 // App.vue just renders the router view
-// Layouts are handled by individual views
+// The router owns the workspace layout; auth views use AuthLayout internally
 </script>
 ```
 
@@ -183,17 +93,14 @@ app.mount('#app')
 ```vue
 <!-- src/views/DashboardView.vue -->
 <template>
-  <AppLayout>
     <div class="space-y-6">
       <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
 
       <!-- Your content here -->
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { AppLayout } from '@/components/layout'
 
 // Your component logic here
 </script>
@@ -376,7 +283,7 @@ await appStore.withLoading(async () => {
 
 All layout components include:
 
-- **Semantic HTML**: Proper use of `<nav>`, `<header>`, `<main>`, `<aside>`
+- **Landmarks**: `<nav>`, `<header>`, `<aside>` and a conditional `role="main"` content region
 - **ARIA labels**: Buttons have descriptive labels
 - **Keyboard navigation**: All interactive elements are keyboard accessible
 - **Focus management**: Proper focus states with Tailwind's `focus:` utilities
@@ -439,11 +346,10 @@ Views using layouts are already lazy loaded in the router example above.
 
 ### Code Splitting
 
-Layout components are automatically code-split when imported:
+The shared workspace parent is lazy-loaded by the router:
 
 ```typescript
-// This creates a separate chunk for layout components
-import { AppLayout } from '@/components/layout'
+component: () => import('@/components/layout/AppLayout.vue')
 ```
 
 ### Reducing Re-renders

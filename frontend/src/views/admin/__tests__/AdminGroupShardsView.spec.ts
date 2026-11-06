@@ -100,10 +100,6 @@ const SelectStub = {
   </div>`,
 }
 
-const AppLayoutStub = {
-  template: '<div><slot /></div>',
-}
-
 const BaseDialogStub = {
   props: ['show'],
   template: '<div v-if="show"><slot /><slot name="footer" /></div>',
@@ -228,7 +224,6 @@ const mountView = async () => {
   const wrapper = mount(AdminGroupShardsView, {
     global: {
       stubs: {
-        AppLayout: AppLayoutStub,
         Select: SelectStub,
         BaseDialog: BaseDialogStub,
         ConfirmDialog: true,

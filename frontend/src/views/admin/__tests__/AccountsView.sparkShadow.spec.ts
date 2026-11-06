@@ -70,7 +70,6 @@ const mountView = () =>
   mount(AccountsView, {
     global: {
       stubs: {
-        AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
         },
@@ -213,7 +212,6 @@ const mountViewWithRow = () =>
   mount(AccountsView, {
     global: {
       stubs: {
-        AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
         },
@@ -341,7 +339,9 @@ describe('admin AccountsView — 账号行展示', () => {
     const tooltip = wrapper.findComponent(HelpTooltip)
     expect(tooltip.props('content')).toBe('https://relay.example.com')
     expect(tooltip.props('widthClass')).toBe('w-max max-w-sm break-all')
-    expect(tooltip.classes()).toEqual(expect.arrayContaining(['self-start']))
+    const syncAction = 'button[aria-label="admin.accounts.upstreamBilling.saveGroup"]'
+    expect(tooltip.element.parentElement?.querySelector(syncAction)).toBeInstanceOf(HTMLButtonElement)
+    expect(tooltip.find(syncAction).exists()).toBe(false)
     expect(wrapper.text()).toContain('oauth-account')
     expect(wrapper.text()).toContain('invalid-url')
 

@@ -133,10 +133,6 @@ const sourceGroup = {
   sort_order: 10,
 } satisfies AdminGroup;
 
-const AppLayoutStub = defineComponent({
-  template: "<main><slot /></main>",
-});
-
 const TablePageLayoutStub = defineComponent({
   template: '<section><slot name="filters" /><slot name="table" /><slot name="pagination" /></section>',
 });
@@ -208,7 +204,6 @@ const mountView = () =>
     global: {
       plugins: [createPinia()],
       stubs: {
-        AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         Pagination: true,

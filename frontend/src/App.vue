@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideComponentTheme } from '@/composables/useComponentTheme'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
@@ -11,6 +12,8 @@ import { getSetupStatus } from '@/api/setup'
 import { updateFavicon } from '@/utils/branding'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
+
+provideComponentTheme('theme-dala')
 
 const router = useRouter()
 const route = useRoute()
@@ -90,8 +93,13 @@ watch(subscriptionFeatureEnabled, (enabled) => {
 })
 
 watch(
-  () => authStore.isAuthenticated,
-  (isAuthenticated, oldValue) => {
+  [() => authStore.isAuthenticated, () => authStore.user?.id],
+  ([isAuthenticated, userID], [oldValue, oldUserID]) => {
+    if (!isAuthenticated || (oldUserID !== undefined && oldUserID !== userID)) {
+      subscriptionStore.clear()
+      announcementStore.reset()
+      adminComplianceStore.reset()
+    }
     if (isAuthenticated) {
       if (authStore.isAdmin) {
         adminComplianceStore.fetchStatus().catch((error) => {
@@ -108,7 +116,11 @@ watch(
       // Announcements: new login vs page refresh restore
       if (oldValue === false) {
         // New login: delay 3s then force fetch
-        setTimeout(() => announcementStore.fetchAnnouncements(true), 3000)
+        setTimeout(() => {
+          if (authStore.isAuthenticated) {
+            announcementStore.fetchAnnouncements(true)
+          }
+        }, 3000)
       } else {
         // Page refresh restore (oldValue was undefined)
         announcementStore.fetchAnnouncements()
@@ -117,10 +129,6 @@ watch(
       // Register visibility change listener
       document.addEventListener('visibilitychange', onVisibilityChange)
     } else {
-      // User logged out: clear data and stop polling
-      subscriptionStore.clear()
-      announcementStore.reset()
-      adminComplianceStore.reset()
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   },

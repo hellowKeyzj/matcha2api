@@ -11,7 +11,6 @@ vi.mock('vue-i18n', async () => ({
 }))
 const mountView = () => shallowMount(ProxiesView, {
   global: { stubs: {
-    AppLayout: { template: '<div><slot /></div>' },
     TablePageLayout: { template: '<div><slot name="table" /></div>' },
     DataTable: { props: ['data'], template: '<div v-for="row in data" :key="row.id"><slot name="cell-actions" :row="row" /></div>' },
     BaseDialog: { props: ['show'], template: '<div v-if="show"><slot /><slot name="footer" /></div>' },

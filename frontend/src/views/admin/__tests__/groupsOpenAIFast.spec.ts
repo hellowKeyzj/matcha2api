@@ -21,15 +21,33 @@ describe("groupsOpenAIFast", () => {
     expect(normalizeGroupOpenAIFast("openai", false)).toBe(false);
   });
 
-  it("provides localized Ultra Fast switch labels naming the supported models", () => {
-    for (const locale of [zh, en]) {
-      expect(locale.groups.openaiFast).toMatchObject({
-        forceUltrafast: expect.stringContaining("ultrafast"),
-        ultrafastHint: expect.stringContaining("service_tier=ultrafast"),
-      });
-      expect(locale.groups.openaiFast.ultrafastHint).toContain("GPT-6 Astra");
-      expect(locale.groups.openaiFast.ultrafastHint).toContain("GPT-6.1 Sol");
-    }
+  it("explains Ultra Fast entitlements, fallback and Free Fast in both locales", () => {
+    const zhFast = zh.groups.openaiFast;
+    expect(zhFast.forceUltrafast).toContain("ultrafast");
+    expect(zhFast.ultrafastHint).toContain("GPT-6.2");
+    expect(zhFast.ultrafastHint).toContain("Pro 200 支持 Sol");
+    expect(zhFast.ultrafastHint).toContain("Pro 500 支持 Sol 和 Astra");
+    expect(zhFast.ultrafastHint).toContain("其他账号使用其目录明确提供的档位");
+    expect(zhFast.ultrafastHint).toContain("不可用时，若同时开启强制 Fast 则使用 Fast");
+    expect(zhFast.ultrafastHint).toContain("否则跟随客户端");
+    expect(zhFast.ultrafastHint).toContain("免费 Fast 不包含 Ultra Fast");
+    expect(zhFast.ultrafastHint).toContain("GPT-6 Astra");
+    expect(zhFast.ultrafastHint).toContain("GPT-6.1 Sol");
+    expect(zhFast.freeHint).toContain("priority 档位");
+    expect(zhFast.freeHint).toContain("Standard 价格");
+
+    const enFast = en.groups.openaiFast;
+    expect(enFast.forceUltrafast).toContain("ultrafast");
+    expect(enFast.ultrafastHint).toContain("Pro 200 includes GPT-6.2 Sol Ultrafast");
+    expect(enFast.ultrafastHint).toContain("Pro 500 includes both Sol and Astra Ultrafast");
+    expect(enFast.ultrafastHint).toContain("Other subscriptions use the tiers advertised by their account");
+    expect(enFast.ultrafastHint).toContain("If unavailable, Force Fast takes precedence over the client tier");
+    expect(enFast.ultrafastHint).toContain("GPT-6.2 Sol and Astra");
+    expect(enFast.ultrafastHint).toContain("Free Fast excludes Ultra Fast");
+    expect(enFast.ultrafastHint).toContain("GPT-6 Astra");
+    expect(enFast.ultrafastHint).toContain("GPT-6.1 Sol");
+    expect(enFast.freeHint).toContain("priority tier");
+    expect(enFast.freeHint).toContain("equivalent Standard price");
   });
 
   it("provides localized switch labels", () => {

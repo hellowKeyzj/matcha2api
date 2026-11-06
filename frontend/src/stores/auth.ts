@@ -85,6 +85,14 @@ export const useAuthStore = defineStore('auth', () => {
   const pendingAuthSession = ref<PendingAuthSessionSummary | null>(null)
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null
   let tokenRefreshTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let authSessionVersion = 0
+  let profileRequestController = new AbortController()
+
+  function invalidateSessionRequests(): void {
+    authSessionVersion++
+    profileRequestController.abort()
+    profileRequestController = new AbortController()
+  }
 
   // ==================== Computed ====================
 
@@ -212,8 +220,10 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
 
+    const sessionVersion = authSessionVersion
     try {
       const response = await authAPI.refreshToken()
+      if (sessionVersion !== authSessionVersion) return
 
       // Update state
       token.value = response.access_token
@@ -263,6 +273,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loginFromDesktop(ticket: string, signal?: AbortSignal): Promise<void> {
+    const response = await authAPI.exchangeBrowserLoginTicket(ticket, signal)
+    signal?.throwIfAborted()
+    setAuthFromResponse(response)
+  }
+
   /**
    * Complete login with 2FA code
    * @param tempToken - Temporary token from initial login
@@ -297,6 +313,9 @@ export const useAuthStore = defineStore('auth', () => {
    * Internal helper function
    */
   function setAuthFromResponse(response: AuthResponse): void {
+    clearAuth()
+    runMode.value = response.user.run_mode || 'standard'
+
     // Store token and user
     token.value = response.access_token
 
@@ -306,10 +325,6 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
     }
 
-    // Extract run_mode if present
-    if (response.user.run_mode) {
-      runMode.value = response.user.run_mode
-    }
     const { run_mode: _run_mode, ...userData } = response.user
     user.value = userData
 
@@ -359,6 +374,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Note: Don't clear localStorage here as OAuth callback may have set refresh_token
     stopAutoRefresh()
     stopTokenRefresh()
+    invalidateSessionRequests()
     token.value = null
     user.value = null
 
@@ -437,8 +453,12 @@ export const useAuthStore = defineStore('auth', () => {
       throw new Error('Not authenticated')
     }
 
+    const sessionVersion = authSessionVersion
     try {
-      const response = await authAPI.getCurrentUser()
+      const response = await authAPI.getCurrentUser(profileRequestController.signal)
+      if (sessionVersion !== authSessionVersion) {
+        throw new Error('Authentication session changed')
+      }
       if (response.data.run_mode) {
         runMode.value = response.data.run_mode
       }
@@ -451,11 +471,23 @@ export const useAuthStore = defineStore('auth', () => {
       return userData
     } catch (error) {
       // If refresh fails with 401, clear auth state
-      if ((error as { status?: number }).status === 401) {
+      if (sessionVersion === authSessionVersion && (error as { status?: number }).status === 401) {
         clearAuth({ preservePendingAuthSession: pendingAuthSession.value !== null })
       }
       throw error
     }
+  }
+
+  // Pause the current session without deleting its persisted credentials.
+  function suspendSession(): void {
+    invalidateSessionRequests()
+    stopAutoRefresh()
+    stopTokenRefresh()
+    token.value = null
+    refreshTokenValue.value = null
+    tokenExpiresAt.value = null
+    user.value = null
+    pendingAuthSession.value = null
   }
 
   /**
@@ -463,15 +495,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Internal helper function
    */
   function clearAuth(options?: { preservePendingAuthSession?: boolean }): void {
-    // Stop auto-refresh
-    stopAutoRefresh()
-    // Stop token refresh
-    stopTokenRefresh()
-
-    token.value = null
-    refreshTokenValue.value = null
-    tokenExpiresAt.value = null
-    user.value = null
+    suspendSession()
     localStorage.removeItem(AUTH_TOKEN_KEY)
     localStorage.removeItem(AUTH_USER_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
@@ -503,12 +527,14 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Actions
     login,
+    loginFromDesktop,
     loginWithPasskey,
     login2FA,
     register,
     setToken,
     logout,
     checkAuth,
+    suspendSession,
     refreshUser,
     setPendingAuthSession,
     clearPendingAuthSession

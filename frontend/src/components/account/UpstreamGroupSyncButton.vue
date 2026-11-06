@@ -2,7 +2,7 @@
   <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
     <button
       type="button"
-      class="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400"
+      class="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-400"
       :disabled="!source || loading"
       :title="!source ? t('admin.accounts.upstreamBilling.groupCredentials') : undefined"
       @click="sync"

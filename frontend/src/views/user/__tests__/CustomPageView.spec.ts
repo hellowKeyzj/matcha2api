@@ -10,7 +10,6 @@ const { appStore } = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/components/layout/AppLayout.vue', () => ({ default: { template: '<div><slot /></div>' } }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: 'docs' } }) }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }) }))
 vi.mock('@/stores', () => ({ useAppStore: () => appStore }))
@@ -23,7 +22,7 @@ const wrappers: ReturnType<typeof mount>[] = []
 
 function mountPage() {
   const wrapper = mount(CustomPageView, {
-    global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Icon: true } },
+    global: { stubs: { Icon: true } },
   })
   wrappers.push(wrapper)
   return wrapper

@@ -146,6 +146,14 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   return data
 }
 
+export async function exchangeBrowserLoginTicket(ticket: string, signal?: AbortSignal): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/browser-login/exchange', { ticket }, {
+    signal,
+    headers: { Authorization: false }
+  })
+  return data
+}
+
 /**
  * Complete login with 2FA code
  * @param request - Temp token and TOTP code
@@ -192,8 +200,8 @@ export async function register(userData: RegisterRequest): Promise<AuthResponse>
  * Get current authenticated user
  * @returns User profile data
  */
-export async function getCurrentUser() {
-  return apiClient.get<CurrentUserResponse>('/auth/me')
+export async function getCurrentUser(signal?: AbortSignal) {
+  return apiClient.get<CurrentUserResponse>('/auth/me', { signal })
 }
 
 /**
@@ -680,6 +688,7 @@ export async function exchangePendingOAuthCompletion(
 
 export const authAPI = {
   login,
+  exchangeBrowserLoginTicket,
   login2FA,
   isTotp2FARequired,
   register,

@@ -4,20 +4,23 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      backgroundColor: {
+        surface: 'rgb(var(--palette-surface, 255 255 255) / <alpha-value>)'
+      },
       colors: {
         // 主色调 - Teal/Cyan 青色系
         primary: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
-          950: '#042f2e'
+          50: 'rgb(var(--palette-primary-50, 240 253 250) / <alpha-value>)',
+          100: 'rgb(var(--palette-primary-100, 204 251 241) / <alpha-value>)',
+          200: 'rgb(var(--palette-primary-200, 153 246 228) / <alpha-value>)',
+          300: 'rgb(var(--palette-primary-300, 94 234 212) / <alpha-value>)',
+          400: 'rgb(var(--palette-primary-400, 45 212 191) / <alpha-value>)',
+          500: 'rgb(var(--palette-primary-500, 20 184 166) / <alpha-value>)',
+          600: 'rgb(var(--palette-primary-600, 13 148 136) / <alpha-value>)',
+          700: 'rgb(var(--palette-primary-700, 15 118 110) / <alpha-value>)',
+          800: 'rgb(var(--palette-primary-800, 17 94 89) / <alpha-value>)',
+          900: 'rgb(var(--palette-primary-900, 19 78 74) / <alpha-value>)',
+          950: 'rgb(var(--palette-primary-950, 4 47 46) / <alpha-value>)'
         },
         // 辅助色 - 深蓝灰
         accent: {
@@ -34,18 +37,31 @@ export default {
           950: '#020617'
         },
         // 深色模式背景
+        gray: {
+          50: 'rgb(var(--palette-gray-50, 248 250 252) / <alpha-value>)',
+          100: 'rgb(var(--palette-gray-100, 241 245 249) / <alpha-value>)',
+          200: 'rgb(var(--palette-gray-200, 226 232 240) / <alpha-value>)',
+          300: 'rgb(var(--palette-gray-300, 203 213 225) / <alpha-value>)',
+          400: 'rgb(var(--palette-gray-400, 148 163 184) / <alpha-value>)',
+          500: 'rgb(var(--palette-gray-500, 100 116 139) / <alpha-value>)',
+          600: 'rgb(var(--palette-gray-600, 71 85 105) / <alpha-value>)',
+          700: 'rgb(var(--palette-gray-700, 51 65 85) / <alpha-value>)',
+          800: 'rgb(var(--palette-gray-800, 30 41 59) / <alpha-value>)',
+          900: 'rgb(var(--palette-gray-900, 15 23 42) / <alpha-value>)',
+          950: 'rgb(var(--palette-gray-950, 2 6 23) / <alpha-value>)'
+        },
         dark: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617'
+          50: 'rgb(var(--palette-dark-50, 248 250 252) / <alpha-value>)',
+          100: 'rgb(var(--palette-dark-100, 241 245 249) / <alpha-value>)',
+          200: 'rgb(var(--palette-dark-200, 226 232 240) / <alpha-value>)',
+          300: 'rgb(var(--palette-dark-300, 203 213 225) / <alpha-value>)',
+          400: 'rgb(var(--palette-dark-400, 148 163 184) / <alpha-value>)',
+          500: 'rgb(var(--palette-dark-500, 100 116 139) / <alpha-value>)',
+          600: 'rgb(var(--palette-dark-600, 71 85 105) / <alpha-value>)',
+          700: 'rgb(var(--palette-dark-700, 51 65 85) / <alpha-value>)',
+          800: 'rgb(var(--palette-dark-800, 30 41 59) / <alpha-value>)',
+          900: 'rgb(var(--palette-dark-900, 15 23 42) / <alpha-value>)',
+          950: 'rgb(var(--palette-dark-950, 2 6 23) / <alpha-value>)'
         }
       },
       fontFamily: {

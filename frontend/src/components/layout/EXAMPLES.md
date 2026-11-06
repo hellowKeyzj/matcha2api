@@ -1,10 +1,12 @@
 # Layout Component Examples
 
+Workspace examples render content only and must be registered under the shared
+`AppLayout` parent in `router/index.ts`; never add a per-page `AppLayout` wrapper.
+
 ## Example 1: Dashboard Page
 
 ```vue
 <template>
-  <AppLayout>
     <div class="space-y-6">
       <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
 
@@ -36,12 +38,10 @@
         <p class="text-gray-600">No recent activity</p>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AppLayout } from '@/components/layout'
 import { useAuthStore } from '@/stores'
 
 const authStore = useAuthStore()
@@ -145,7 +145,6 @@ async function handleSubmit() {
 
 ```vue
 <template>
-  <AppLayout>
     <div class="space-y-6">
       <!-- Custom page header -->
       <div class="flex items-center justify-between">
@@ -203,12 +202,10 @@ async function handleSubmit() {
         </table>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { AppLayout } from '@/components/layout'
 import type { ApiKey } from '@/types'
 
 const showCreateModal = ref(false)
@@ -225,7 +222,6 @@ const apiKeys = ref<ApiKey[]>([])
 
 ```vue
 <template>
-  <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
@@ -271,12 +267,10 @@ const apiKeys = ref<ApiKey[]>([])
         </div>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { AppLayout } from '@/components/layout'
 import type { User } from '@/types'
 
 const showCreateUser = ref(false)
@@ -293,7 +287,6 @@ const users = ref<User[]>([])
 
 ```vue
 <template>
-  <AppLayout>
     <div class="max-w-2xl space-y-6">
       <h1 class="text-3xl font-bold text-gray-900">Profile Settings</h1>
 
@@ -381,12 +374,10 @@ const users = ref<User[]>([])
         </form>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { AppLayout } from '@/components/layout'
 import { useAuthStore, useAppStore } from '@/stores'
 
 const authStore = useAuthStore()
@@ -418,7 +409,7 @@ async function handleChangePassword() {
 1. **Page Titles**: Set route meta to automatically display page titles in the header
 2. **Loading States**: Use `appStore.setLoading(true/false)` for global loading indicators
 3. **Toast Notifications**: Use `appStore.showSuccess()`, `appStore.showError()`, etc.
-4. **Authentication**: All authenticated pages should use `AppLayout`
+4. **Workspace**: Register workspace pages under the shared `AppLayout` route, independently of auth requirements
 5. **Auth Pages**: Login and Register pages should use `AuthLayout`
 6. **Sidebar State**: The sidebar state persists across navigation
 7. **Mobile First**: All examples are responsive by default using Tailwind's mobile-first approach

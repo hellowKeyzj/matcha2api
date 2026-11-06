@@ -1,5 +1,5 @@
 <template>
-  <div class="mb-4 flex items-center justify-between rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+  <div class="account-bulk-actions mb-4 flex items-center justify-between rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
     <div class="flex flex-wrap items-center gap-2">
       <span v-if="allResultsSelected" class="text-sm font-medium text-primary-900 dark:text-primary-100">
         {{ t('admin.accounts.bulkActions.selectedAll', { count: selectedIds.length }) }}
@@ -84,3 +84,13 @@ defineEmits([
 
 const { t } = useI18n()
 </script>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .account-bulk-actions {
+  margin-bottom: 0; padding: 12px 16px; gap: 12px; flex-wrap: wrap;
+  border-radius: 0; border-bottom: 1px solid var(--ui-line); background: var(--ui-canvas);
+}
+:is(.theme-dala, .dark .theme-dala) .account-bulk-actions > :first-child > span,
+:is(.theme-dala, .dark .theme-dala) .account-bulk-actions > :first-child > button { color: var(--ui-muted); }
+:is(.theme-dala, .dark .theme-dala) .account-bulk-actions > :last-child { flex-wrap: wrap; }
+</style>

@@ -26,7 +26,7 @@ beforeEach(() => {
 
 function mountView() {
   return shallowMount(AirwallexPaymentView, {
-    global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Icon: true } }
+    global: { stubs: { Icon: true } }
   })
 }
 

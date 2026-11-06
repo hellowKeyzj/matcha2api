@@ -142,7 +142,6 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {} }),
 }))
 
-const layoutStub = { template: '<div><slot /></div>' }
 const chartStub = { template: '<div />' }
 const iconStub = { template: '<span />' }
 const adminFiltersStub = defineComponent({
@@ -199,7 +198,6 @@ const adminMappedLog = {
 }
 
 const sharedPageStubs = {
-  AppLayout: layoutStub,
   Pagination: true,
   Select: true,
   DateRangePicker: true,

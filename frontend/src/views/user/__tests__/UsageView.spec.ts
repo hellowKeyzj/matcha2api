@@ -115,7 +115,6 @@ vi.mock('vue-i18n', async () => {
   }
 })
 
-const simpleStub = { template: '<div><slot /></div>' }
 const chartStub = { template: '<div />' }
 
 const usageLog = {
@@ -154,7 +153,6 @@ function mountUsageView() {
   return mount(UsageView, {
     global: {
       stubs: {
-        AppLayout: simpleStub,
         Pagination: true,
         Select: true,
         DateRangePicker: true,

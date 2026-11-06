@@ -117,7 +117,6 @@ function mountView() {
   return mount(PluginsView, {
     global: {
       stubs: {
-        AppLayout: { template: '<div><slot /></div>' },
         BaseDialog: { template: '<div><slot /></div>' },
         Icon: true,
         TotpStepUpDialog: true,

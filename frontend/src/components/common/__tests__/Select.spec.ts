@@ -1,6 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
+import BaseDialog from '../BaseDialog.vue'
+import { provideComponentTheme } from '@/composables/useComponentTheme'
 
 import Select from '../Select.vue'
 
@@ -247,5 +249,40 @@ describe('Select remote search', () => {
     const dropdown = await openDropdown()
     const labels = [...dropdown.querySelectorAll('.select-option-label')].map((el) => el.textContent)
     expect(labels).toEqual(['Alpha account'])
+  })
+})
+
+describe('component theme across teleports', () => {
+  it('carries the workspace theme into a dialog and its dropdown', async () => {
+    const Host = defineComponent({
+      setup() {
+        provideComponentTheme('theme-dala')
+        return () => h(BaseDialog, { show: true, title: 'Theme test' }, {
+          default: () => h(Select, { modelValue: null, options: [{ value: 'one', label: 'One' }] })
+        })
+      }
+    })
+    const wrapper = mount(Host, { attachTo: document.body })
+    unmountWrapper = () => wrapper.unmount()
+    await nextTick()
+    expect(document.body.querySelector('.modal-content')?.classList.contains('theme-dala')).toBe(true)
+    const trigger = document.body.querySelector<HTMLButtonElement>('.select-trigger')!
+    expect(trigger.classList.contains('theme-dala')).toBe(true)
+    trigger.click()
+    await nextTick()
+    expect(document.body.querySelector('.select-dropdown-portal.theme-dala')).not.toBeNull()
+    document.body.querySelector('.modal-title')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    trigger.click()
+    await nextTick()
+    document.body.querySelector('.select-dropdown-portal')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('leaves ordinary controls unthemed', async () => {
+    const dropdown = await openSelect()
+    expect(dropdown?.classList.contains('theme-dala')).toBe(false)
   })
 })

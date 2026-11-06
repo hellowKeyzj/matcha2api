@@ -3,10 +3,16 @@
  * Extends the RouteMeta interface with custom properties
  */
 
-import 'vue-router'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 declare module 'vue-router' {
   interface RouteMeta {
+    /** Presentation-only exceptions such as fullscreen and payment popups. */
+    hideAppChrome?: (route: RouteLocationNormalizedLoaded) => boolean
+
+    /** Page-specific styling on the persistent workspace shell. */
+    appLayoutClass?: string
+
     /**
      * Whether this route requires authentication
      * @default true

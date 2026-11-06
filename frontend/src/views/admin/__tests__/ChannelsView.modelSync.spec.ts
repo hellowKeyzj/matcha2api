@@ -35,7 +35,6 @@ function mountView() {
   return mount(ChannelsView, {
     global: {
       stubs: {
-        AppLayout: defineComponent({ template: '<main><slot /></main>' }),
         TablePageLayout: defineComponent({
           template: '<section><slot name="filters" /><slot name="table" /><slot name="pagination" /></section>'
         }),

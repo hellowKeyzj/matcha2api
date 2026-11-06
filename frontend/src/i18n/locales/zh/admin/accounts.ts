@@ -1,6 +1,12 @@
 export default {
     accounts: {
       title: '账号管理',
+      editorSections: {
+        identity: '基础信息',
+        connection: '连接与模型',
+        availability: '可用性设置',
+        scheduling: '路由与调度',
+      },
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',
       autoRefresh: '自动刷新',

@@ -5,7 +5,8 @@
       <div class="fixed inset-0 z-[9998]" @click="emit('close')"></div>
       <div
         ref="menuRef"
-        class="action-menu-content fixed z-[9999] w-52 overflow-y-auto overscroll-contain rounded-xl bg-white shadow-lg ring-1 ring-black/5 dark:bg-dark-800"
+         :class="componentTheme"
+        class="component-menu action-menu-content fixed z-[9999] w-52 overflow-y-auto overscroll-contain rounded-xl bg-surface shadow-lg ring-1 ring-black/5 dark:bg-dark-800"
         :style="menuStyle"
         @click.stop
       >
@@ -63,12 +64,15 @@
 </template>
 
 <script setup lang="ts">
+import { useComponentTheme } from '@/composables/useComponentTheme'
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { useResizeObserver, useWindowSize } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'
 import type { Account } from '@/types'
 import { supportsAccountQuota } from '@/utils/accountQuota'
+
+const componentTheme = useComponentTheme()
 
 const props = defineProps<{ show: boolean; account: Account | null; anchorRect: DOMRect | null }>()
 const emit = defineEmits(['close', 'test', 'stats', 'schedule', 'duplicate', 'reauth', 'refresh-token', 'recover-state', 'reset-quota', 'set-privacy', 'create-spark-shadow'])

@@ -27,7 +27,6 @@ beforeEach(() => {
 function mountView() {
   return shallowMount(ChannelStatusV1View, {
     global: { stubs: {
-      AppLayout: { template: '<div><slot /></div>' },
       MonitorHero: { props: ['loading'], emits: ['update:window', 'refresh'], template: `<div :data-loading="loading">
         <button class="fifteen" @click="$emit('update:window', '15d')">15d</button>
         <button class="thirty" @click="$emit('update:window', '30d')">30d</button>
