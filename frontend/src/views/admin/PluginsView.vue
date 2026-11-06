@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="space-y-6">
       <section
         class="flex flex-col gap-4 border-b border-gray-200 pb-5 dark:border-dark-700 sm:flex-row sm:items-end sm:justify-between"
@@ -58,7 +57,7 @@
       </p>
 
       <div
-        class="border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200"
+        class="border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-200"
       >
         <p>{{ t("admin.plugins.runtimeNotice") }}</p>
         <p class="mt-1">{{ t("admin.plugins.menuNotice") }}</p>
@@ -318,7 +317,7 @@
             :src="uiSession.url"
             sandbox="allow-scripts"
             referrerpolicy="no-referrer"
-            class="h-full w-full border-0 bg-white dark:bg-dark-900"
+            class="h-full w-full border-0 bg-surface dark:bg-dark-900"
             :title="
               t('admin.plugins.configTitle', { name: configPlugin?.name || '' })
             "
@@ -329,7 +328,6 @@
 
       <TotpStepUpDialog :controller="pluginStepUp" />
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -341,7 +339,6 @@ import {
   type PluginUISession,
 } from "@/api/admin";
 import { useAppStore } from "@/stores";
-import AppLayout from "@/components/layout/AppLayout.vue";
 import BaseDialog from "@/components/common/BaseDialog.vue";
 import Icon from "@/components/icons/Icon.vue";
 import TotpStepUpDialog from "@/components/auth/TotpStepUpDialog.vue";

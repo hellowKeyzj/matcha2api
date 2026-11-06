@@ -29,7 +29,6 @@ function deferred<T>() {
 }
 function mountPage() {
   return mount(PackagesPage, { global: { stubs: {
-    AppLayout: { template: '<main><slot /></main>' },
     BaseDialog: { name: 'BaseDialog', props: ['show'], template: '<section v-if="show"><slot /><slot name="footer" /></section>' }, Icon: true
   } } })
 }

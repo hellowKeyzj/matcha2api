@@ -1,11 +1,11 @@
 <template>
   <section class="mx-auto w-full max-w-6xl space-y-5 px-1 py-2 sm:px-2">
     <header
-      class="page-header mb-0 flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700 sm:p-6"
+      class="page-header mb-0 flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-surface p-5 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700 sm:p-6"
     >
       <div class="min-w-0">
         <h2 class="page-title flex items-center gap-2 text-xl font-black text-gray-900 dark:text-white">
-          <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-500 dark:bg-primary-900/30 dark:text-primary-400">
             <Icon name="chart" size="sm" />
           </span>
           {{ t('channelMonitorV2.settings.title') }}

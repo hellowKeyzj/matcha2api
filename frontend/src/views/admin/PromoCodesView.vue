@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-wrap items-center gap-3">
@@ -120,7 +119,7 @@
               </button>
               <button
                 @click="handleViewUsages(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
                 :title="t('admin.promo.viewUsages')"
               >
                 <Icon name="eye" size="sm" />
@@ -382,7 +381,6 @@
       @confirm="confirmDelete"
       @cancel="showDeleteDialog = false"
     />
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -395,7 +393,6 @@ import { adminAPI } from '@/api/admin'
 import { formatDateTime, formatDateTimeLocalInput } from '@/utils/format'
 import type { PromoCode, PromoCodeUsage } from '@/types'
 import type { Column } from '@/components/common/types'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'

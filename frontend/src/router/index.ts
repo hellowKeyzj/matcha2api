@@ -3,7 +3,7 @@
  * Defines all application routes with lazy loading and navigation guards
  */
 
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, isNavigationFailure, NavigationFailureType, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
@@ -13,11 +13,12 @@ import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
+import { captureDesktopLoginTicket, desktopLoginTicket } from './desktopLogin'
 
 /**
  * Route definitions with lazy loading
  */
-const routes: RouteRecordRaw[] = [
+const standaloneRoutes: RouteRecordRaw[] = [
   // ==================== Setup Routes ====================
   {
     path: '/setup',
@@ -66,6 +67,16 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: false,
       title: 'Verify Email'
+    }
+  },
+  {
+    path: '/auth/desktop',
+    name: 'DesktopLogin',
+    component: () => import('@/views/auth/DesktopLoginView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Desktop Sign-In',
+      titleKey: 'auth.desktopLogin.title'
     }
   },
   {
@@ -176,21 +187,67 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/',
+    redirect: '/home'
+  },
+  {
+    path: '/oauth/mcp/authorize',
+    name: 'MCPOAuthAuthorize',
+    component: () => import('@/views/auth/MCPOAuthAuthorizeView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Authorize MCP Application',
+      titleKey: 'mcp.consentTitle'
+    }
+  },
+  {
+    path: '/payment/result',
+    name: 'PaymentResult',
+    component: () => import('@/views/user/PaymentResultView.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresAdmin: false,
+      title: 'Payment Result',
+      titleKey: 'payment.result.success',
+      requiresPayment: false
+    }
+  },
+  {
+    path: '/payment/stripe-popup',
+    name: 'StripePopup',
+    component: () => import('@/views/user/StripePopupView.vue'),
+    meta: {
+      requiresAuth: false,
+      requiresAdmin: false,
+      title: 'Payment',
+      requiresPayment: false
+    }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: {
+      title: '404 Not Found'
+    }
+  }
+]
+
+// A single parent owns the workspace; navigation replaces only its RouterView.
+const workspaceRoutes: RouteRecordRaw[] = [
+  {
     path: '/model-plaza',
     name: 'ModelPlaza',
     component: () => import('@/views/ModelPlazaView.vue'),
     meta: {
       requiresAuth: false,
       title: 'Model Plaza',
-      titleKey: 'modelPlaza.title'
+      titleKey: 'modelPlaza.title',
+      hideAppChrome: route => route.query.embedded !== '1' || !useAuthStore().isAuthenticated
     }
   },
-
   // ==================== User Routes ====================
-  {
-    path: '/',
-    redirect: '/home'
-  },
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -301,17 +358,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/oauth/mcp/authorize',
-    name: 'MCPOAuthAuthorize',
-    component: () => import('@/views/auth/MCPOAuthAuthorizeView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Authorize MCP Application',
-      titleKey: 'mcp.consentTitle'
-    }
-  },
-  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/user/ProfileView.vue'),
@@ -374,18 +420,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/payment/result',
-    name: 'PaymentResult',
-    component: () => import('@/views/user/PaymentResultView.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresAdmin: false,
-      title: 'Payment Result',
-      titleKey: 'payment.result.success',
-      requiresPayment: false
-    }
-  },
-  {
     path: '/payment/stripe',
     name: 'StripePayment',
     component: () => import('@/views/user/StripePaymentView.vue'),
@@ -394,7 +428,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Stripe Payment',
       titleKey: 'payment.stripePay',
-      requiresPayment: false
+      requiresPayment: false,
+      hideAppChrome: route => !!route.query.method
     }
   },
   {
@@ -406,17 +441,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Airwallex Payment',
       titleKey: 'payment.airwallexPay',
-      requiresPayment: false
-    }
-  },
-  {
-    path: '/payment/stripe-popup',
-    name: 'StripePopup',
-    component: () => import('@/views/user/StripePopupView.vue'),
-    meta: {
-      requiresAuth: false,
-      requiresAdmin: false,
-      title: 'Payment',
       requiresPayment: false
     }
   },
@@ -458,7 +482,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Ops Monitoring',
       titleKey: 'admin.ops.title',
-      descriptionKey: 'admin.ops.description'
+      descriptionKey: 'admin.ops.description',
+      hideAppChrome: route => route.query.fullscreen === '1' || route.query.fullscreen === 'true'
     }
   },
   {
@@ -569,7 +594,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Account Management',
       titleKey: 'admin.accounts.title',
-      descriptionKey: 'admin.accounts.description'
+      descriptionKey: 'admin.accounts.description',
+      appLayoutClass: 'accounts-workspace'
     }
   },
   {
@@ -772,16 +798,6 @@ const routes: RouteRecordRaw[] = [
       titleKey: 'nav.paymentPlans',
       requiresPayment: true
     }
-  },
-
-  // ==================== 404 Not Found ====================
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('@/views/NotFoundView.vue'),
-    meta: {
-      title: '404 Not Found'
-    }
   }
 ]
 
@@ -790,7 +806,14 @@ const routes: RouteRecordRaw[] = [
  */
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes,
+  routes: [
+    ...standaloneRoutes,
+    {
+      path: '/',
+      component: () => import('@/components/layout/AppLayout.vue'),
+      children: workspaceRoutes
+    }
+  ],
   scrollBehavior(_to, _from, savedPosition) {
     // Scroll to saved position when using browser back/forward
     if (savedPosition) {
@@ -805,6 +828,7 @@ const router = createRouter({
  * Navigation guard: Authentication check
  */
 let authInitialized = false
+let pendingDesktopLogin: { route: RouteLocationNormalized; ticket: string } | null = null
 
 // 初始化导航加载状态和预加载
 const navigationLoading = useNavigationLoadingState()
@@ -812,6 +836,7 @@ const navigationLoading = useNavigationLoadingState()
 let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
 const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal']
 const BACKEND_MODE_CALLBACK_PATHS = [
+  '/auth/desktop',
   '/auth/callback',
   '/auth/linuxdo/callback',
   '/auth/dingtalk/callback',
@@ -839,16 +864,24 @@ function isBackendModePublicRouteAllowed(path: string, hasPendingAuthSession: bo
 }
 
 router.beforeEach(async (to, _from, next) => {
-  // 开始导航加载状态
-  navigationLoading.startNavigation()
-
   const authStore = useAuthStore()
 
-  // Restore auth state from localStorage on first navigation (page refresh)
-  if (!authInitialized) {
+  if (pendingDesktopLogin && to.redirectedFrom !== pendingDesktopLogin.route) {
+    pendingDesktopLogin = null
+  }
+  if (to.path === '/auth/desktop') {
+    if (to.hash) {
+      pendingDesktopLogin = { route: to, ticket: captureDesktopLoginTicket(to.hash) }
+      next({ path: to.path, query: to.query, replace: true })
+      return
+    }
+  } else if (!authInitialized) {
     authStore.checkAuth()
     authInitialized = true
   }
+
+  // 开始导航加载状态
+  navigationLoading.startNavigation()
 
   // Set page title
   const appStore = useAppStore()
@@ -1041,7 +1074,20 @@ router.beforeEach(async (to, _from, next) => {
 /**
  * Navigation guard: End loading and trigger prefetch
  */
-router.afterEach((to) => {
+router.afterEach((to, _from, failure) => {
+  // A second ticket can redirect to the already-mounted, hashless callback.
+  const callbackReady = to.path === '/auth/desktop' &&
+    (!failure || isNavigationFailure(failure, NavigationFailureType.duplicated))
+  if (pendingDesktopLogin && to.redirectedFrom === pendingDesktopLogin.route) {
+    const { ticket } = pendingDesktopLogin
+    pendingDesktopLogin = null
+    if (callbackReady) {
+      if (ticket) authInitialized = true
+      desktopLoginTicket.value = ticket
+    }
+  }
+  if (!failure && to.path !== '/auth/desktop') desktopLoginTicket.value = null
+
   // 结束导航加载状态
   navigationLoading.endNavigation()
 
@@ -1057,7 +1103,10 @@ router.afterEach((to) => {
  * Navigation guard: Error handling
  * Handles dynamic import failures caused by deployment updates
  */
-router.onError((error) => {
+router.onError((error, to) => {
+  if (pendingDesktopLogin && to.redirectedFrom === pendingDesktopLogin.route) {
+    pendingDesktopLogin = null
+  }
   console.error('Router error:', error)
 
   // Check if this is a dynamic import failure (chunk loading error)

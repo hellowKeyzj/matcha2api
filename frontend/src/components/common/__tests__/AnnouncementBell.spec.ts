@@ -8,6 +8,7 @@ const { markRead, showError, showSuccess } = vi.hoisted(() => ({ markRead: vi.fn
 vi.mock('@/api', () => ({ announcementsAPI: { markRead } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showError, showSuccess }) }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/' }) }))
 vi.mock('@/utils/format', () => ({ formatRelativeTime: () => 'now', formatRelativeWithDateTime: () => 'now' }))
 enableAutoUnmount(afterEach)
 beforeEach(() => {

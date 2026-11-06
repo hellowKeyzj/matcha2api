@@ -882,6 +882,7 @@ func ProvideAPIKeyService(
 var ProviderSet = wire.NewSet(
 	// Core services
 	ProvideAuthService,
+	NewBrowserLoginService,
 	NewPasskeyService,
 	NewUserService,
 	NewMCPOAuthService,

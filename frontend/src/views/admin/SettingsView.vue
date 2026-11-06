@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="mx-auto max-w-6xl space-y-6">
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
@@ -139,7 +138,7 @@
                   </p>
                   <div class="flex items-center gap-2">
                     <code
-                      class="flex-1 select-all break-all rounded border border-green-300 bg-white px-3 py-2 font-mono text-sm dark:border-green-700 dark:bg-dark-800"
+                      class="flex-1 select-all break-all rounded border border-green-300 bg-surface px-3 py-2 font-mono text-sm dark:border-green-700 dark:bg-dark-800"
                     >
                       {{ newAdminApiKey }}
                     </code>
@@ -1437,7 +1436,7 @@
                   }}
                 </p>
                 <div
-                  class="mt-3 rounded-lg border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
+                  class="mt-3 rounded-lg border border-gray-300 bg-surface p-2 dark:border-dark-500 dark:bg-dark-700"
                 >
                   <div class="flex flex-wrap items-center gap-2">
                     <span
@@ -1757,7 +1756,7 @@
                   {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersHint") }}
                 </p>
                 <div
-                  class="mt-3 rounded-lg border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
+                  class="mt-3 rounded-lg border border-gray-300 bg-surface p-2 dark:border-dark-500 dark:bg-dark-700"
                 >
                   <div class="flex flex-wrap items-center gap-2">
                     <span
@@ -2046,7 +2045,7 @@
                       class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                       :class="
                         captchaProviderSelection === 'turnstile'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                          ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                           : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                       "
                       @click="selectCaptchaProvider('turnstile')"
@@ -2059,7 +2058,7 @@
                       class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                       :class="
                         captchaProviderSelection === 'tencent'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                          ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                           : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                       "
                       @click="selectCaptchaProvider('tencent')"
@@ -2072,7 +2071,7 @@
                       class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                       :class="
                         captchaProviderSelection === 'aliyun'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                          ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                           : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                       "
                       @click="selectCaptchaProvider('aliyun')"
@@ -2148,7 +2147,7 @@
                         class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
                         :class="
                           form.tencent_captcha_region !== 'intl'
-                            ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                            ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                             : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                         "
                         @click="form.tencent_captcha_region = 'cn'"
@@ -2161,7 +2160,7 @@
                         class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
                         :class="
                           form.tencent_captcha_region === 'intl'
-                            ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                            ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                             : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                         "
                         @click="form.tencent_captcha_region = 'intl'"
@@ -2299,7 +2298,7 @@
                           class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
                           :class="
                             form.aliyun_captcha_region !== 'sgp'
-                              ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                              ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                               : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                           "
                           @click="form.aliyun_captcha_region = 'cn'"
@@ -2311,7 +2310,7 @@
                           class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
                           :class="
                             form.aliyun_captcha_region === 'sgp'
-                              ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                              ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                               : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                           "
                           @click="form.aliyun_captcha_region = 'sgp'"
@@ -6240,7 +6239,7 @@
             @click.self="wsTestDialogOpen = false"
           >
             <div
-              class="mx-4 w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-dark-800"
+              class="mx-4 w-full max-w-lg rounded-xl bg-surface p-6 shadow-xl dark:bg-dark-800"
             >
               <h3
                 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white"
@@ -6296,7 +6295,7 @@
                   <a
                     :href="r.url"
                     target="_blank"
-                    class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                     >{{ r.title }}</a
                   >
                   <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -6959,7 +6958,7 @@
                       class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                       :class="
                         form.login_agreement_mode === 'modal'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                          ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                           : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                       "
                       @click="form.login_agreement_mode = 'modal'"
@@ -6972,7 +6971,7 @@
                       class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                       :class="
                         form.login_agreement_mode === 'checkbox'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                          ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                           : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                       "
                       @click="form.login_agreement_mode = 'checkbox'"
@@ -7034,7 +7033,7 @@
                   <div
                     v-for="(doc, index) in form.login_agreement_documents"
                     :key="doc.id || index"
-                    class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800/60"
+                    class="rounded-lg border border-gray-200 bg-surface p-4 dark:border-dark-700 dark:bg-dark-800/60"
                   >
                     <div class="mb-3 flex items-center justify-between gap-3">
                       <div class="flex min-w-0 items-center gap-3">
@@ -7090,7 +7089,7 @@
                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
                           {{ localText("路由标识", "Route slug") }}
                         </label>
-                        <div class="flex overflow-hidden rounded-lg border border-gray-300 bg-white focus-within:border-primary-500 focus-within:ring-1 focus-within:ring-primary-500 dark:border-dark-600 dark:bg-dark-900">
+                        <div class="flex overflow-hidden rounded-lg border border-gray-300 bg-surface focus-within:border-primary-500 focus-within:ring-1 focus-within:ring-primary-500 dark:border-dark-600 dark:bg-dark-900">
                           <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
                             /legal/
                           </span>
@@ -7167,7 +7166,7 @@
                     class="inline-flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                     :class="
                       form.channel_monitor_mode === 'v2'
-                        ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                        ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                         : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                     "
                     @click="form.channel_monitor_mode = 'v2'"
@@ -7179,7 +7178,7 @@
                     class="inline-flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
                     :class="
                       form.channel_monitor_mode === 'v1'
-                        ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                        ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                         : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                     "
                     @click="form.channel_monitor_mode = 'v1'"
@@ -7626,7 +7625,7 @@
                         <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{{ t('admin.settings.features.affiliate.customUsers.col.actions') }}</th>
                       </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
+                    <tbody class="divide-y divide-gray-200 bg-surface dark:divide-dark-700 dark:bg-dark-900">
                       <tr v-if="affiliateState.loading">
                         <td colspan="6" class="px-3 py-6 text-center text-sm text-gray-500">
                           {{ t('common.loading') }}
@@ -7712,7 +7711,7 @@
           class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           @click.self="closeAffiliateModal"
         >
-          <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-900">
+          <div class="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl dark:bg-dark-900">
             <h3 class="mb-4 text-lg font-semibold">
               {{ affiliateModal.mode === 'add' ? t('admin.settings.features.affiliate.modal.addTitle') : t('admin.settings.features.affiliate.modal.editTitle') }}
             </h3>
@@ -7837,7 +7836,7 @@
           class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           @click.self="affiliateBatchModal.open = false"
         >
-          <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-900">
+          <div class="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl dark:bg-dark-900">
             <h3 class="mb-4 text-lg font-semibold">
               {{ t('admin.settings.features.affiliate.batchModal.title', { count: affiliateState.selected.length }) }}
             </h3>
@@ -8347,7 +8346,7 @@
                         'rounded-lg border px-3 py-1.5 text-sm font-medium transition-all',
                         isPaymentTypeEnabled(pt.value)
                           ? 'border-primary-500 bg-primary-500 text-white shadow-sm'
-                          : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
+                          : 'border-gray-300 bg-surface text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
                       ]"
                     >
                       {{ pt.label }}
@@ -8934,7 +8933,6 @@
       <!-- 关闭 step-up 开关等敏感保存操作触发的 TOTP 二次验证 -->
       <TotpStepUpDialog :controller="settingsStepUp" />
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -8975,7 +8973,6 @@ import type {
   Proxy,
 } from "@/types";
 import type { ProviderInstance } from "@/types/payment";
-import AppLayout from "@/components/layout/AppLayout.vue";
 import Icon from "@/components/icons/Icon.vue";
 import Select, { type SelectOption } from "@/components/common/Select.vue";
 import {
@@ -13281,11 +13278,12 @@ watch(
 
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-2xl border border-white/80 bg-white/90 p-1.5 backdrop-blur-xl;
+  @apply sticky z-20 -mx-1 rounded-2xl border border-white/80 bg-surface/90 p-1.5 backdrop-blur-xl;
   top: 4.75rem;
-  box-shadow:
-    0 12px 28px rgb(15 23 42 / 0.07),
-    0 1px 0 rgb(255 255 255 / 0.9) inset;
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+  box-shadow: none;
+  border-radius: 24px;
 }
 
 .settings-tabs-scroll {
@@ -13323,7 +13321,7 @@ watch(
 .settings-tab::before {
   @apply absolute inset-0 -z-10 rounded-xl opacity-0 transition-opacity duration-200;
   content: "";
-  background: linear-gradient(135deg, rgb(248 250 252 / 0.95), rgb(241 245 249 / 0.8));
+  background: var(--ui-selected);
 }
 
 .settings-tab:hover::before,
@@ -13336,10 +13334,9 @@ watch(
 }
 
 .settings-tab-active {
-  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-700/95 dark:text-primary-200;
-  box-shadow:
-    0 8px 18px rgb(15 23 42 / 0.08),
-    0 1px 0 rgb(255 255 255 / 0.92) inset;
+  @apply border-primary-200/80 bg-surface text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-700/95 dark:text-primary-200;
+  background: var(--ui-selected);
+  box-shadow: none;
 }
 
 .settings-tab-active::before {
@@ -13354,7 +13351,7 @@ watch(
   height: 2px;
   border-radius: 9999px;
   content: "";
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  background: var(--ui-action);
 }
 
 .settings-tab-icon {
@@ -13376,24 +13373,7 @@ watch(
 </style>
 
 <style>
-/* Dark-mode overrides for the settings tabs shell. Kept in an UNSCOPED block
-   because Vue's scoped-CSS compiler was dropping the `:global(.dark) ...`
-   rules in the production build, leaving inactive tabs unreadable on dark. */
-.dark .settings-tabs-shell {
-  border-color: rgb(51 65 85 / 0.65);
-  background: rgb(15 23 42 / 0.86);
-  box-shadow:
-    0 16px 36px rgb(0 0 0 / 0.28),
-    0 1px 0 rgb(255 255 255 / 0.06) inset;
-}
-
-.dark .settings-tab::before {
-  background: linear-gradient(135deg, rgb(30 41 59 / 0.9), rgb(51 65 85 / 0.62));
-}
-
-.dark .settings-tab-active {
-  box-shadow:
-    0 12px 26px rgb(0 0 0 / 0.22),
-    0 1px 0 rgb(255 255 255 / 0.08) inset;
-}
+.dark .settings-tabs-shell { background: var(--ui-surface); border-color: var(--ui-line); box-shadow: none; }
+.dark .settings-tab::before { background: var(--ui-selected); }
+.dark .settings-tab-active { background: var(--ui-selected); box-shadow: none; }
 </style>

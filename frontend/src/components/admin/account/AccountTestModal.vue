@@ -232,7 +232,7 @@
           <div
             v-for="(image, index) in generatedImages"
             :key="`${image.url}-${index}`"
-            class="group/img relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-dark-500 dark:bg-dark-700"
+            class="group/img relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-surface shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-dark-500 dark:bg-dark-700"
             @click="previewImageUrl = image.url"
           >
             <img
@@ -257,7 +257,7 @@
         <div
           v-for="(audio, index) in generatedAudios"
           :key="`audio-${index}`"
-          class="rounded-xl border border-gray-200 bg-white p-3 dark:border-dark-500 dark:bg-dark-700"
+          class="rounded-xl border border-gray-200 bg-surface p-3 dark:border-dark-500 dark:bg-dark-700"
         >
           <audio :src="audio.url" controls class="w-full" :type="audio.mimeType" />
           <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">{{ audio.mimeType || 'audio/*' }}</div>
@@ -274,7 +274,7 @@
           class="overflow-hidden rounded-xl border border-gray-200 bg-black dark:border-dark-500"
         >
           <video :src="video.url" controls class="max-h-[360px] w-full" :type="video.mimeType" />
-          <div class="border-t border-gray-100 bg-white px-3 py-1.5 text-xs text-gray-500 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300">
+          <div class="border-t border-gray-100 bg-surface px-3 py-1.5 text-xs text-gray-500 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300">
             {{ video.mimeType || 'video/*' }}
           </div>
         </div>

@@ -27,7 +27,7 @@
         <span class="badge badge-gray shrink-0">{{ bucketLabel }}</span>
         <button
           type="button"
-          class="inline-flex shrink-0 items-center rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-300 dark:hover:bg-dark-800"
+          class="inline-flex shrink-0 items-center rounded-lg border border-gray-200 bg-surface px-2 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-300 dark:hover:bg-dark-800"
           :disabled="!zoomed"
           @click="resetChartZoom"
         >
@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
+import { useTheme } from '@/composables/useTheme'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -98,9 +99,7 @@ const chartRef = ref<HTMLElement | null>(null)
 const zoom = ref<ZoomState>(resetZoom())
 const zoomed = computed(() => isZoomed(zoom.value))
 
-const isDark = computed(() =>
-  typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
-)
+const { isDark } = useTheme()
 
 const bucketLabel = computed(() => {
   const seconds = props.coverage?.bucket_seconds || 60

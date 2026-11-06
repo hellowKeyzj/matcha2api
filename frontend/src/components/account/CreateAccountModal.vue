@@ -77,7 +77,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
               form.platform === 'anthropic'
-                ? 'bg-white text-orange-600 shadow-sm dark:bg-dark-600 dark:text-orange-400'
+                ? 'bg-surface text-orange-600 shadow-sm dark:bg-dark-600 dark:text-orange-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -90,7 +90,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
               form.platform === 'openai'
-                ? 'bg-white text-green-600 shadow-sm dark:bg-dark-600 dark:text-green-400'
+                ? 'bg-surface text-green-600 shadow-sm dark:bg-dark-600 dark:text-green-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -115,7 +115,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
               form.platform === 'gemini'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-dark-600 dark:text-blue-400'
+                ? 'bg-surface text-primary-600 shadow-sm dark:bg-dark-600 dark:text-primary-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -140,7 +140,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
               form.platform === 'antigravity'
-                ? 'bg-white text-purple-600 shadow-sm dark:bg-dark-600 dark:text-purple-400'
+                ? 'bg-surface text-purple-600 shadow-sm dark:bg-dark-600 dark:text-purple-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -153,7 +153,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
               form.platform === 'grok'
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-dark-600 dark:text-zinc-100'
+                ? 'bg-surface text-zinc-900 shadow-sm dark:bg-dark-600 dark:text-zinc-100'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -166,7 +166,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
               form.platform === 'typesafe'
-                ? 'bg-white text-sky-700 shadow-sm dark:bg-dark-600 dark:text-sky-300'
+                ? 'bg-surface text-sky-700 shadow-sm dark:bg-dark-600 dark:text-sky-300'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -182,7 +182,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
               form.platform === 'kimi'
-                ? 'bg-white text-pink-600 shadow-sm dark:bg-dark-600 dark:text-pink-400'
+                ? 'bg-surface text-pink-600 shadow-sm dark:bg-dark-600 dark:text-pink-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -195,7 +195,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
               form.platform === 'zhipu'
-                ? 'bg-white text-indigo-600 shadow-sm dark:bg-dark-600 dark:text-indigo-400'
+                ? 'bg-surface text-indigo-600 shadow-sm dark:bg-dark-600 dark:text-indigo-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -208,7 +208,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
               form.platform === 'deepseek'
-                ? 'bg-white text-teal-600 shadow-sm dark:bg-dark-600 dark:text-teal-400'
+                ? 'bg-surface text-teal-600 shadow-sm dark:bg-dark-600 dark:text-teal-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -221,7 +221,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
               form.platform === 'minimax'
-                ? 'bg-white text-rose-600 shadow-sm dark:bg-dark-600 dark:text-rose-400'
+                ? 'bg-surface text-rose-600 shadow-sm dark:bg-dark-600 dark:text-rose-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -239,7 +239,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
               form.platform === 'opencode_go'
-                ? 'bg-white text-amber-700 shadow-sm dark:bg-dark-600 dark:text-amber-300'
+                ? 'bg-surface text-amber-700 shadow-sm dark:bg-dark-600 dark:text-amber-300'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -256,7 +256,7 @@
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all',
               form.platform === spec.id
-                ? 'bg-white text-primary-600 shadow-sm dark:bg-dark-600 dark:text-primary-400'
+                ? 'bg-surface text-primary-600 shadow-sm dark:bg-dark-600 dark:text-primary-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
           >
@@ -727,7 +727,7 @@
           <button
             type="button"
             @click="showGeminiHelpDialog = true"
-            class="flex items-center gap-1 rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+            class="flex items-center gap-1 rounded px-2 py-1 text-xs text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
           >
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
@@ -742,15 +742,15 @@
             :class="[
               'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
               accountCategory === 'oauth-based'
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-200 hover:border-blue-300 dark:border-dark-600 dark:hover:border-blue-700'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-gray-200 hover:border-primary-300 dark:border-dark-600 dark:hover:border-primary-700'
             ]"
           >
             <div
               :class="[
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
                 accountCategory === 'oauth-based'
-                  ? 'bg-blue-500 text-white'
+                  ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-500 dark:bg-dark-600 dark:text-gray-400'
               ]"
             >
@@ -848,7 +848,7 @@
           <div class="mt-2 flex flex-wrap gap-2">
             <a
               :href="geminiHelpLinks.apiKey"
-              class="font-medium text-blue-600 hover:underline dark:text-blue-400"
+              class="font-medium text-primary-600 hover:underline dark:text-primary-400"
               target="_blank"
               rel="noreferrer"
             >
@@ -918,15 +918,15 @@
               :class="[
                 'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
                 geminiOAuthType === 'code_assist'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 hover:border-blue-300 dark:border-dark-600 dark:hover:border-blue-700'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-gray-200 hover:border-primary-300 dark:border-dark-600 dark:hover:border-primary-700'
               ]"
             >
               <div
                 :class="[
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
                   geminiOAuthType === 'code_assist'
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-primary-500 text-white'
                     : 'bg-gray-100 text-gray-500 dark:bg-dark-600 dark:text-gray-400'
                 ]"
               >
@@ -943,7 +943,7 @@
                   {{ t('admin.accounts.gemini.oauthType.codeAssistRequirement') }}
                   <a
                     :href="geminiHelpLinks.gcpProject"
-                    class="ml-1 text-blue-600 hover:underline dark:text-blue-400"
+                    class="ml-1 text-primary-600 hover:underline dark:text-primary-400"
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -952,7 +952,7 @@
                 </div>
                 <div class="mt-2 flex flex-wrap gap-1">
                   <span
-                    class="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                    class="rounded bg-primary-100 px-2 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                   >
                     {{ t('admin.accounts.gemini.oauthType.badges.enterprise') }}
                   </span>
@@ -1334,7 +1334,7 @@
               </div>
               <div
                 v-if="vertexClientEmail"
-                class="mt-3 rounded-md border border-sky-200 bg-white px-3 py-2 text-xs text-sky-900 dark:border-sky-800/50 dark:bg-dark-800 dark:text-sky-200"
+                class="mt-3 rounded-md border border-sky-200 bg-surface px-3 py-2 text-xs text-sky-900 dark:border-sky-800/50 dark:bg-dark-800 dark:text-sky-200"
               >
                 <div class="truncate">Project ID: <span class="font-mono">{{ vertexProjectId }}</span></div>
                 <div class="truncate">Client Email: <span class="font-mono">{{ vertexClientEmail }}</span></div>
@@ -1806,8 +1806,8 @@
               />
             </button>
           </div>
-          <div v-if="poolModeEnabled" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="poolModeEnabled" class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.poolModeInfo') }}
             </p>
@@ -1864,8 +1864,8 @@
               :aria-label="t('admin.accounts.explicitCacheUpstream')"
             />
           </div>
-          <div v-if="explicitCacheUpstreamEnabled" class="mt-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="explicitCacheUpstreamEnabled" class="mt-3 rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.explicitCacheUpstreamInfo') }}
             </p>
@@ -2015,8 +2015,8 @@
           </div>
 
           <div v-if="headerOverrideEnabled" class="space-y-3">
-            <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
+            <div class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+              <p class="text-xs text-primary-700 dark:text-primary-400">
                 <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
                 {{ t('admin.accounts.headerOverride.info') }}
               </p>
@@ -2255,8 +2255,8 @@
               />
             </button>
           </div>
-          <div v-if="poolModeEnabled" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="poolModeEnabled" class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.poolModeInfo') }}
             </p>
@@ -2470,8 +2470,8 @@
         </div>
 
         <div v-if="headerOverrideEnabled" class="space-y-3">
-          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+            <p class="text-xs text-primary-700 dark:text-primary-400">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.headerOverride.info') }}
             </p>
@@ -2653,8 +2653,8 @@
         </div>
 
         <div v-if="tempUnschedEnabled" class="space-y-3">
-          <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div class="rounded-lg bg-primary-50 p-3 dark:bg-primary-900/20">
+              <p class="text-xs text-primary-700 dark:text-primary-400">
                 <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
                 {{ t('admin.accounts.tempUnschedulable.notice') }}
               </p>
@@ -3078,7 +3078,7 @@
                   'px-3 py-1.5 text-sm rounded-md border transition-colors',
                   userMsgQueueMode === opt.value
                     ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
+                    : 'bg-surface dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
                 ]">
                 {{ opt.label }}
               </button>
@@ -3177,7 +3177,7 @@
             <label class="input-label text-xs">{{ t('admin.accounts.quotaControl.cacheTTLOverride.target') }}</label>
             <select
               v-model="cacheTTLOverrideTarget"
-              class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-500 dark:bg-dark-700 dark:text-white"
+              class="mt-1 block w-full rounded-md border border-gray-300 bg-surface px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-500 dark:bg-dark-700 dark:text-white"
             >
               <option value="5m">5m</option>
               <option value="1h">1h</option>
@@ -3925,7 +3925,7 @@
                 href="https://policies.google.com/terms"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-400"
               >
                 {{ t('admin.accounts.gemini.setupGuide.links.countryCheck') }}
               </a>
@@ -3934,7 +3934,7 @@
                 href="https://policies.google.com/country-association-form"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-400"
               >
                 {{ t('admin.accounts.gemini.setupGuide.links.countryChange') }}
               </a>
@@ -3943,7 +3943,7 @@
                 href="https://gemini.google.com/gems/create?hl=en-US&pli=1"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-400"
               >
                 {{ t('admin.accounts.gemini.setupGuide.links.geminiWebActivation') }}
               </a>
@@ -3952,7 +3952,7 @@
                 href="https://console.cloud.google.com"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-400"
               >
                 {{ t('admin.accounts.gemini.setupGuide.links.gcpProject') }}
               </a>
@@ -4048,7 +4048,7 @@
             :href="geminiQuotaDocs.codeAssist"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-400"
           >
             {{ t('admin.accounts.gemini.quotaPolicy.docs.codeAssist') }}
           </a>
@@ -4056,7 +4056,7 @@
             :href="geminiQuotaDocs.aiStudio"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-400"
           >
             {{ t('admin.accounts.gemini.quotaPolicy.docs.aiStudio') }}
           </a>
@@ -4064,7 +4064,7 @@
             :href="geminiQuotaDocs.vertex"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-400"
           >
             {{ t('admin.accounts.gemini.quotaPolicy.docs.vertex') }}
           </a>
@@ -4081,7 +4081,7 @@
             :href="geminiHelpLinks.apiKey"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-400"
           >
             {{ t('admin.accounts.gemini.accountType.apiKeyLink') }}
           </a>
@@ -4089,7 +4089,7 @@
             :href="geminiHelpLinks.aiStudioPricing"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-400"
           >
             {{ t('admin.accounts.gemini.accountType.quotaLink') }}
           </a>

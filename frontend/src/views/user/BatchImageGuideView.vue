@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col gap-3">
@@ -37,7 +36,7 @@
 
           <div
             v-if="selectedJobIds.size"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-700 dark:bg-dark-800"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-surface px-3 py-2 shadow-sm dark:border-dark-700 dark:bg-dark-800"
           >
             <i18n-t
               keypath="batchImage.list.selectedJobs"
@@ -231,7 +230,7 @@
       <template #pagination>
         <div
           v-if="visibleBatchJobs.length > 0 || pagination.page > 1"
-          class="flex flex-col gap-3 border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-800 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          class="flex flex-col gap-3 border-t border-gray-200 bg-surface px-4 py-3 dark:border-dark-700 dark:bg-dark-800 sm:flex-row sm:items-center sm:justify-between sm:px-6"
         >
           <div class="flex flex-wrap items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
             <i18n-t keypath="batchImage.pagination.pageNumber" tag="span" scope="global">
@@ -281,7 +280,7 @@
     <Teleport to="body">
       <div
         v-if="openMoreJobId"
-        class="fixed z-[9999] w-44 overflow-hidden rounded-xl bg-white py-1 text-sm shadow-lg ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+        class="fixed z-[9999] w-44 overflow-hidden rounded-xl bg-surface py-1 text-sm shadow-lg ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
         :style="moreMenuStyle"
         @click.stop
       >
@@ -315,7 +314,7 @@
     <Teleport to="body">
       <div
         v-if="promptPopover.visible"
-        class="batch-prompt-popover fixed z-[9999] rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
+        class="batch-prompt-popover fixed z-[9999] rounded-lg border border-gray-200 bg-surface p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
         :style="promptPopover.style"
         @mouseenter="cancelPromptPopoverClose"
         @mouseleave="schedulePromptPopoverClose"
@@ -377,7 +376,7 @@
           </button>
         </div>
 
-        <div v-if="items.length" class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+        <div v-if="items.length" class="overflow-x-auto rounded-lg border border-gray-200 bg-surface dark:border-dark-700 dark:bg-dark-900">
           <table class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
             <colgroup>
               <col class="w-[18%]" />
@@ -748,13 +747,11 @@
         </div>
       </template>
     </BaseDialog>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'

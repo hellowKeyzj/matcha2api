@@ -11,6 +11,39 @@ This directory contains the Vue Router configuration for the Sub2API frontend ap
 
 ## Route Structure
 
+### Persistent Workspace Layout
+
+`index.ts` separates `standaloneRoutes` from `workspaceRoutes`. A single lazy-loaded
+`AppLayout` parent owns all workspace children, using absolute child paths to retain
+existing URLs, names and aliases. Pages no longer wrap themselves in `AppLayout`.
+Navigation replaces only the nested `RouterView`; the logo, sidebar, header and
+background remain mounted. Page content is not cached with `KeepAlive`.
+
+Layout ownership is independent of authentication: MCP OAuth consent is standalone
+despite requiring login, while the public Airwallex payment route retains its workspace.
+Ops fullscreen, Stripe's `method` popup and public Model Plaza use `hideAppChrome`
+route metadata. The layout keeps the outlet's DOM ancestry stable during query changes,
+so payment SDK state and Ops filters are not recreated. `appLayoutClass` applies the
+Accounts-specific shell styles only while that route is active.
+
+`__tests__/layout-lifecycle.spec.ts` exercises real route records and mounted pages,
+checking component identities, DOM identity, page disposal and presentation exceptions.
+Persistent overlay owners observe committed route changes to close transient menus
+without rebuilding the shell. Cancelled navigation alone preserves their state.
+The sidebar retries a failed access lookup on the next page navigation; successful
+results stay cached by the existing composable. The layout and common component
+navigation tests cover these behaviors separately from page lifecycle assertions.
+
+### Desktop Sign-In
+
+`/auth/desktop` captures and removes the ticket fragment before loading the callback.
+The router publishes it only after that navigation succeeds; cancelled or failed
+navigation discards only its own pending ticket and leaves the current session intact.
+The mounted callback pauses the old session before exchanging a valid ticket and
+aborts that exchange on unmount or replacement. A late response cannot install a session.
+Missing or malformed tickets do not prevent normal persisted-session restoration
+on the next route. The router lifecycle and API exchange tests cover these boundaries.
+
 ### Public Routes (No Authentication Required)
 
 | Path        | Component    | Description            |
@@ -22,7 +55,7 @@ This directory contains the Vue Router configuration for the Sub2API frontend ap
 
 | Path         | Component     | Description                  |
 | ------------ | ------------- | ---------------------------- |
-| `/`          | -             | Redirects to `/dashboard`    |
+| `/`          | -             | Redirects to `/home`         |
 | `/dashboard` | DashboardView | User dashboard with stats    |
 | `/keys`      | KeysView      | API key management           |
 | `/usage`     | UsageView     | Usage records and statistics |

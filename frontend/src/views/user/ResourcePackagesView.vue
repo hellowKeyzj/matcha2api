@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <TablePageLayout>
       <template #actions>
         <div class="flex flex-col gap-4 border-b border-gray-200 pb-5 dark:border-dark-700 sm:flex-row sm:items-end sm:justify-between">
@@ -29,7 +28,7 @@
 
       <template #filters>
         <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 dark:border-dark-700 dark:bg-dark-800">
+          <div class="inline-flex rounded-lg border border-gray-200 bg-surface p-1 dark:border-dark-700 dark:bg-dark-800">
             <button
               v-for="tab in tabs"
               :key="tab.value"
@@ -147,13 +146,11 @@
         />
       </template>
     </TablePageLayout>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'

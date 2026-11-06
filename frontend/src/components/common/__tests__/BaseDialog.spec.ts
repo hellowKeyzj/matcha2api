@@ -8,6 +8,21 @@ vi.mock('vue-i18n', () => ({
 }))
 
 describe('BaseDialog', () => {
+  it('applies panel styling to the teleported panel without replacing its width', () => {
+    const wrapper = mount(BaseDialog, {
+      attachTo: document.body,
+      props: { show: true, title: 'Account', width: 'wide', panelClass: 'account-editor' },
+      global: { stubs: { Icon: true } }
+    })
+
+    const panel = document.body.querySelector('.modal-content')
+    expect(panel?.classList.contains('account-editor')).toBe(true)
+    expect(panel?.classList.contains('lg:max-w-4xl')).toBe(true)
+    expect(document.body.querySelector('[role="dialog"]')?.getAttribute('aria-labelledby'))
+      .toBe(document.body.querySelector('.modal-title')?.id)
+    wrapper.unmount()
+  })
+
   afterEach(() => {
     document.body.innerHTML = ''
     document.body.classList.remove('modal-open')

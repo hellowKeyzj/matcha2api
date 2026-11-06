@@ -12,7 +12,7 @@
           type="button"
           class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
           :class="metric === 'tokens'
-            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+            ? 'bg-surface text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
           @click="emit('update:metric', 'tokens')"
         >
@@ -22,7 +22,7 @@
           type="button"
           class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
           :class="metric === 'actual_cost'
-            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+            ? 'bg-surface text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
           @click="emit('update:metric', 'actual_cost')"
         >
@@ -58,7 +58,7 @@
               >
                 <td
                   class="max-w-[100px] truncate py-1.5 font-medium"
-                  :class="enableBreakdown && group.group_id > 0 ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'"
+                  :class="enableBreakdown && group.group_id > 0 ? 'text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300' : 'text-gray-900 dark:text-white'"
                   :title="group.group_name || String(group.group_id)"
                 >
                   <span class="inline-flex items-center gap-1">

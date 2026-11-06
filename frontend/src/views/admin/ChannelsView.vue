@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
@@ -543,7 +542,7 @@
                     <!-- Search results dropdown -->
                     <div
                       v-if="showRuleAccountDropdown[`${section.platform}-${ruleIndex}`] && (ruleAccountSearchResults[`${section.platform}-${ruleIndex}`]?.length ?? 0) > 0"
-                      class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                      class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-surface shadow-lg dark:border-dark-600 dark:bg-dark-800"
                     >
                       <button
                         v-for="account in ruleAccountSearchResults[`${section.platform}-${ruleIndex}`]"
@@ -624,7 +623,6 @@
       @confirm="confirmDelete"
       @cancel="showDeleteDialog = false"
     />
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -640,7 +638,6 @@ import type { AdminGroup, GroupPlatform } from '@/types'
 import type { Column } from '@/components/common/types'
 import { platformTextClass, platformBadgeLightClass, platformLabel as catalogPlatformLabel } from '@/utils/platformColors'
 import { listPlatformIds, supportsPricingModelSync } from '@/constants/platformCatalog'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'

@@ -98,7 +98,6 @@ function mountView(stubActionMenu = true) {
     attachTo: document.body,
     global: {
       stubs: {
-        AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: { template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>' },
         DataTable: DataTableStub,
         AccountTableActions: { template: '<div><slot name="after" /></div>' },

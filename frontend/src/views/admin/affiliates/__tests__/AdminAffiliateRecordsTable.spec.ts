@@ -58,7 +58,6 @@ function mountTable(type: 'invites' | 'rebates' | 'transfers') {
     props: { type },
     global: {
       stubs: {
-        AppLayout: { template: '<main><slot /></main>' },
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         Pagination: true,

@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="custom-page-layout">
       <div class="card flex-1 min-h-0 overflow-hidden">
         <div v-if="loading" class="flex h-full items-center justify-center py-12">
@@ -122,7 +121,6 @@
         </div>
       </div>
     </div>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -133,7 +131,6 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { buildApiUrl } from '@/api/client'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
@@ -511,7 +508,7 @@ onUnmounted(() => {
 
 .toc-toggle-btn {
   @apply absolute left-2 top-2 z-10 flex items-center px-2 py-1.5 rounded-md text-sm;
-  @apply bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-500;
+  @apply bg-surface dark:bg-dark-700 border border-gray-200 dark:border-dark-500;
   @apply text-gray-600 dark:text-dark-300 hover:bg-gray-100 dark:hover:bg-dark-600;
   @apply shadow-sm transition-colors cursor-pointer;
 }
@@ -525,7 +522,7 @@ onUnmounted(() => {
 
 .custom-open-fab {
   @apply absolute right-3 top-3 z-10 w-max max-w-full touch-none select-none transition-colors;
-  @apply shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-dark-800/80;
+  @apply shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/80 dark:supports-[backdrop-filter]:bg-dark-800/80;
 }
 
 .custom-embed-frame {

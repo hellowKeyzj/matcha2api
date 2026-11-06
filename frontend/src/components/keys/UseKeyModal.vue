@@ -77,7 +77,7 @@
               :class="[
                 'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 codexAuthMode === 'legacy'
-                  ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                  ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                   : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
               ]"
               @click="codexAuthMode = 'legacy'"
@@ -92,7 +92,7 @@
               :class="[
                 'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 codexAuthMode === 'api-key'
-                  ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                  ? 'bg-surface text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                   : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
               ]"
               @click="codexAuthMode = 'api-key'"
@@ -244,9 +244,9 @@
         </section>
 
         <!-- Usage Note -->
-        <div v-if="showPlatformNote" class="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-          <Icon name="infoCircle" size="md" class="text-blue-500 flex-shrink-0 mt-0.5" />
-          <p class="text-sm text-blue-700 dark:text-blue-300">
+        <div v-if="showPlatformNote" class="flex items-start gap-3 p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800">
+          <Icon name="infoCircle" size="md" class="text-primary-500 flex-shrink-0 mt-0.5" />
+          <p class="text-sm text-primary-700 dark:text-primary-300">
             {{ platformNote }}
           </p>
         </div>
@@ -730,9 +730,9 @@ const wrapToken = (className: string, value: string) =>
 
 const keyword = (value: string) => wrapToken('text-emerald-300', value)
 const variable = (value: string) => wrapToken('text-sky-200', value)
-const operator = (value: string) => wrapToken('text-slate-400', value)
+const operator = (value: string) => wrapToken('text-gray-400', value)
 const string = (value: string) => wrapToken('text-amber-200', value)
-const comment = (value: string) => wrapToken('text-slate-500', value)
+const comment = (value: string) => wrapToken('text-gray-500', value)
 
 // Syntax highlighting helpers
 // Generate file configs based on platform and active tab

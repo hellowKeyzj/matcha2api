@@ -139,10 +139,6 @@ const createGroup = (overrides: Partial<AdminGroup> = {}): AdminGroup => ({
   ...overrides,
 })
 
-const AppLayoutStub = {
-  template: '<div><slot /></div>',
-}
-
 const TablePageLayoutStub = {
   template: `
     <div>
@@ -196,7 +192,6 @@ const mountView = async () => {
   const wrapper = mount(GroupsView, {
     global: {
       stubs: {
-        AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         Pagination: true,

@@ -859,7 +859,7 @@ function handleToolbarRefresh() {
 </script>
 
 <template>
-  <div :class="['flex flex-col gap-4 rounded-3xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700', props.fullscreen ? 'p-8' : 'p-6']">
+  <div :class="['flex flex-col gap-4 rounded-3xl bg-surface shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700', props.fullscreen ? 'p-8' : 'p-6']">
     <!-- Top Toolbar -->
     <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4 dark:border-dark-700">
       <div>
@@ -951,7 +951,7 @@ function handleToolbarRefresh() {
         <button
           v-if="!props.fullscreen"
           type="button"
-          class="flex h-8 items-center gap-1.5 rounded-lg bg-blue-100 px-3 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+          class="flex h-8 items-center gap-1.5 rounded-lg bg-primary-100 px-3 text-xs font-bold text-primary-700 transition-colors hover:bg-primary-200 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50"
           :title="t('admin.ops.alertRules.title')"
           @click="emit('openAlertRules')"
         >
@@ -997,13 +997,13 @@ function handleToolbarRefresh() {
         <div class="grid h-full grid-cols-1 gap-6 md:grid-cols-[200px_1fr] md:items-center">
           <!-- 1) Health Score -->
           <div
-            class="group relative flex cursor-pointer flex-col items-center justify-center rounded-xl py-2 transition-all hover:bg-white/60 dark:hover:bg-dark-800/60 md:border-r md:border-gray-200 md:pr-6 dark:md:border-dark-700"
+            class="group relative flex cursor-pointer flex-col items-center justify-center rounded-xl py-2 transition-all hover:bg-surface/60 dark:hover:bg-dark-800/60 md:border-r md:border-gray-200 md:pr-6 dark:md:border-dark-700"
           >
             <!-- Diagnosis Popover (hover) -->
             <div
               class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100 md:left-full md:top-0 md:ml-2 md:mt-0 md:translate-x-0"
             >
-              <div class="rounded-xl bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10">
+              <div class="rounded-xl bg-surface p-4 shadow-xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10">
                 <h4 class="mb-3 border-b border-gray-100 pb-2 text-sm font-bold text-gray-900 dark:border-dark-700 dark:text-white flex items-center gap-2">
                   <Icon name="brain" size="sm" class="text-blue-500" />
                   {{ t('admin.ops.diagnosis.title') }}
@@ -1121,7 +1121,7 @@ function handleToolbarRefresh() {
                   type="button"
                   class="rounded px-1.5 py-0.5 text-[9px] font-bold transition-colors sm:px-2 sm:text-[10px]"
                   :class="realtimeWindow === window
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-primary-500 text-white'
                     : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-dark-700 dark:text-gray-400 dark:hover:bg-dark-600'"
                   @click="realtimeWindow = window"
                 >
@@ -1217,7 +1217,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-[10px] font-bold text-blue-500 hover:underline"
+              class="text-[10px] font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.requestDetails.title') })"
             >
@@ -1254,7 +1254,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-[10px] font-bold text-blue-500 hover:underline"
+              class="text-[10px] font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.requestDetails.title'), kind: 'error' })"
             >
@@ -1284,7 +1284,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-[10px] font-bold text-blue-500 hover:underline"
+              class="text-[10px] font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.latencyDuration'), sort: 'duration_desc' })"
             >
@@ -1335,7 +1335,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-[10px] font-bold text-blue-500 hover:underline"
+              class="text-[10px] font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.ttftLabel'), kind: 'success', sort: 'ttft_desc' })"
             >
@@ -1384,7 +1384,7 @@ function handleToolbarRefresh() {
               <span class="text-[10px] font-bold uppercase text-gray-400">{{ t('admin.ops.requestErrors') }}</span>
               <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.errors')" />
             </div>
-            <button v-if="!props.fullscreen" class="text-[10px] font-bold text-blue-500 hover:underline" type="button" @click="openErrorDetails('request')">
+            <button v-if="!props.fullscreen" class="text-[10px] font-bold text-primary-500 hover:underline" type="button" @click="openErrorDetails('request')">
               {{ t('admin.ops.requestDetails.details') }}
             </button>
           </div>
@@ -1410,7 +1410,7 @@ function handleToolbarRefresh() {
               <span class="text-[10px] font-bold uppercase text-gray-400">{{ t('admin.ops.upstreamErrors') }}</span>
               <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.upstreamErrors')" />
             </div>
-            <button v-if="!props.fullscreen" class="text-[10px] font-bold text-blue-500 hover:underline" type="button" @click="openErrorDetails('upstream')">
+            <button v-if="!props.fullscreen" class="text-[10px] font-bold text-primary-500 hover:underline" type="button" @click="openErrorDetails('upstream')">
               {{ t('admin.ops.requestDetails.details') }}
             </button>
           </div>
@@ -1547,7 +1547,7 @@ function handleToolbarRefresh() {
               <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ t('admin.ops.jobs') }}</div>
               <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.jobs')" />
             </div>
-            <button v-if="!props.fullscreen" class="text-[10px] font-bold text-blue-500 hover:underline" type="button" @click="openJobsDetails">
+            <button v-if="!props.fullscreen" class="text-[10px] font-bold text-primary-500 hover:underline" type="button" @click="openJobsDetails">
               {{ t('admin.ops.requestDetails.details') }}
             </button>
           </div>
@@ -1572,7 +1572,7 @@ function handleToolbarRefresh() {
         <div
           v-for="hb in jobHeartbeats"
           :key="hb.job_name"
-          class="rounded-xl border border-gray-100 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+          class="rounded-xl border border-gray-100 bg-surface p-4 dark:border-dark-700 dark:bg-dark-900"
         >
           <div class="flex items-center justify-between gap-3">
             <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ hb.job_name }}</div>
@@ -1614,7 +1614,7 @@ function handleToolbarRefresh() {
           <input
             v-model="customStartTimeInput"
             type="datetime-local"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-dark-600 dark:bg-dark-800 dark:text-white"
+            class="w-full rounded-lg border border-gray-300 bg-surface px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800 dark:text-white"
           />
         </div>
         <div>
@@ -1624,7 +1624,7 @@ function handleToolbarRefresh() {
           <input
             v-model="customEndTimeInput"
             type="datetime-local"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-dark-600 dark:bg-dark-800 dark:text-white"
+            class="w-full rounded-lg border border-gray-300 bg-surface px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800 dark:text-white"
           />
         </div>
         <div class="flex justify-end gap-3 pt-2">
@@ -1637,7 +1637,7 @@ function handleToolbarRefresh() {
           </button>
           <button
             type="button"
-            class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+            class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600"
             @click="handleCustomTimeRangeConfirm"
           >
             {{ t('common.confirm') }}

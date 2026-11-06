@@ -237,7 +237,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="rounded-3xl bg-surface p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
     <div class="mb-4 flex items-start justify-between gap-4">
       <div>
         <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ t('admin.ops.runtime.title') }}</h3>
@@ -280,7 +280,7 @@ onMounted(() => {
           </div>
 
           <details class="col-span-1 md:col-span-2">
-            <summary class="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
+            <summary class="cursor-pointer text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
               {{ t('admin.ops.runtime.showAdvancedDeveloperSettings') }}
             </summary>
             <div class="mt-2 grid grid-cols-1 gap-3 rounded-lg bg-gray-100 p-3 dark:bg-dark-800 md:grid-cols-2">
@@ -422,7 +422,7 @@ onMounted(() => {
             />
           </div>
 
-          <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800">
+          <div class="rounded-xl border border-gray-200 bg-surface p-4 dark:border-dark-700 dark:bg-dark-800">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <div class="text-xs font-bold text-gray-900 dark:text-white">{{ t('admin.ops.runtime.silencing.entries.title') }}</div>

@@ -10,7 +10,6 @@ vi.mock('@/api/mcp', () => ({ mcpAPI: { getConnectionConfig, listGrants, revokeG
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess }) }))
 vi.mock('@/composables/useClipboard', () => ({ useClipboard: () => ({ copyToClipboard }) }))
 vi.mock('@/utils/format', () => ({ formatDate: (value: string) => value }))
-vi.mock('@/components/layout/AppLayout.vue', () => ({ default: { template: '<main><slot /></main>' } }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 const item: MCPGrant = {

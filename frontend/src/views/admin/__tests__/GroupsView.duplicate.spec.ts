@@ -128,10 +128,6 @@ const sourceGroup: AdminGroup = {
   sort_order: 10
 }
 
-const AppLayoutStub = defineComponent({
-  template: '<main><slot /></main>'
-})
-
 const TablePageLayoutStub = defineComponent({
   template: '<section><slot name="filters" /><slot name="table" /><slot name="pagination" /></section>'
 })
@@ -156,7 +152,6 @@ function mountView() {
   return mount(GroupsView, {
     global: {
       stubs: {
-        AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         Pagination: true,

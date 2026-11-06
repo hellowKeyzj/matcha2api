@@ -325,7 +325,7 @@ onUnmounted(() => {
 .date-picker-trigger {
   @apply flex items-center gap-2;
   @apply rounded-lg px-3 py-2 text-sm;
-  @apply bg-white dark:bg-dark-800;
+  @apply bg-surface dark:bg-dark-800;
   @apply border border-gray-200 dark:border-dark-600;
   @apply text-gray-700 dark:text-gray-300;
   @apply transition-all duration-200;
@@ -352,7 +352,7 @@ onUnmounted(() => {
 
 .date-picker-dropdown {
   @apply absolute left-0 z-[100] mt-2;
-  @apply bg-white dark:bg-dark-800;
+  @apply bg-surface dark:bg-dark-800;
   @apply rounded-xl;
   @apply border border-gray-200 dark:border-dark-700;
   @apply shadow-lg shadow-black/10 dark:shadow-black/30;
@@ -435,4 +435,18 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-8px);
 }
+</style>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .date-picker-trigger {
+  border-radius: 24px; background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(.theme-dala, .dark .theme-dala) .date-picker-dropdown {
+  border-radius: 24px; background: var(--ui-surface); border-color: var(--ui-line); box-shadow: none;
+  min-width: min(320px, calc(100vw - 32px)); max-width: calc(100vw - 32px);
+}
+:is(.theme-dala, .dark .theme-dala) .date-picker-input {
+  background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line); border-radius: 12px;
+}
+.theme-dala .date-picker-apply { border-radius: 24px; background: var(--ui-action); }
 </style>

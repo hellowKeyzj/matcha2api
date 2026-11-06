@@ -42,7 +42,7 @@ function mountPage(locale: 'en' | 'zh' = 'en') {
       // Vitest aliases the runtime-only build; these assertions use plain-text messages.
       messageCompiler: (message) => () => String(message),
     })],
-    stubs: { AppLayout: { template: '<main><slot /></main>' }, Icon: true },
+    stubs: { Icon: true },
   } })
 }
 type Wrapper = ReturnType<typeof mountPage>

@@ -6,30 +6,42 @@ Vue 3 layout components for the Sub2API frontend, built with Composition API, Ty
 
 ### 1. AppLayout.vue
 
-Main application layout with sidebar and header.
+Persistent router parent with sidebar, header and workspace background.
 
-**Usage:**
+**Route ownership:**
 
-```vue
-<template>
-  <AppLayout>
-    <!-- Your page content here -->
-    <h1>Dashboard</h1>
-    <p>Welcome to your dashboard!</p>
-  </AppLayout>
-</template>
-
-<script setup lang="ts">
-import { AppLayout } from '@/components/layout'
-</script>
+```typescript
+{
+  path: '/',
+  component: () => import('@/components/layout/AppLayout.vue'),
+  children: [
+    { path: '/dashboard', component: () => import('@/views/user/DashboardView.vue') },
+    // Other workspace pages share this same parent.
+  ]
+}
 ```
+
+Pages render only their content, without importing or wrapping `AppLayout`.
+Authentication, setup, MCP consent and other standalone pages stay outside this parent.
 
 **Features:**
 
 - Responsive sidebar (collapsible)
 - Fixed header at top
-- Main content area with slot
+- Main content area with a nested `RouterView`
 - Automatically adjusts margin based on sidebar state
+- Preserves sidebar, logo, header and particles during workspace navigation
+- `hideAppChrome` route meta hides workspace chrome for Ops fullscreen, Stripe popup
+  and public Model Plaza without remounting the page when its query changes
+- `appLayoutClass` route meta scopes page-specific shell styling (Accounts)
+
+**Lifecycle ownership:**
+
+- The router owns the shell; leaving a workspace page still disposes its content
+- Each persistent menu/dialog owner closes its transient overlay on committed navigation
+- Click-outside and explicit close actions still work; a cancelled navigation alone does not close overlays
+- Sidebar access lookup retries after a failed request on the next page navigation,
+  using the existing composable's cache and in-flight request deduplication
 
 ---
 
@@ -69,7 +81,7 @@ Top header with user info and actions.
 **Features:**
 
 - Mobile menu toggle button
-- Page title (from route meta or slot)
+- Page title from route metadata
 - User balance display (desktop only)
 - User dropdown menu with:
   - Profile link
@@ -78,19 +90,14 @@ Top header with user info and actions.
 - Click-outside handling for dropdown
 - Responsive design
 
-**Usage with custom title:**
+**Page titles come from route meta:**
 
-```vue
-<template>
-  <AppLayout>
-    <template #title> Custom Page Title </template>
-
-    <!-- Your content -->
-  </AppLayout>
-</template>
+```typescript
+meta: { title: 'Custom Page Title', titleKey: 'customPage.title' }
 ```
 
 **Used automatically by AppLayout** - no need to import separately.
+The header also owns the onboarding controls, which are not mounted in standalone presentation.
 
 ---
 

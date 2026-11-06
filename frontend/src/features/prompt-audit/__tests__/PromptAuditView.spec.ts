@@ -32,7 +32,6 @@ const runtime = (): PromptAuditRuntime => ({
   guard_metrics: { total: 1, allowed: 1, flagged: 0, blocked: 0, unavailable: 0, invalid: 0, timeouts: 0, failovers: 0, bulkhead_full: 0, record_failed: 0 },
 })
 
-const AppLayoutStub = { template: '<div><slot /></div>' }
 const RuntimeStub = defineComponent({ props: ['runtime', 'loading', 'error'], emits: ['refresh'], template: '<div data-test="runtime">{{ error }}</div>' })
 const EndpointStub = defineComponent({
   props: ['endpoints', 'probeResults', 'probingIds'], emits: ['update:endpoints', 'probe'],
@@ -54,7 +53,7 @@ const FilterDeleteStub = defineComponent({
 
 function mountView() {
   return mount(PromptAuditView, {
-    global: { stubs: { AppLayout: AppLayoutStub, RuntimeOverview: RuntimeStub, EndpointPool: EndpointStub, PolicyPanel: PolicyStub, EventWorkspace: EventsStub, EventDetailDialog: DetailStub, FilterDeleteDialog: FilterDeleteStub, ConfirmDialog: ConfirmStub } },
+    global: { stubs: { RuntimeOverview: RuntimeStub, EndpointPool: EndpointStub, PolicyPanel: PolicyStub, EventWorkspace: EventsStub, EventDetailDialog: DetailStub, FilterDeleteDialog: FilterDeleteStub, ConfirmDialog: ConfirmStub } },
   })
 }
 

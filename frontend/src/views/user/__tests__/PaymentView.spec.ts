@@ -243,9 +243,6 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   const wrapper = shallowMount(PaymentView, {
     global: {
       stubs: {
-        AppLayout: {
-          template: '<div><slot /></div>',
-        },
         Teleport: true,
         Transition: false,
       },
@@ -283,9 +280,6 @@ async function mountSubscriptionPlanList(planCount: number) {
   const wrapper = shallowMount(PaymentView, {
     global: {
       stubs: {
-        AppLayout: {
-          template: '<div><slot /></div>',
-        },
         Teleport: true,
         Transition: false,
       },
@@ -310,7 +304,6 @@ describe('PaymentView help text', () => {
     const wrapper = shallowMount(PaymentView, {
       global: {
         stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
           Teleport: true,
           Transition: false,
         },
@@ -392,7 +385,6 @@ describe('PaymentView recharge rate preview', () => {
     const wrapper = shallowMount(PaymentView, {
       global: {
         stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
           Teleport: true,
           Transition: false,
         },
@@ -559,9 +551,6 @@ describe('PaymentView payment recovery', () => {
     const wrapper = shallowMount(PaymentView, {
       global: {
         stubs: {
-          AppLayout: {
-            template: '<div><slot /></div>',
-          },
           PaymentStatusPanel: {
             template: '<button data-test="payment-done" @click="$emit(\'done\')" />',
           },

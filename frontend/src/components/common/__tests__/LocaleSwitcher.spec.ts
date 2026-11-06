@@ -14,6 +14,7 @@ vi.mock('@/i18n', () => ({
 }))
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: { value: 'zh' } }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/' }) }))
 
 const reload = vi.fn()
 

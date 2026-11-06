@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <TablePageLayout>
       <template #filters>
         <div class="flex flex-wrap items-center gap-3">
@@ -165,13 +164,11 @@
         </div>
       </div>
     </BaseDialog>
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, reactive, ref, type PropType } from 'vue'
 import { useI18n } from 'vue-i18n'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -431,7 +428,7 @@ const OverviewStat = defineComponent({
     mono: { type: Boolean, default: false },
   },
   setup(statProps) {
-    return () => h('div', { class: 'rounded-lg border border-gray-100 bg-white p-3 dark:border-dark-700 dark:bg-dark-900' }, [
+    return () => h('div', { class: 'rounded-lg border border-gray-100 bg-surface p-3 dark:border-dark-700 dark:bg-dark-900' }, [
       h('div', { class: 'text-sm text-gray-500 dark:text-dark-400' }, statProps.label),
       h('div', {
         class: statProps.mono

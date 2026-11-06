@@ -53,10 +53,6 @@ vi.mock('vue-i18n', async () => {
   }
 })
 
-const AppLayoutStub = defineComponent({
-  template: '<main><slot /></main>',
-})
-
 const TablePageLayoutStub = defineComponent({
   template: '<section><slot name="filters" /><slot name="table" /><slot name="pagination" /></section>',
 })
@@ -108,7 +104,6 @@ function mountView() {
   return mount(ChannelMonitorView, {
     global: {
       stubs: {
-        AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,
         MonitorFiltersBar: true,
