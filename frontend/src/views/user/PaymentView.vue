@@ -279,6 +279,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath, appBasePath } from '@/utils/appBase'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
@@ -477,9 +478,9 @@ function buildWechatOAuthAuthorizeUrl(
   }
 
   try {
-    const targetUrl = new URL(normalizedUrl, window.location.origin)
+    const targetUrl = new URL(appPath(normalizedUrl), window.location.origin)
     const redirectPath = targetUrl.searchParams.get('redirect') || '/purchase'
-    const redirectUrl = new URL(redirectPath, window.location.origin)
+    const redirectUrl = new URL(appPath(redirectPath), window.location.origin)
     const paymentType = normalizeVisibleMethod(context.paymentType) || context.paymentType.trim() || 'wxpay'
 
     redirectUrl.searchParams.set('payment_type', paymentType)
@@ -843,7 +844,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       paymentType: requestType,
       orderType,
       planId,
-      origin: typeof window !== 'undefined' ? window.location.origin : '',
+      origin: typeof window !== 'undefined' ? window.location.origin + appBasePath : '',
       isMobile: isMobileDevice(),
       isWechatBrowser: typeof window !== 'undefined' && /MicroMessenger/i.test(window.navigator.userAgent),
       forceQRCode: !!(checkout.value.alipay_force_qrcode && normalizeVisibleMethod(requestType) === 'alipay'),
@@ -1070,7 +1071,7 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
       paymentType: visibleMethod,
       orderType: context.orderType,
       planId: context.planId,
-      origin: typeof window !== 'undefined' ? window.location.origin : '',
+      origin: typeof window !== 'undefined' ? window.location.origin + appBasePath : '',
       isMobile: false,
       isWechatBrowser: false,
     })

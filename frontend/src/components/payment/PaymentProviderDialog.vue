@@ -305,6 +305,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { reactive, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -413,7 +414,7 @@ const visibleFields = reactive<Record<string, boolean>>({})
 const easyPayCustomMethods = reactive<EasyPayCustomMethod[]>([])
 
 // --- Computed ---
-const defaultBaseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+const defaultBaseUrl = typeof window !== 'undefined' ? (window.location.origin + appBasePath) : ''
 
 const providerWebhookHintMap: Record<string, string> = {
   stripe: 'admin.settings.payment.stripeWebhookHint',

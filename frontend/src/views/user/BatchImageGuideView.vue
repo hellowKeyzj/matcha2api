@@ -752,6 +752,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -1030,7 +1031,7 @@ const currentDisplayJob = computed(() => {
 const endpointBase = computed(() => {
   const configured = appStore.apiBaseUrl?.trim()
   if (configured) return configured.replace(/\/+$/, '')
-  if (typeof window !== 'undefined') return window.location.origin.replace(/\/+$/, '')
+  if (typeof window !== 'undefined') return (window.location.origin + appBasePath).replace(/\/+$/, '')
   return '<你的 Sub2API API 端点>'
 })
 

@@ -499,6 +499,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { testDatabase, testRedis, install, type InstallRequest } from '@/api/setup'
@@ -667,7 +668,7 @@ async function waitForServiceRestart() {
           serviceReady.value = true
           // Redirect to login page after a short delay
           setTimeout(() => {
-            window.location.href = '/login'
+            window.location.href = appPath('/login')
           }, 1500)
           return
         }

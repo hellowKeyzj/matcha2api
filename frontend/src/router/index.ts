@@ -1,3 +1,4 @@
+import { appBasePath } from '@/utils/appBase'
 /**
  * Vue Router configuration for Sub2API frontend
  * Defines all application routes with lazy loading and navigation guards
@@ -789,7 +790,7 @@ const routes: RouteRecordRaw[] = [
  * Create router instance
  */
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(appBasePath || '/'),
   routes,
   scrollBehavior(_to, _from, savedPosition) {
     // Scroll to saved position when using browser back/forward

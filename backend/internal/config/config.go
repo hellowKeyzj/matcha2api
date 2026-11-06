@@ -743,6 +743,7 @@ type PricingConfig struct {
 }
 
 type ServerConfig struct {
+	BasePath                 string    `mapstructure:"base_path"`
 	Host                     string    `mapstructure:"host"`
 	Port                     int       `mapstructure:"port"`
 	Mode                     string    `mapstructure:"mode"`                  // debug/release
@@ -1897,6 +1898,9 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 
 	// 环境变量支持
 	viper.AutomaticEnv()
+	if err := viper.BindEnv("server.base_path", "APP_BASE_PATH"); err != nil {
+		return nil, fmt.Errorf("bind APP_BASE_PATH: %w", err)
+	}
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	if tz, ok := os.LookupEnv("TZ"); ok && strings.TrimSpace(tz) != "" {
 		// AutomaticEnv 会先把 timezone 映射到 TIMEZONE；显式 Set 保证标准 TZ 变量优先。
@@ -2776,6 +2780,11 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	basePath, basePathErr := NormalizeBasePath(c.Server.BasePath)
+	if basePathErr != nil {
+		return basePathErr
+	}
+	c.Server.BasePath = basePath
 	if c.Gateway.MinOutputTokens < 16 {
 		return fmt.Errorf("gateway.min_output_tokens must be at least 16")
 	}

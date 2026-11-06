@@ -989,6 +989,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
@@ -1586,7 +1587,7 @@ const importToCcswitch = (row: ApiKey) => {
 }
 
 const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
-  const baseUrl = publicSettings.value?.api_base_url || window.location.origin
+  const baseUrl = publicSettings.value?.api_base_url || (window.location.origin + appBasePath)
   const platform = row.group?.platform || 'anthropic'
 
   const usageScript = CC_SWITCH_USAGE_SCRIPT

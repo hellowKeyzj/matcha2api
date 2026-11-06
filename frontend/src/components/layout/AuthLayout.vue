@@ -47,7 +47,7 @@
           <div
             class="auth-logo mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl"
           >
-            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
+            <img :src="siteLogo || appPath('/logo.svg')" alt="Logo" class="h-full w-full object-contain" />
           </div>
           <h1 class="text-gradient mb-2 text-3xl font-bold">
             {{ siteName }}
@@ -77,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'

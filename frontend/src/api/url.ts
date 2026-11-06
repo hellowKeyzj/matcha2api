@@ -1,3 +1,5 @@
+import { appPath } from '@/utils/appBase'
+
 const DEFAULT_API_BASE_URL = '/api/v1'
 const API_BASE_URL = normalizeAPIBaseURL(import.meta.env.VITE_API_BASE_URL)
 
@@ -6,7 +8,7 @@ function normalizePath(path: string): string {
 }
 
 function normalizeAPIBaseURL(value: unknown): string {
-  const raw = String(value || DEFAULT_API_BASE_URL).trim() || DEFAULT_API_BASE_URL
+  const raw = String(value || appPath(DEFAULT_API_BASE_URL)).trim() || appPath(DEFAULT_API_BASE_URL)
   const withoutTrailingSlash = raw.replace(/\/+$/, '')
   if (/^[a-z][a-z\d+.-]*:\/\//i.test(withoutTrailingSlash) || withoutTrailingSlash.startsWith('//')) {
     return withoutTrailingSlash
@@ -36,8 +38,8 @@ export function buildGatewayUrl(path: string): string {
       typeof window === 'undefined'
         ? new URL(getAPIBaseURL()).origin
         : new URL(getAPIBaseURL(), window.location.origin).origin
-    return `${origin}${suffix}`
+    return `${origin}${appPath(suffix)}`
   } catch {
-    return suffix
+    return appPath(suffix)
   }
 }

@@ -15,6 +15,13 @@ const routeState = vi.hoisted(() => ({
 }))
 
 const routerReplace = vi.hoisted(() => vi.fn())
+const mountState = vi.hoisted(() => ({ prefix: '' }))
+vi.mock('@/utils/appBase', () => ({
+  get appBasePath() { return mountState.prefix },
+  appPath: (path: string) => path.startsWith('/') && !path.startsWith('//')
+    && path !== mountState.prefix && !path.startsWith(`${mountState.prefix}/`)
+    ? `${mountState.prefix}${path}` : path,
+}))
 const routerPush = vi.hoisted(() => vi.fn())
 const routerResolve = vi.hoisted(() => vi.fn(() => ({ href: '/payment/stripe?mock=1' })))
 const createOrder = vi.hoisted(() => vi.fn())
@@ -724,7 +731,8 @@ describe('PaymentView WeChat JSAPI flow', () => {
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toBeNull()
   })
 
-  it('keeps subscription resume context for token-only WeChat callbacks', async () => {
+  it.each(['', '/sub2api'])('keeps subscription resume context at mount %s', async (prefix) => {
+    mountState.prefix = prefix
     routeState.query = {
       wechat_resume: '1',
       wechat_resume_token: 'resume-subscription-7',
@@ -763,15 +771,16 @@ describe('PaymentView WeChat JSAPI flow', () => {
       plan_id: 7,
       wechat_resume_token: 'resume-subscription-7',
     }))
-    expect(locationState.href).toContain('/api/v1/auth/oauth/wechat/payment/start?')
+    expect(new URL(locationState.href).pathname).toBe(`${prefix}/api/v1/auth/oauth/wechat/payment/start`)
     expect(new URL(locationState.href, 'http://localhost').searchParams.get('redirect')).toBe(
-      '/purchase?from=wechat&payment_type=wxpay&order_type=subscription&plan_id=7',
+      `${prefix}/purchase?from=wechat&payment_type=wxpay&order_type=subscription&plan_id=7`,
     )
 
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: originalLocation,
     })
+    mountState.prefix = ''
   })
 
   it('falls back to QR flow when mobile WeChat payment is unavailable', async () => {

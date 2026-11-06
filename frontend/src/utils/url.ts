@@ -1,3 +1,5 @@
+import { appPath } from './appBase'
+
 /**
  * 验证并规范化 URL
  * 默认只接受绝对 URL（以 http:// 或 https:// 开头），可按需允许相对路径
@@ -16,7 +18,7 @@ export function sanitizeUrl(value: string, options: SanitizeOptions = {}): strin
   }
 
   if (options.allowRelative && trimmed.startsWith('/') && !trimmed.startsWith('//')) {
-    return trimmed
+    return appPath(trimmed)
   }
 
   // 允许 data:image/ 开头的 data URL（仅限图片类型）

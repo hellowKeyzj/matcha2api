@@ -64,6 +64,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { computed, ref, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -179,7 +180,7 @@ async function handlePay() {
     const { error: stripeError } = await stripeInstance.confirmPayment({
       elements: elementsInstance,
       confirmParams: {
-        return_url: window.location.origin + '/payment/result?order_id=' + props.orderId + '&status=success',
+        return_url: window.location.origin + appPath('/payment/result') + '?order_id=' + props.orderId + '&status=success',
       },
       redirect: 'if_required',
     })

@@ -119,7 +119,7 @@ func TestInjectSiteFavicon(t *testing.T) {
 		html := []byte(`<html><head><link rel="icon" type="image/png" href="/logo.png" /></head></html>`)
 		settingsJSON := []byte(`{"site_logo":"https://example.com/custom-logo.png"}`)
 
-		result := injectSiteFavicon(html, settingsJSON)
+		result := injectSiteFavicon(html, settingsJSON, "")
 
 		assert.Contains(t, string(result), `<link rel="icon" href="https://example.com/custom-logo.png" />`)
 		assert.NotContains(t, string(result), `/logo.png`)
@@ -128,14 +128,14 @@ func TestInjectSiteFavicon(t *testing.T) {
 	t.Run("supports_relative_and_data_image_urls", func(t *testing.T) {
 		html := []byte(`<link rel="icon" href="/logo.png" />`)
 
-		assert.Contains(t, string(injectSiteFavicon(html, []byte(`{"site_logo":"/uploads/logo.svg"}`))), `/uploads/logo.svg`)
-		assert.Contains(t, string(injectSiteFavicon(html, []byte(`{"site_logo":"data:image/png;base64,abc"}`))), `data:image/png;base64,abc`)
+		assert.Contains(t, string(injectSiteFavicon(html, []byte(`{"site_logo":"/uploads/logo.svg"}`), "")), `/uploads/logo.svg`)
+		assert.Contains(t, string(injectSiteFavicon(html, []byte(`{"site_logo":"data:image/png;base64,abc"}`), "")), `data:image/png;base64,abc`)
 	})
 
 	t.Run("rejects_unsafe_logo_urls", func(t *testing.T) {
 		html := []byte(`<link rel="icon" href="/logo.png" />`)
 
-		result := injectSiteFavicon(html, []byte(`{"site_logo":"javascript:alert(1)"}`))
+		result := injectSiteFavicon(html, []byte(`{"site_logo":"javascript:alert(1)"}`), "")
 
 		assert.Equal(t, string(html), string(result))
 	})
@@ -143,7 +143,7 @@ func TestInjectSiteFavicon(t *testing.T) {
 	t.Run("escapes_logo_url_for_html", func(t *testing.T) {
 		html := []byte(`<link rel="icon" href="/logo.png" />`)
 
-		result := injectSiteFavicon(html, []byte(`{"site_logo":"https://example.com/logo.png?a=1&b=2"}`))
+		result := injectSiteFavicon(html, []byte(`{"site_logo":"https://example.com/logo.png?a=1&b=2"}`), "")
 
 		assert.Contains(t, string(result), `a=1&amp;b=2`)
 	})
@@ -222,7 +222,7 @@ func TestFrontendServer_InjectSettings(t *testing.T) {
 			settings: map[string]string{"key": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		settingsJSON := []byte(`{"test":"data"}`)
@@ -239,7 +239,7 @@ func TestFrontendServer_InjectSettings(t *testing.T) {
 			settings: map[string]string{"key": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		settingsJSON := []byte(`{}`)
@@ -261,7 +261,7 @@ func TestFrontendServer_InjectSettings(t *testing.T) {
 			},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		settingsJSON := []byte(`{"nested":{"array":[1,2,3]},"special":"<>&"}`)
@@ -277,7 +277,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		// Create a gin context with nonce
@@ -305,7 +305,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		// First request
@@ -336,7 +336,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -357,7 +357,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		// Use a real router for proper 304 handling
@@ -390,7 +390,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -408,7 +408,7 @@ func TestFrontendServer_ServeIndexHTML(t *testing.T) {
 			err: context.DeadlineExceeded,
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		// Invalidate cache to force settings fetch
@@ -433,7 +433,7 @@ func TestFrontendServer_InvalidateCache(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		// First request to populate cache
@@ -515,7 +515,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		apiPaths := []string{
@@ -562,7 +562,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		router := gin.New()
@@ -588,7 +588,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		router := gin.New()
@@ -614,7 +614,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		router := gin.New()
@@ -648,7 +648,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		router := gin.New()
@@ -735,7 +735,7 @@ func TestNewFrontendServer(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 
 		require.NoError(t, err)
 		assert.NotNil(t, server)
@@ -751,7 +751,7 @@ func TestNewFrontendServer(t *testing.T) {
 			settings: map[string]string{"test": "value"},
 		}
 
-		server, err := NewFrontendServer(provider)
+		server, err := NewFrontendServer(provider, "")
 		require.NoError(t, err)
 
 		assert.NotEmpty(t, server.baseHTML)
@@ -769,7 +769,7 @@ func TestHasEmbeddedFrontend(t *testing.T) {
 // Tests for legacy ServeEmbeddedFrontend function
 func TestServeEmbeddedFrontend(t *testing.T) {
 	t.Run("serves_static_files", func(t *testing.T) {
-		middleware := ServeEmbeddedFrontend()
+		middleware := ServeEmbeddedFrontend("")
 
 		router := gin.New()
 		router.Use(middleware)
@@ -783,7 +783,7 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 	})
 
 	t.Run("serves_index_html_for_root", func(t *testing.T) {
-		middleware := ServeEmbeddedFrontend()
+		middleware := ServeEmbeddedFrontend("")
 
 		router := gin.New()
 		router.Use(middleware)
@@ -798,7 +798,7 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 	})
 
 	t.Run("serves_index_html_for_spa_routes", func(t *testing.T) {
-		middleware := ServeEmbeddedFrontend()
+		middleware := ServeEmbeddedFrontend("")
 
 		router := gin.New()
 		router.Use(middleware)
@@ -818,7 +818,7 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 	})
 
 	t.Run("skips_api_routes", func(t *testing.T) {
-		middleware := ServeEmbeddedFrontend()
+		middleware := ServeEmbeddedFrontend("")
 
 		apiPaths := []string{
 			"/api/users",
@@ -943,7 +943,7 @@ func BenchmarkFrontendServerServeIndexHTML(b *testing.B) {
 		settings: map[string]string{"test": "value"},
 	}
 
-	server, _ := NewFrontendServer(provider)
+	server, _ := NewFrontendServer(provider, "")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

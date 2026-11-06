@@ -19,6 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/server"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/setup"
 	"github.com/Wei-Shaw/sub2api/internal/web"
@@ -95,6 +96,10 @@ func main() {
 }
 
 func runSetupServer() {
+	basePath, err := config.NormalizeBasePath(os.Getenv("APP_BASE_PATH"))
+	if err != nil {
+		log.Fatalf("Invalid application base path: %v", err)
+	}
 	r := gin.New()
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS(config.CORSConfig{}))
@@ -105,7 +110,7 @@ func runSetupServer() {
 
 	// Serve embedded frontend if available
 	if web.HasEmbeddedFrontend() {
-		r.Use(web.ServeEmbeddedFrontend())
+		r.Use(web.ServeEmbeddedFrontend(basePath))
 	}
 
 	// Get server address from config.yaml or environment variables (SERVER_HOST, SERVER_PORT)
@@ -120,7 +125,7 @@ func runSetupServer() {
 
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           r,
+		Handler:           server.MountBasePath(r, basePath),
 		ReadHeaderTimeout: 30 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		Protocols:         protocols,

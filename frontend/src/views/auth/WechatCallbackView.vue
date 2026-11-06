@@ -316,6 +316,7 @@
 </template>
 
 <script setup lang="ts">
+import { getAPIBaseURL } from '@/api/url'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -550,7 +551,7 @@ function resolveRedirectTarget(): string {
 }
 
 function resolveWeChatStartURL(intent: 'bind_current_user' | 'adopt_existing_user_by_email'): string | null {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1'
+  const apiBase = getAPIBaseURL()
   const normalized = apiBase.replace(/\/$/, '')
   const mode = resolveRequestedWeChatOAuthMode()
   if (!mode) {

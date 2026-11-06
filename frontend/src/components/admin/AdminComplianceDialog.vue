@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { computed, ref, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -179,7 +180,7 @@ async function submit(): Promise<void> {
 
 async function logout(): Promise<void> {
   await authStore.logout()
-  window.location.href = '/login'
+  window.location.href = appPath('/login')
 }
 </script>
 

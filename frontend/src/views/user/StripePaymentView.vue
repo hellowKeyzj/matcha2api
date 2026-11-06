@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -204,7 +205,7 @@ function formatGatewayAmount(value: number): string {
 
 async function confirmAlipay(stripe: Stripe, clientSecret: string, orderId: number) {
   redirecting.value = true
-  const returnUrl = window.location.origin + '/payment/result?order_id=' + orderId + '&status=success'
+  const returnUrl = window.location.origin + appPath('/payment/result') + '?order_id=' + orderId + '&status=success'
   const { error } = await stripe.confirmAlipayPayment(clientSecret, { return_url: returnUrl })
   if (error) {
     redirecting.value = false
@@ -263,7 +264,7 @@ async function handleGenericPay() {
     const { error } = await stripeInstance.confirmPayment({
       elements: elementsInstance,
       confirmParams: {
-        return_url: window.location.origin + '/payment/result?order_id=' + route.query.order_id + '&status=success',
+        return_url: window.location.origin + appPath('/payment/result') + '?order_id=' + route.query.order_id + '&status=success',
       },
       redirect: 'if_required',
     })

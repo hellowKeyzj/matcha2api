@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -53,7 +54,7 @@ function queryString(key: string): string {
 }
 
 function buildSuccessUrl(snapshot: PaymentRecoverySnapshot): string {
-  const url = new URL('/payment/result', window.location.origin)
+  const url = new URL(appPath('/payment/result'), window.location.origin)
   const orderId = queryString('order_id')
   const outTradeNo = queryString('out_trade_no')
   const resumeToken = queryString('resume_token')

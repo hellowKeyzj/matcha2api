@@ -48,6 +48,7 @@ services:
       # =======================================================================
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
+      - APP_BASE_PATH=${APP_BASE_PATH:-/}
       - SERVER_MODE=${SERVER_MODE:-release}
       - ENABLE_SERVER_TIMING=${ENABLE_SERVER_TIMING:-false}
       - MCP_PUBLIC_URL=${MCP_PUBLIC_URL:-}

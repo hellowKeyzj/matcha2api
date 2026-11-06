@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -141,7 +142,7 @@ async function initStripe(clientSecret: string, publishableKey: string) {
     const stripe = await loadStripe(publishableKey)
     if (!stripe) { error.value = t('payment.stripeLoadFailed'); return }
 
-    const returnUrl = window.location.origin + '/payment/result?order_id=' + orderId + '&status=success'
+    const returnUrl = window.location.origin + appPath('/payment/result') + '?order_id=' + orderId + '&status=success'
 
     if (method === 'alipay') {
       // Alipay: redirect this popup to Alipay payment page

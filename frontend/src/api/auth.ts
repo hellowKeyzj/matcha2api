@@ -1,3 +1,4 @@
+import { getAPIBaseURL } from './url'
 /**
  * Authentication API endpoints
  * Handles user login, registration, and logout operations
@@ -42,7 +43,7 @@ export interface OAuthLoginStartResponse {
 }
 
 export function buildOAuthLoginStartURL(request: OAuthLoginStart): string {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1'
+  const apiBase = getAPIBaseURL()
   const normalized = apiBase.replace(/\/$/, '')
   const query = new URLSearchParams(request.params).toString()
   const path = `${normalized}/auth/oauth/${request.provider}/start`

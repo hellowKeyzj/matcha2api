@@ -267,6 +267,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { ref, computed, h, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
@@ -736,7 +737,7 @@ const comment = (value: string) => wrapToken('text-gray-500', value)
 // Syntax highlighting helpers
 // Generate file configs based on platform and active tab
 const currentFiles = computed((): FileConfig[] => {
-  const baseUrl = props.baseUrl || window.location.origin
+  const baseUrl = props.baseUrl || (window.location.origin + appBasePath)
   const apiKey = props.apiKey
   const baseRoot = baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '')
   const ensureV1 = (value: string) => {

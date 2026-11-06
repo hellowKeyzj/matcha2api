@@ -42,10 +42,11 @@ type FrontendServer struct {
 	cache       *HTMLCache
 	settings    PublicSettingsProvider
 	overrideDir string // local file override directory
+	basePath    string
 }
 
 // NewFrontendServer creates a new frontend server with settings injection
-func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer, error) {
+func NewFrontendServer(settingsProvider PublicSettingsProvider, basePath string) (*FrontendServer, error) {
 	distFS, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		return nil, err
@@ -63,6 +64,8 @@ func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer
 		return nil, err
 	}
 
+	baseHTML = mountHTML(baseHTML, basePath)
+
 	cache := NewHTMLCache()
 	cache.SetBaseHTML(baseHTML)
 
@@ -73,6 +76,7 @@ func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer
 		cache:       cache,
 		settings:    settingsProvider,
 		overrideDir: filepath.Join("data", "public"),
+		basePath:    basePath,
 	}, nil
 }
 
@@ -212,13 +216,13 @@ func (s *FrontendServer) injectSettings(settingsJSON []byte) []byte {
 
 	// Apply custom branding before the browser paints the static defaults.
 	result = injectSiteTitle(result, settingsJSON)
-	result = injectSiteFavicon(result, settingsJSON)
+	result = injectSiteFavicon(result, settingsJSON, s.basePath)
 
 	return result
 }
 
 // injectSiteFavicon replaces the static favicon with a configured, browser-safe image URL.
-func injectSiteFavicon(html, settingsJSON []byte) []byte {
+func injectSiteFavicon(html, settingsJSON []byte, basePath string) []byte {
 	var cfg struct {
 		SiteLogo string `json:"site_logo"`
 	}
@@ -229,6 +233,9 @@ func injectSiteFavicon(html, settingsJSON []byte) []byte {
 	logoURL := safeImageURL(cfg.SiteLogo)
 	if logoURL == "" {
 		return html
+	}
+	if basePath != "" && strings.HasPrefix(logoURL, "/") && !strings.HasPrefix(logoURL, "//") && !strings.HasPrefix(logoURL, basePath+"/") {
+		logoURL = basePath + logoURL
 	}
 
 	linkStart := bytes.Index(html, []byte(`<link rel="icon"`))
@@ -300,7 +307,7 @@ func replaceNoncePlaceholder(html []byte, nonce string) []byte {
 
 // ServeEmbeddedFrontend returns a middleware for serving embedded frontend
 // This is the legacy function for backward compatibility when no settings provider is available
-func ServeEmbeddedFrontend() gin.HandlerFunc {
+func ServeEmbeddedFrontend(basePath string) gin.HandlerFunc {
 	distFS, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		panic("failed to get dist subdirectory: " + err.Error())
@@ -320,6 +327,10 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 		if cleanPath == "" {
 			cleanPath = "index.html"
 		}
+		if cleanPath == "index.html" {
+			serveIndexHTML(c, distFS, basePath)
+			return
+		}
 
 		if file, err := distFS.Open(cleanPath); err == nil {
 			_ = file.Close()
@@ -333,7 +344,7 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			return
 		}
 
-		serveIndexHTML(c, distFS)
+		serveIndexHTML(c, distFS, basePath)
 	}
 }
 
@@ -388,7 +399,7 @@ func shouldBypassEmbeddedFrontend(path string) bool {
 		strings.HasPrefix(trimmed, "/videos/")
 }
 
-func serveIndexHTML(c *gin.Context, fsys fs.FS) {
+func serveIndexHTML(c *gin.Context, fsys fs.FS, basePath string) {
 	file, err := fsys.Open("index.html")
 	if err != nil {
 		c.String(http.StatusNotFound, "Frontend not found")
@@ -404,7 +415,7 @@ func serveIndexHTML(c *gin.Context, fsys fs.FS) {
 		return
 	}
 
-	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", mountHTML(content, basePath))
 	c.Abort()
 }
 

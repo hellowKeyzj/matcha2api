@@ -233,6 +233,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -783,7 +784,7 @@ watch(
 )
 
 function useCurrentDomain() {
-  form.endpoint = window.location.origin
+  form.endpoint = (window.location.origin + appBasePath)
 }
 
 async function openMyKeyPicker() {

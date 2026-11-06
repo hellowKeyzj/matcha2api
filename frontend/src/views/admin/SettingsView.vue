@@ -8938,6 +8938,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { listPlatformIds } from "@/constants/platformCatalog";
 import { useI18n } from "vue-i18n";
@@ -10677,7 +10678,7 @@ const addQuotaNotifyEmail = () => {
 };
 
 const currentOrigin =
-  typeof window !== "undefined" ? window.location.origin : "";
+  typeof window !== "undefined" ? (window.location.origin + appBasePath) : "";
 
 function buildApiCallbackUrl(path: string): string {
   const base = (form.api_base_url || currentOrigin).replace(/\/+$/, "");

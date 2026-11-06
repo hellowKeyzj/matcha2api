@@ -386,6 +386,7 @@
 </template>
 
 <script setup lang="ts">
+import { appBasePath } from '@/utils/appBase'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -665,7 +666,7 @@ const handleUpdate = async () => {
 
 // Copy Register Link
 const copyRegisterLink = async (code: PromoCode) => {
-  const baseUrl = window.location.origin
+  const baseUrl = (window.location.origin + appBasePath)
   const registerLink = `${baseUrl}/register?promo=${encodeURIComponent(code.code)}`
 
   try {

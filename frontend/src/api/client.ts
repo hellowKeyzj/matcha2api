@@ -1,3 +1,4 @@
+import { appPath, stripAppBase } from '@/utils/appBase'
 /**
  * Axios HTTP Client Configuration
  * Base client with interceptors for authentication, token refresh, and error handling
@@ -138,8 +139,8 @@ apiClient.interceptors.response.use(
           // ignore event failures
         }
 
-        if (window.location.pathname.startsWith('/admin/ops')) {
-          window.location.href = '/admin/settings'
+        if (stripAppBase(window.location.pathname).startsWith('/admin/ops')) {
+          window.location.href = appPath('/admin/settings')
         }
 
         return Promise.reject({
@@ -226,7 +227,7 @@ apiClient.interceptors.response.use(
             sessionStorage.setItem('auth_expired', '1')
 
             if (!window.location.pathname.includes('/login')) {
-              window.location.href = '/login'
+              window.location.href = appPath('/login')
             }
 
             return Promise.reject({
@@ -257,7 +258,7 @@ apiClient.interceptors.response.use(
         }
         // Only redirect if not already on login page
         if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login'
+          window.location.href = appPath('/login')
         }
       }
 

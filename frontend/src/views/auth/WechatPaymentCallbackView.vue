@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { appPath } from '@/utils/appBase'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -116,7 +117,7 @@ onMounted(async () => {
   const orderType = readParam('order_type')
   const planId = readParam('plan_id')
   const redirectURL = new URL(
-    normalizeRedirectPath(readParam('redirect')),
+    appPath(normalizeRedirectPath(readParam('redirect'))),
     window.location.origin,
   )
 
