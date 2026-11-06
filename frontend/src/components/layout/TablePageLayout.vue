@@ -61,6 +61,7 @@ onUnmounted(() => {
 /* 表格滚动容器 - 增强版表体滚动方案 */
 .table-scroll-container {
   @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-800 rounded-2xl border border-gray-200 dark:border-dark-700 shadow-sm;
+
 }
 
 .table-scroll-container :deep(.table-wrapper) {
@@ -77,6 +78,7 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(thead) {
   @apply bg-gray-50/80 dark:bg-dark-800/80 backdrop-blur-sm;
+
 }
 
 .table-scroll-container :deep(tbody) {
@@ -85,6 +87,7 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(th) {
   @apply px-5 py-4 text-left text-sm font-medium text-gray-600 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
+
 }
 
 .table-scroll-container :deep(td) {
@@ -104,5 +107,19 @@ onUnmounted(() => {
   @apply flex-none;
   display: table;
   min-width: 100%;
+}
+
+</style>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .table-scroll-container {
+  background: var(--ui-surface); border-color: transparent; border-radius: 24px; box-shadow: none;
+}
+:is(.theme-dala, .dark .theme-dala) .table-scroll-container th {
+  color: var(--ui-muted); background: var(--ui-canvas); border-color: var(--ui-line);
+  padding: 12px 16px; font-size: 12px;
+}
+:is(.theme-dala, .dark .theme-dala) .table-scroll-container td {
+  color: var(--ui-ink); border-color: var(--ui-line); padding: 14px 16px;
 }
 </style>

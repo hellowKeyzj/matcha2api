@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { provideComponentTheme } from '@/composables/useComponentTheme'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
@@ -11,6 +12,8 @@ import { getSetupStatus } from '@/api/setup'
 import { updateFavicon } from '@/utils/branding'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
+
+provideComponentTheme('theme-dala')
 
 const router = useRouter()
 const route = useRoute()

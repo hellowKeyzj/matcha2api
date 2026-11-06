@@ -110,7 +110,7 @@
         class="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-primary-400/10 blur-3xl"
       ></div>
       <div
-        class="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
+        class="absolute inset-0 bg-[linear-gradient(rgba(128,82,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(128,82,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
       ></div>
     </div>
 
@@ -590,7 +590,7 @@ onMounted(() => {
 /* Terminal Window */
 .terminal-window {
   width: 420px;
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  background: rgb(var(--palette-dark-900));
   border-radius: 14px;
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.4),
@@ -610,7 +610,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(30, 41, 59, 0.8);
+  background: rgb(var(--palette-dark-800));
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -737,8 +737,7 @@ onMounted(() => {
 :deep(.dark) .terminal-window {
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(20, 184, 166, 0.2),
-    0 0 40px rgba(20, 184, 166, 0.1),
+    0 0 0 1px var(--ui-line),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 </style>

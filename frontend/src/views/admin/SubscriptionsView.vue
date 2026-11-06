@@ -421,7 +421,7 @@
               <button
                 v-if="row.status === 'active' || row.status === 'expired'"
                 @click="handleExtend(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
               >
                 <Icon name="calendar" size="sm" />
                 <span class="text-xs">{{ t('admin.subscriptions.adjust') }}</span>
@@ -1640,6 +1640,6 @@ onUnmounted(() => {
 }
 
 .reset-info {
-  @apply flex items-center gap-1 pl-12 text-[10px] text-blue-600 dark:text-blue-400;
+  @apply flex items-center gap-1 pl-12 text-[10px] text-primary-600 dark:text-primary-400;
 }
 </style>

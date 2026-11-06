@@ -537,6 +537,16 @@ const RING_GRADIENTS = [
 
 const ringAnimated = ref(false)
 const displayPcts = ref<number[]>([])
+let ringFrame: number | undefined
+let ringDelay: ReturnType<typeof setTimeout> | undefined
+let ringDisposed = false
+
+function cancelRingAnimation() {
+  if (ringFrame !== undefined) cancelAnimationFrame(ringFrame)
+  if (ringDelay !== undefined) clearTimeout(ringDelay)
+  ringFrame = undefined
+  ringDelay = undefined
+}
 
 const ringTrackColor = computed(() => isDark.value ? '#222222' : '#F0F0EE')
 
@@ -556,12 +566,16 @@ function getRingOffset(ring: RingItem): number {
 }
 
 function triggerRingAnimation(items: RingItem[]) {
+  cancelRingAnimation()
   ringAnimated.value = false
   displayPcts.value = items.map(() => 0)
 
   nextTick(() => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
+    if (ringDisposed) return
+    ringFrame = requestAnimationFrame(() => {
+      ringFrame = undefined
+      ringDelay = setTimeout(() => {
+        ringDelay = undefined
         ringAnimated.value = true
 
         // Animate percentage numbers
@@ -574,9 +588,9 @@ function triggerRingAnimation(items: RingItem[]) {
           const p = Math.min(elapsed / duration, 1)
           const ease = 1 - Math.pow(1 - p, 3)
           displayPcts.value = targets.map(target => Math.round(ease * target))
-          if (p < 1) requestAnimationFrame(tick)
+          ringFrame = p < 1 ? requestAnimationFrame(tick) : undefined
         }
-        requestAnimationFrame(tick)
+        ringFrame = requestAnimationFrame(tick)
       }, 50)
     })
   })
@@ -939,6 +953,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  ringDisposed = true
+  cancelRingAnimation()
   if (resetTimer) clearInterval(resetTimer)
 })
 </script>
@@ -949,8 +965,8 @@ onUnmounted(() => {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .input-ring:focus {
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
-  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px var(--ui-selected);
+  border-color: var(--ui-accent);
   outline: none;
 }
 
@@ -967,13 +983,13 @@ onUnmounted(() => {
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, var(--ui-line) 25%, var(--ui-canvas) 50%, var(--ui-line) 75%);
   background-size: 200% 100%;
   animation: shimmer-kv 1.8s ease-in-out infinite;
   border-radius: 8px;
 }
 :global(.dark) .skeleton {
-  background: linear-gradient(90deg, #334155 25%, #1e293b 50%, #334155 75%);
+  background: linear-gradient(90deg, var(--ui-line) 25%, var(--ui-canvas) 50%, var(--ui-line) 75%);
   background-size: 200% 100%;
 }
 

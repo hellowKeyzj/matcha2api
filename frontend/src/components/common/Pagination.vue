@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-800 sm:px-6"
+    class="component-pagination flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-800 sm:px-6"
   >
     <div class="flex flex-1 items-center justify-between sm:hidden">
       <!-- Mobile pagination -->
@@ -244,4 +244,18 @@ const submitJump = () => {
 .page-size-select :deep(.select-trigger) {
   @apply px-3 py-1.5 text-sm;
 }
+</style>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .component-pagination {
+  background: var(--ui-canvas); border-color: var(--ui-line); gap: 12px; flex-wrap: wrap;
+}
+:is(.theme-dala, .dark .theme-dala) .component-pagination :is(p, span) { color: var(--ui-muted); }
+:is(.theme-dala, .dark .theme-dala) .component-pagination nav { gap: 6px; box-shadow: none; }
+:is(.theme-dala, .dark .theme-dala) .component-pagination button {
+  border-radius: 24px; border-color: transparent; background: transparent; color: var(--ui-muted); box-shadow: none;
+}
+:is(.theme-dala, .dark .theme-dala) .component-pagination button:not(:disabled):hover { background: var(--ui-selected); color: var(--ui-ink); }
+:is(.theme-dala, .dark .theme-dala) .component-pagination button[aria-current='page'] { background: var(--ui-action); color: white; }
+:is(.theme-dala, .dark .theme-dala) .component-pagination button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 </style>

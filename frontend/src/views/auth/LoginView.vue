@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout>
+  <AuthLayout animated-background>
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">

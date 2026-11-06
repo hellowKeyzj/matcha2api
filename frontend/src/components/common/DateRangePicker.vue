@@ -436,3 +436,17 @@ onUnmounted(() => {
   transform: translateY(-8px);
 }
 </style>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .date-picker-trigger {
+  border-radius: 24px; background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(.theme-dala, .dark .theme-dala) .date-picker-dropdown {
+  border-radius: 24px; background: var(--ui-surface); border-color: var(--ui-line); box-shadow: none;
+  min-width: min(320px, calc(100vw - 32px)); max-width: calc(100vw - 32px);
+}
+:is(.theme-dala, .dark .theme-dala) .date-picker-input {
+  background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line); border-radius: 12px;
+}
+.theme-dala .date-picker-apply { border-radius: 24px; background: var(--ui-action); }
+</style>

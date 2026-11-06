@@ -1,0 +1,60 @@
+/* Application theme. Semantic status/provider colors remain independent. */
+.theme-dala {
+  --palette-primary-50: 245 241 255;
+  --palette-primary-100: 237 229 255;
+  --palette-primary-200: 218 203 255;
+  --palette-primary-300: 194 168 255;
+  --palette-primary-400: 172 141 255;
+  --palette-primary-500: 128 82 255;
+  --palette-primary-600: 112 65 236;
+  --palette-primary-700: 91 46 204;
+  --palette-primary-800: 66 34 146;
+  --palette-primary-900: 43 24 91;
+  --palette-primary-950: 24 14 48;
+  --palette-dark-50: 250 250 250;
+  --palette-dark-100: 245 245 245;
+  --palette-dark-200: 229 229 229;
+  --palette-dark-300: 189 189 189;
+  --palette-dark-400: 154 154 154;
+  --palette-dark-500: 115 115 115;
+  --palette-dark-600: 64 64 64;
+  --palette-dark-700: 36 36 36;
+  --palette-dark-800: 15 15 15;
+  --palette-dark-900: 8 8 8;
+  --palette-dark-950: 0 0 0;
+  --palette-gray-50: 250 250 250;
+  --palette-gray-100: 245 245 245;
+  --palette-gray-200: 229 229 229;
+  --palette-gray-300: 212 212 212;
+  --palette-gray-400: 163 163 163;
+  --palette-gray-500: 115 115 115;
+  --palette-gray-600: 82 82 82;
+  --palette-gray-700: 64 64 64;
+  --palette-gray-800: 38 38 38;
+  --palette-gray-900: 23 23 23;
+  --palette-gray-950: 10 10 10;
+  --ui-surface: #ffffff;
+  --ui-canvas: #fafafa;
+  --ui-line: #e5e5e5;
+  --ui-ink: #161616;
+  --ui-muted: #686868;
+  --ui-action: #8052ff;
+  --ui-action-hover: #7041ec;
+  --ui-action-ink: #ffffff;
+  --ui-selected: #f1ebff;
+  --ui-accent: #7041ec;
+  --ui-rim: none;
+  color: var(--ui-ink);
+  font-family: 'PP Neue Montreal', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.dark .theme-dala {
+  --ui-surface: #000000;
+  --ui-canvas: #000000;
+  --ui-line: #242424;
+  --ui-ink: #ffffff;
+  --ui-muted: #9a9a9a;
+  --ui-selected: #15101f;
+  --ui-accent: #ac8dff;
+  color-scheme: dark;
+}

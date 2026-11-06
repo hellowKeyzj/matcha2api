@@ -1,5 +1,5 @@
 <template>
-  <div class="relative" ref="containerRef">
+  <div class="proxy-selector relative" ref="containerRef">
     <button
       type="button"
       @click="toggle"
@@ -417,4 +417,20 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-8px);
 }
+</style>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-trigger {
+  min-height: 38px; border-radius: 24px; background: var(--ui-surface); color: var(--ui-ink);
+  border-color: var(--ui-line); box-shadow: none; font-size: 13px;
+}
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-trigger-open { border-color: var(--ui-accent); }
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-dropdown {
+  border-radius: 24px; background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line); box-shadow: none;
+}
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-header { border-color: var(--ui-line); }
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-option,
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-search-input { color: var(--ui-ink); }
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-option:hover,
+:is(.theme-dala, .dark .theme-dala) .proxy-selector .select-option-selected { background: var(--ui-selected); color: var(--ui-accent); }
 </style>

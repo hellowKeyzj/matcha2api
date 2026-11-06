@@ -776,3 +776,77 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Shared application controls. Page code owns layout, not theme values. */
+.theme-dala .btn {
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 400;
+  background-image: none;
+  box-shadow: none;
+  transform: none;
+  transition: background-color 150ms, color 150ms;
+}
+.theme-dala .btn-primary { background: var(--ui-action); color: var(--ui-action-ink); border-color: transparent; }
+.theme-dala .btn-primary:hover { background: var(--ui-action-hover); }
+.theme-dala .btn-secondary, .theme-dala .btn-ghost {
+  background: transparent; color: var(--ui-muted); border-color: transparent;
+}
+.theme-dala .btn-secondary:hover, .theme-dala .btn-ghost:hover { background: var(--ui-selected); color: var(--ui-ink); }
+.theme-dala .btn-danger { background: transparent; color: #ef6868; border: 1px solid currentColor; }
+.theme-dala .btn-success { background: transparent; color: #38b995; border: 1px solid currentColor; }
+.theme-dala .btn-warning { background: transparent; color: #bd861b; border: 1px solid currentColor; }
+.theme-dala .btn:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; box-shadow: none; }
+.theme-dala .input {
+  min-height: 38px; padding-block: 8px; border-radius: 24px;
+  background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink);
+  font-size: 13px; box-shadow: none;
+}
+.theme-dala .input:focus { border-color: var(--ui-accent); outline: 2px solid var(--ui-selected); outline-offset: 1px; }
+.theme-dala .input:disabled { background: var(--ui-selected); opacity: 0.5; }
+.theme-dala .input-error, .theme-dala .input-error:focus { border-color: #ef6868; outline-color: #ef686840; }
+.theme-dala .input-label { color: var(--ui-ink); font-size: 13px; font-weight: 400; }
+.theme-dala .input-hint { color: var(--ui-muted); line-height: 1.6; }
+.theme-dala input[type='checkbox'] { accent-color: var(--ui-accent); color: var(--ui-accent); }
+
+:is(.theme-dala, .dark .theme-dala) .component-menu,
+.component-menu.theme-dala,
+.dark .component-menu.theme-dala {
+  background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-line);
+  border-radius: 24px; box-shadow: none; --tw-ring-color: transparent;
+}
+:is(.theme-dala, .dark .theme-dala) .component-menu button:hover,
+.component-menu.theme-dala button:hover,
+.dark .component-menu.theme-dala button:hover { background: var(--ui-selected); }
+.theme-dala .component-switch { background: var(--ui-line); }
+.theme-dala .component-switch[aria-checked='true'] { background: var(--ui-action); }
+.theme-dala .component-switch:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; box-shadow: none; }
+
+.theme-dala {
+  background: var(--ui-canvas);
+  color: var(--ui-ink);
+}
+.theme-dala :is(.card, .card-glass, .stat-card, .glass-card) {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+  border-radius: 24px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.theme-dala .card-hover:hover { transform: none; box-shadow: none; border-color: var(--ui-muted); }
+.theme-dala :is(.card-header, .card-footer) { border-color: var(--ui-line); }
+.theme-dala .stat-value { font-weight: 400; letter-spacing: -0.04em; }
+.theme-dala .modal-content {
+  background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-line);
+  border-radius: 24px; box-shadow: none;
+}
+.theme-dala :is(.modal-header, .modal-footer) { border-color: var(--ui-line); background: var(--ui-canvas); }
+.theme-dala .modal-title { font-weight: 400; color: var(--ui-ink); }
+.theme-dala .modal-body { min-height: 0; scrollbar-gutter: stable; }
+.theme-dala textarea.input { border-radius: 18px; }
+.theme-dala .table-container { border-radius: 24px; border-color: var(--ui-line); }
+@media (prefers-reduced-motion: reduce) {
+  .theme-dala :is(.btn, .input, .card, .sidebar-link) { transition: none; }
+}

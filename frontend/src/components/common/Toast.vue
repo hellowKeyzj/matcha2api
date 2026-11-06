@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div
-      class="pointer-events-none fixed right-4 top-4 z-[9999] space-y-3"
+      class="app-toasts pointer-events-none fixed right-4 top-4 z-[9999] space-y-3"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -17,7 +17,7 @@
           v-for="toast in toasts"
           :key="toast.id"
           :class="[
-            'pointer-events-auto min-w-[320px] max-w-md overflow-hidden rounded-lg shadow-lg',
+            'app-toast pointer-events-auto min-w-[320px] max-w-md overflow-hidden rounded-lg shadow-lg',
             'bg-white dark:bg-dark-800',
             'border-l-4',
             getBorderColor(toast.type)
@@ -149,5 +149,12 @@ const removeToast = (id: string) => {
   to {
     width: 0%;
   }
+}
+</style>
+
+<style>
+.theme-dala .app-toast {
+  background: var(--ui-surface); border-radius: 18px; box-shadow: none;
+  max-width: min(28rem, calc(100vw - 32px)); min-width: min(320px, calc(100vw - 32px));
 }
 </style>
