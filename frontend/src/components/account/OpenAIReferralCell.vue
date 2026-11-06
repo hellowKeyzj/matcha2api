@@ -13,7 +13,7 @@
     <button
       type="button"
       data-testid="referral-open"
-      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary-600 hover:bg-primary-50 disabled:opacity-50 dark:text-primary-400 dark:hover:bg-primary-900/30"
       :disabled="sending || isShadow"
       :title="isShadow ? t('admin.accounts.openaiReferral.shadowHint') : undefined"
       @click="openDialog"

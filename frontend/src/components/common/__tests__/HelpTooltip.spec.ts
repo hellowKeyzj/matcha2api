@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
+import { provideComponentTheme } from '@/composables/useComponentTheme'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 
 function getTooltipElement(): HTMLDivElement {
@@ -107,4 +108,17 @@ describe('HelpTooltip', () => {
 
     wrapper.unmount()
   })
+})
+
+it('preserves the provided theme on the teleported tooltip', async () => {
+  const Host = defineComponent({
+    setup() {
+      provideComponentTheme('theme-dala')
+      return () => h(HelpTooltip, { trigger: 'click', content: 'Themed help' })
+    }
+  })
+  const wrapper = mount(Host, { attachTo: document.body })
+  await wrapper.get('.group').trigger('click')
+  expect(getTooltipElement().classList.contains('theme-dala')).toBe(true)
+  wrapper.unmount()
 })

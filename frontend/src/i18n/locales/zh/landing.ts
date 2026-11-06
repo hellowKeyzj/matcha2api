@@ -5,6 +5,20 @@ export default {
   },
   // Home Page
   home: {
+    constellation: {
+      connectTitle: '每一次连接，',
+      connectAccent: '更简单',
+      organizeTitle: '分散的服务，',
+      organizeAccent: '有序的协作',
+      buildTitle: '把灵感，',
+      buildAccent: '变成可能',
+    },
+    orbit: {
+      navigation: '主导航',
+      explore: '了解接入方式',
+      headline: '万千模型，',
+      headlineAccent: '一处连接'
+    },
     viewOnGithub: '在 GitHub 上查看',
     viewDocs: '查看文档',
     docs: '文档',
@@ -51,11 +65,11 @@ export default {
     },
     features: {
       unifiedGateway: '一键接入',
-      unifiedGatewayDesc: '获取一个 API 密钥，即可调用所有已接入的 AI 模型，无需分别申请。',
+      unifiedGatewayDesc: '获取一个 API 密钥，即可调用所有已接入的 AI 模型，无需分别申请',
       multiAccount: '稳定可靠',
-      multiAccountDesc: '智能调度多个上游账号，自动切换和负载均衡，告别频繁报错。',
+      multiAccountDesc: '智能调度多个上游账号，自动切换和负载均衡，告别频繁报错',
       balanceQuota: '用多少付多少',
-      balanceQuotaDesc: '按实际使用量计费，支持设置配额上限，团队用量一目了然。'
+      balanceQuotaDesc: '按实际使用量计费，支持设置配额上限，团队用量一目了然'
     },
     // 优势对比
     comparison: {

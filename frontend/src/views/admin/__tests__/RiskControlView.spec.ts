@@ -146,7 +146,6 @@ const runtimeStatus = () => ({
   last_cleanup_deleted_non_hit: 0,
 })
 
-const AppLayoutStub = { template: '<div><slot /></div>' }
 const BaseDialogStub = defineComponent({
   props: {
     show: {
@@ -234,7 +233,7 @@ describe('admin RiskControlView', () => {
     const otherEngine = activeEngine === 'openai' ? 'typesafe' : 'openai'
     getConfig.mockResolvedValue({ ...profiles[activeEngine], engine_configs: profiles })
     getStatus.mockResolvedValue({ ...runtimeStatus(), engine: activeEngine, api_key_statuses: profiles[activeEngine].api_key_statuses })
-    const wrapper = mount(RiskControlView, { global: { stubs: { AppLayout: AppLayoutStub, BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
+    const wrapper = mount(RiskControlView, { global: { stubs: { BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
     await flushPromises()
     await findButtonByText(wrapper, 'admin.riskControl.openSettings').trigger('click')
     const engine = () => wrapper.findComponent('[data-test="audit-engine-select"]')
@@ -259,7 +258,7 @@ describe('admin RiskControlView', () => {
 
   it('shows an empty key panel for an unconfigured draft engine', async () => {
     getStatus.mockResolvedValue({ ...runtimeStatus(), api_key_statuses: [{ masked: '********oa01', configured: true, status: 'ok' }] })
-    const wrapper = mount(RiskControlView, { global: { stubs: { AppLayout: AppLayoutStub, BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
+    const wrapper = mount(RiskControlView, { global: { stubs: { BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
     await flushPromises()
     await findButtonByText(wrapper, 'admin.riskControl.openSettings').trigger('click')
     wrapper.findComponent('[data-test="audit-engine-select"]').vm.$emit('update:modelValue', 'typesafe')
@@ -271,7 +270,7 @@ describe('admin RiskControlView', () => {
   })
 
   it('preserves both engine drafts and saves thresholds independently', async () => {
-    const wrapper = mount(RiskControlView, { global: { stubs: { AppLayout: AppLayoutStub, BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
+    const wrapper = mount(RiskControlView, { global: { stubs: { BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
     await flushPromises()
     await findButtonByText(wrapper, 'admin.riskControl.openSettings').trigger('click')
     await wrapper.get('[data-test="audit-base-url"]').setValue('https://openai-edited.example')
@@ -302,7 +301,7 @@ describe('admin RiskControlView', () => {
 
   it('tests the draft engine without switching the active engine', async () => {
     testAPIKeys.mockResolvedValue({ items: [{ status: 'ok', configured: false }], image_count: 0 })
-    const wrapper = mount(RiskControlView, { global: { stubs: { AppLayout: AppLayoutStub, BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
+    const wrapper = mount(RiskControlView, { global: { stubs: { BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
     await flushPromises()
     await findButtonByText(wrapper, 'admin.riskControl.openSettings').trigger('click')
     wrapper.findComponent('[data-test="audit-engine-select"]').vm.$emit('update:modelValue', 'typesafe')
@@ -318,7 +317,7 @@ describe('admin RiskControlView', () => {
 
   it.each(['openai', 'typesafe'] as const)('restores the shared defaults for %s without replacing saved thresholds on load', async (engine) => {
     getConfig.mockResolvedValue({ ...baseConfig(), engine, thresholds: { sexual: 0.8, harassment: 0.8 } })
-    const wrapper = mount(RiskControlView, { global: { stubs: { AppLayout: AppLayoutStub, BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
+    const wrapper = mount(RiskControlView, { global: { stubs: { BaseDialog: BaseDialogStub, Icon: true, Select: true, Toggle: true, Pagination: true, ModelWhitelistSelector: ModelWhitelistSelectorStub, ProxySelector: true } } })
     await flushPromises()
     await findButtonByText(wrapper, 'admin.riskControl.openSettings').trigger('click')
     await findButtonByText(wrapper, 'admin.riskControl.tabs.riskThresholds').trigger('click')
@@ -341,7 +340,6 @@ describe('admin RiskControlView', () => {
     const wrapper = mount(RiskControlView, {
       global: {
         stubs: {
-          AppLayout: AppLayoutStub,
           BaseDialog: BaseDialogStub,
           Icon: true,
           Select: true,
@@ -375,7 +373,6 @@ describe('admin RiskControlView', () => {
     const wrapper = mount(RiskControlView, {
       global: {
         stubs: {
-          AppLayout: AppLayoutStub,
           BaseDialog: BaseDialogStub,
           Icon: true,
           Select: true,
@@ -416,7 +413,6 @@ describe('admin RiskControlView', () => {
     const wrapper = mount(RiskControlView, {
       global: {
         stubs: {
-          AppLayout: AppLayoutStub,
           BaseDialog: BaseDialogStub,
           Icon: true,
           Select: true,
@@ -484,7 +480,6 @@ describe('admin RiskControlView', () => {
     const wrapper = mount(RiskControlView, {
       global: {
         stubs: {
-          AppLayout: AppLayoutStub,
           BaseDialog: BaseDialogStub,
           Icon: true,
           Select: true,

@@ -1,3 +1,5 @@
+@config "../tailwind.config.js";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -87,7 +89,7 @@
   }
 
   .btn-secondary {
-    @apply bg-white dark:bg-dark-800;
+    @apply bg-surface dark:bg-dark-800;
     @apply text-gray-700 dark:text-gray-200;
     @apply border border-gray-200 dark:border-dark-600;
     @apply shadow-sm hover:bg-gray-50 dark:hover:bg-dark-700;
@@ -166,7 +168,7 @@
   /* ============ 输入框样式 ============ */
   .input {
     @apply w-full rounded-xl px-4 py-2.5 text-sm;
-    @apply bg-white dark:bg-dark-800;
+    @apply bg-surface dark:bg-dark-800;
     @apply border border-gray-200 dark:border-dark-600;
     @apply text-gray-900 dark:text-gray-100;
     @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
@@ -212,11 +214,11 @@
 
   /* ============ 玻璃效果 ============ */
   .glass {
-    @apply bg-white/80 backdrop-blur-xl dark:bg-dark-800/80;
+    @apply bg-surface/80 backdrop-blur-xl dark:bg-dark-800/80;
   }
 
   .glass-card {
-    @apply bg-white/70 dark:bg-dark-800/70;
+    @apply bg-surface/70 dark:bg-dark-800/70;
     @apply backdrop-blur-xl;
     @apply rounded-2xl;
     @apply border border-white/20 dark:border-dark-700/50;
@@ -226,7 +228,7 @@
 
   /* ============ 卡片样式 ============ */
   .card {
-    @apply bg-white dark:bg-dark-800/50;
+    @apply bg-surface dark:bg-dark-800/50;
     @apply rounded-2xl;
     @apply border border-gray-100 dark:border-dark-700/50;
     @apply shadow-card;
@@ -239,7 +241,7 @@
   }
 
   .card-glass {
-    @apply bg-white/70 dark:bg-dark-800/70;
+    @apply bg-surface/70 dark:bg-dark-800/70;
     @apply backdrop-blur-xl;
     @apply border border-white/20 dark:border-dark-700/50;
     @apply shadow-glass;
@@ -371,7 +373,7 @@
   /* ============ 下拉菜单 ============ */
   .dropdown {
     @apply absolute z-50;
-    @apply bg-white dark:bg-dark-800;
+    @apply bg-surface dark:bg-dark-800;
     @apply rounded-xl;
     @apply border border-gray-200 dark:border-dark-700;
     @apply shadow-lg;
@@ -397,7 +399,7 @@
   .modal-content {
     @apply w-full;
     @apply max-h-[95vh] sm:max-h-[90vh];
-    @apply bg-white dark:bg-dark-800;
+    @apply bg-surface dark:bg-dark-800;
     @apply rounded-2xl shadow-2xl;
     @apply border border-gray-200 dark:border-dark-700;
     @apply flex flex-col;
@@ -490,7 +492,7 @@
   .dialog-container {
     @apply flex w-full flex-col;
     @apply max-h-[90vh];
-    @apply rounded-2xl bg-white dark:bg-dark-800;
+    @apply rounded-2xl bg-surface dark:bg-dark-800;
     @apply shadow-xl;
   }
 
@@ -513,7 +515,7 @@
   .toast {
     @apply fixed right-4 top-4 z-[100];
     @apply min-w-[320px] max-w-md;
-    @apply bg-white dark:bg-dark-800;
+    @apply bg-surface dark:bg-dark-800;
     @apply rounded-xl shadow-lg;
     @apply border-l-4;
     @apply p-4;
@@ -539,7 +541,7 @@
   /* ============ 侧边栏 ============ */
   .sidebar {
     @apply fixed inset-y-0 left-0 z-40;
-    @apply w-64 bg-white dark:bg-dark-900;
+    @apply w-64 bg-surface dark:bg-dark-900;
     @apply border-r border-gray-200 dark:border-dark-800;
     @apply flex flex-col;
     @apply transition-transform duration-300;
@@ -648,7 +650,7 @@
   }
 
   .tab-active {
-    @apply bg-white dark:bg-dark-700;
+    @apply bg-surface dark:bg-dark-700;
     @apply text-gray-900 dark:text-white;
     @apply shadow-sm;
   }
@@ -755,7 +757,7 @@
 
   /* 玻璃效果 */
   .glass {
-    @apply bg-white/80 backdrop-blur-xl dark:bg-dark-800/80;
+    @apply bg-surface/80 backdrop-blur-xl dark:bg-dark-800/80;
   }
 
   /* 隐藏滚动条 */
@@ -775,4 +777,78 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Shared application controls. Page code owns layout, not theme values. */
+.theme-dala .btn {
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 400;
+  background-image: none;
+  box-shadow: none;
+  transform: none;
+  transition: background-color 150ms, color 150ms;
+}
+.theme-dala .btn-primary { background: var(--ui-action); color: var(--ui-action-ink); border-color: transparent; }
+.theme-dala .btn-primary:hover { background: var(--ui-action-hover); }
+.theme-dala .btn-secondary, .theme-dala .btn-ghost {
+  background: transparent; color: var(--ui-muted); border-color: transparent;
+}
+.theme-dala .btn-secondary:hover, .theme-dala .btn-ghost:hover { background: var(--ui-selected); color: var(--ui-ink); }
+.theme-dala .btn-danger { background: transparent; color: #ef6868; border: 1px solid currentColor; }
+.theme-dala .btn-success { background: transparent; color: #38b995; border: 1px solid currentColor; }
+.theme-dala .btn-warning { background: transparent; color: #bd861b; border: 1px solid currentColor; }
+.theme-dala .btn:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; box-shadow: none; }
+.theme-dala .input {
+  min-height: 38px; padding-block: 8px; border-radius: 24px;
+  background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink);
+  font-size: 13px; box-shadow: none;
+}
+.theme-dala .input:focus { border-color: var(--ui-accent); outline: 2px solid var(--ui-selected); outline-offset: 1px; }
+.theme-dala .input:disabled { background: var(--ui-selected); opacity: 0.5; }
+.theme-dala .input-error, .theme-dala .input-error:focus { border-color: #ef6868; outline-color: #ef686840; }
+.theme-dala .input-label { color: var(--ui-ink); font-size: 13px; font-weight: 400; }
+.theme-dala .input-hint { color: var(--ui-muted); line-height: 1.6; }
+.theme-dala input[type='checkbox'] { accent-color: var(--ui-accent); color: var(--ui-accent); }
+
+:is(.theme-dala, .dark .theme-dala) .component-menu,
+.component-menu.theme-dala,
+.dark .component-menu.theme-dala {
+  background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-line);
+  border-radius: 24px; box-shadow: none; --tw-ring-color: transparent;
+}
+:is(.theme-dala, .dark .theme-dala) .component-menu button:hover,
+.component-menu.theme-dala button:hover,
+.dark .component-menu.theme-dala button:hover { background: var(--ui-selected); }
+.theme-dala .component-switch { background: var(--ui-line); }
+.theme-dala .component-switch[aria-checked='true'] { background: var(--ui-action); }
+.theme-dala .component-switch:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; box-shadow: none; }
+
+.theme-dala {
+  background: var(--ui-canvas);
+  color: var(--ui-ink);
+}
+.theme-dala :is(.card, .card-glass, .stat-card, .glass-card) {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+  border-radius: 24px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.theme-dala .card-hover:hover { transform: none; box-shadow: none; border-color: var(--ui-muted); }
+.theme-dala :is(.card-header, .card-footer) { border-color: var(--ui-line); }
+.theme-dala .stat-value { font-weight: 400; letter-spacing: -0.04em; }
+.theme-dala .modal-content {
+  background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-line);
+  border-radius: 24px; box-shadow: none;
+}
+.theme-dala :is(.modal-header, .modal-footer) { border-color: var(--ui-line); background: var(--ui-canvas); }
+.theme-dala .modal-title { font-weight: 400; color: var(--ui-ink); }
+.theme-dala .modal-body { min-height: 0; scrollbar-gutter: stable; }
+.theme-dala textarea.input { border-radius: 18px; }
+.theme-dala .table-container { border-radius: 24px; border-color: var(--ui-line); }
+@media (prefers-reduced-motion: reduce) {
+  .theme-dala :is(.btn, .input, .card, .sidebar-link) { transition: none; }
 }

@@ -1,5 +1,4 @@
 <template>
-  <AppLayout>
     <div class="space-y-6">
       <section class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-1 flex-wrap gap-3">
@@ -51,19 +50,19 @@
       </div>
 
       <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 dark:border-dark-700 dark:bg-dark-700 md:grid-cols-4">
-        <div class="bg-white px-5 py-3 dark:bg-dark-800">
+        <div class="bg-surface px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.total') }}</p>
           <p class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ packages.length }}</p>
         </div>
-        <div class="bg-white px-5 py-3 dark:bg-dark-800">
+        <div class="bg-surface px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.pendingReview') }}</p>
           <p class="mt-1 text-xl font-semibold text-amber-600">{{ statusCount('pending_review') }}</p>
         </div>
-        <div class="bg-white px-5 py-3 dark:bg-dark-800">
+        <div class="bg-surface px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.approved') }}</p>
           <p class="mt-1 text-xl font-semibold text-emerald-600">{{ statusCount('approved') }}</p>
         </div>
-        <div class="bg-white px-5 py-3 dark:bg-dark-800">
+        <div class="bg-surface px-5 py-3 dark:bg-dark-800">
           <p class="text-xs text-gray-500">{{ t('admin.packages.summary.downloads') }}</p>
           <p class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ totalDownloads }}</p>
         </div>
@@ -334,7 +333,6 @@
       </BaseDialog>
     </div>
     <TotpStepUpDialog :controller="cloudKeyStepUp" />
-  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -343,7 +341,6 @@ import { useI18n } from 'vue-i18n'
 import { adminAPI, type AdminPackage, type AdminPackageStatus, type PackageCloudKeyStatus, type PackageDownloadAudit, type PackageStorageConfig, type SaveAdminPackageRequest } from '@/api/admin'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorCode, extractApiErrorMetadata } from '@/utils/apiError'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'

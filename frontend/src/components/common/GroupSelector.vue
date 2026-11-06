@@ -1,12 +1,12 @@
 <template>
-  <div>
+  <div class="group-selector">
     <label class="input-label">
       {{ t('admin.users.groups') }}
       <span class="font-normal text-gray-400">{{ t('common.selectedCount', { count: modelValue.length }) }}</span>
     </label>
     <div
       v-if="isSearchable"
-      class="flex items-center gap-2 rounded-t-lg border border-b-0 border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
+      class="group-selector-search flex items-center gap-2 rounded-t-lg border border-b-0 border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
     >
       <Icon name="search" size="sm" class="shrink-0 text-gray-400" />
       <input
@@ -18,7 +18,7 @@
     </div>
     <div
       :class="[
-        'grid max-h-32 grid-cols-2 gap-1 overflow-y-auto p-2',
+        'group-selector-options grid max-h-32 grid-cols-2 gap-1 overflow-y-auto p-2',
         isSearchable
           ? 'rounded-b-lg border border-t-0 border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800'
           : 'rounded-lg border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800'
@@ -27,7 +27,7 @@
       <label
         v-for="group in filteredGroups"
         :key="group.id"
-        class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-white dark:hover:bg-dark-700"
+        class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-surface dark:hover:bg-dark-700"
         :title="group.rate_multiplier == null ? group.name : t('admin.groups.rateAndAccounts', { rate: group.rate_multiplier, count: group.account_count || 0 })"
       >
         <input
@@ -132,3 +132,12 @@ const handleChange = (groupId: number, checked: boolean) => {
   emit('update:modelValue', newValue)
 }
 </script>
+
+<style>
+:is(.theme-dala, .dark .theme-dala) .group-selector-search,
+:is(.theme-dala, .dark .theme-dala) .group-selector-options {
+  background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink);
+}
+:is(.theme-dala, .dark .theme-dala) .group-selector-options label:hover { background: var(--ui-selected); }
+:is(.theme-dala, .dark .theme-dala) .group-selector-search input { color: var(--ui-ink); }
+</style>

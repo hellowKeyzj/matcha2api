@@ -133,7 +133,6 @@ const BulkEditUserModalStub = {
 const mountBulkDeleteView = () => mount(UsersView, {
   global: {
     stubs: {
-      AppLayout: { template: '<div><slot /></div>' },
       TablePageLayout: {
         template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
       },
@@ -354,7 +353,6 @@ describe('admin UsersView', () => {
     const wrapper = mount(UsersView, {
       global: {
         stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
           TablePageLayout: {
             template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
           },
@@ -440,7 +438,6 @@ describe('admin UsersView', () => {
     const wrapper = mount(UsersView, {
       global: {
         stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
           TablePageLayout: {
             template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
           },
@@ -518,7 +515,6 @@ describe('admin UsersView', () => {
     const wrapper = mount(UsersView, {
       global: {
         stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
           TablePageLayout: {
             template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
           },

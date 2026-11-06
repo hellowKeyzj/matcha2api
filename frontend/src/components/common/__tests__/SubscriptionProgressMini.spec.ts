@@ -5,6 +5,7 @@ const store = vi.hoisted(() => ({ activeSubscriptions: [] as unknown[], hasActiv
 vi.mock('@/stores', () => ({ useSubscriptionStore: () => store }))
 vi.mock('@/utils/featureFlags', () => ({ FeatureFlags: { subscription: 'subscription' }, isFeatureFlagEnabled: () => true }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/' }) }))
 enableAutoUnmount(afterEach)
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 22, 12)) })
 afterEach(() => vi.useRealTimers())

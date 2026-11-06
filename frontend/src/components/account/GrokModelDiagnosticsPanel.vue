@@ -1,7 +1,7 @@
 <template>
   <section
     data-testid="grok-model-diagnostics"
-    class="min-w-0 max-w-full overflow-hidden rounded-xl border border-gray-200 bg-white text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200"
+    class="min-w-0 max-w-full overflow-hidden rounded-xl border border-gray-200 bg-surface text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200"
   >
     <div
       data-testid="grok-diagnostics-summary"

@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
+import { Line } from 'vue-chartjs'
+import { initializeTheme, useTheme } from '@/composables/useTheme'
 
 import TokenUsageTrend from '../TokenUsageTrend.vue'
 
@@ -26,6 +29,44 @@ vi.mock('vue-chartjs', () => ({
 }))
 
 describe('TokenUsageTrend', () => {
+  beforeEach(() => {
+    localStorage.setItem('theme', 'light')
+    initializeTheme()
+  })
+
+  afterEach(() => {
+    localStorage.setItem('theme', 'light')
+    initializeTheme()
+    localStorage.removeItem('theme')
+  })
+
+  it('updates chart colors when the shared theme changes without remounting', async () => {
+    const wrapper = mount(TokenUsageTrend, {
+      props: {
+        trendData: [{
+          date: '2026-05-08', requests: 1, input_tokens: 100, output_tokens: 20,
+          cache_creation_tokens: 0, cache_read_tokens: 0, total_tokens: 120,
+          cost: 0.01, actual_cost: 0.01,
+        }],
+      },
+    })
+    const chart = wrapper.getComponent(Line)
+    expect(chart.props('options').scales.x.ticks.color).toBe('#374151')
+
+    useTheme().toggleTheme()
+    await nextTick()
+
+    expect(wrapper.getComponent(Line).vm).toBe(chart.vm)
+    expect(chart.props('options').scales.x.ticks.color).toBe('#e5e7eb')
+    expect(chart.props('options').scales.y.grid.color).toBe('#374151')
+
+    useTheme().toggleTheme()
+    await nextTick()
+    expect(chart.props('options').scales.x.ticks.color).toBe('#374151')
+    expect(chart.props('options').scales.y.grid.color).toBe('#e5e7eb')
+    wrapper.unmount()
+  })
+
   it('calculates cache hit rate against all prompt tokens', () => {
     const wrapper = mount(TokenUsageTrend, {
       props: {

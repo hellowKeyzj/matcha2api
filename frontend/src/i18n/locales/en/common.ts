@@ -251,6 +251,7 @@ export default {
     errors: {
       USER_NOT_ACTIVE: 'Account has been disabled.',
       EMAIL_BLOCKED: 'This email address is not allowed. Please use a different one.',
+      BACKEND_MODE_ADMIN_ONLY: 'Backend mode is active. Only administrators can sign in. Please sign in with an administrator account.',
     },
     registrationFailed: 'Registration failed. Please try again.',
     emailDomainRegistrationLimit:
@@ -401,6 +402,14 @@ export default {
     dingtalkProviderName: 'DingTalk',
     oidcCallbackPageTitle: 'OIDC Sign-In Callback',
     oauthCallbackPageTitle: 'OAuth Callback',
+    desktopLogin: {
+      title: 'Sign in from desktop',
+      processing: 'Signing in with your desktop account…',
+      failedTitle: 'Could not sign in',
+      invalid: 'This sign-in link has expired, was already used, or is invalid. Open a new link from the desktop app or sign in normally.',
+      network: 'Unable to reach the server. Check your connection, then open a new link from the desktop app or sign in normally.',
+      unavailable: 'Sign-in is temporarily unavailable. Open a new link from the desktop app later or sign in normally.'
+    },
     wechatProviderName: 'WeChat',
     wechatCallbackPageTitle: 'WeChat Sign-In Callback',
     wechatPaymentCallbackPageTitle: 'WeChat Payment Callback',

@@ -251,6 +251,7 @@ export default {
     errors: {
       USER_NOT_ACTIVE: '账号已被禁用',
       EMAIL_BLOCKED: '该邮箱不允许注册，请更换其他邮箱。',
+      BACKEND_MODE_ADMIN_ONLY: '当前已启用后台模式，仅允许管理员登录。请使用管理员账号登录。',
     },
     registrationFailed: '注册失败，请重试。',
     emailDomainRegistrationLimit:
@@ -399,6 +400,14 @@ export default {
     dingtalkProviderName: '钉钉',
     oidcCallbackPageTitle: 'OIDC 登录回调',
     oauthCallbackPageTitle: 'OAuth 回调',
+    desktopLogin: {
+      title: '从桌面端登录',
+      processing: '正在使用桌面端账号登录…',
+      failedTitle: '未能完成登录',
+      invalid: '登录链接已过期、已使用或无效。请从桌面端重新打开链接，或使用常规方式登录。',
+      network: '无法连接服务器。请检查网络后从桌面端重新打开链接，或使用常规方式登录。',
+      unavailable: '登录服务暂时不可用。请稍后从桌面端重新打开链接，或使用常规方式登录。'
+    },
     wechatProviderName: '微信',
     wechatCallbackPageTitle: '微信登录回调',
     wechatPaymentCallbackPageTitle: '微信支付回调',
