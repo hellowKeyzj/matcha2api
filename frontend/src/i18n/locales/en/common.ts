@@ -169,6 +169,7 @@ export default {
     batchImage: 'Batch Images',
     resourcePackages: 'Resource Packages',
     packageManagement: 'Package Management',
+    desktopIssues: 'Client Feedback',
     usage: 'Usage',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',

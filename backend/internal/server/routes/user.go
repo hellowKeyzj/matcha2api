@@ -111,6 +111,7 @@ func RegisterUserRoutes(
 		}
 
 		registerUserPackageRoutes(authenticated, h)
+		registerUserFeedbackRoutes(authenticated, h)
 
 		// 使用记录（聚合统计属重查询，叠加更严格的按用户限流）
 		usage := authenticated.Group("/usage")
@@ -183,5 +184,15 @@ func registerUserPackageRoutes(authenticated *gin.RouterGroup, h *handler.Handle
 		packages.POST("/:packageVersionId/publish", h.Package.Publish)
 		packages.POST("/:packageVersionId/authorization", h.Package.Authorize)
 		packages.GET("/:packageVersionId/download", h.Package.Download)
+	}
+}
+
+func registerUserFeedbackRoutes(authenticated *gin.RouterGroup, h *handler.Handlers) {
+	if h.DesktopIssue == nil {
+		return
+	}
+	feedback := authenticated.Group("/feedback")
+	{
+		feedback.POST("/issues", h.DesktopIssue.Submit)
 	}
 }

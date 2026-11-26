@@ -623,6 +623,25 @@ const workspaceRoutes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/issues',
+    name: 'AdminIssues',
+    component: () => import('@/views/admin/IssuesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Client Feedback',
+      titleKey: 'nav.desktopIssues'
+    },
+    children: [
+      {
+        path: ':id([1-9]\\d*)',
+        name: 'AdminIssueDetail',
+        component: () => import('@/views/admin/desktop-issues/IssueDetail.vue'),
+        props: route => ({ issueId: Number(route.params.id) })
+      }
+    ]
+  },
+  {
     path: '/admin/announcements',
     name: 'AdminAnnouncements',
     component: () => import('@/views/admin/AnnouncementsView.vue'),

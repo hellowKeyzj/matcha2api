@@ -656,6 +656,18 @@ const ShieldIcon = {
     )
 }
 
+const IssueCircleIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('circle', { cx: '12', cy: '12', r: '9' }),
+        h('circle', { cx: '12', cy: '12', r: '2.2', fill: 'currentColor', stroke: 'none' })
+      ]
+    )
+}
+
 const PriceTagIcon = {
   render: () =>
     h(
@@ -803,6 +815,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
     { path: '/admin/plugins', label: t('nav.plugins'), icon: PluginIcon, featureFlag: flagPluginManagement },
     { path: '/admin/packages', label: t('nav.packageManagement'), icon: PluginIcon },
+    { path: '/admin/issues', label: t('nav.desktopIssues'), icon: IssueCircleIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: ServerIcon },
     {

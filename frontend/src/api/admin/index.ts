@@ -37,6 +37,7 @@ import adminComplianceAPI from './compliance'
 import auditAPI from './audit'
 import pluginsAPI from './plugins'
 import packagesAPI from './packages'
+import issuesAPI from './issues'
 
 /**
  * Unified admin API object for convenient access
@@ -75,7 +76,8 @@ export const adminAPI = {
   compliance: adminComplianceAPI,
   audit: auditAPI,
   plugins: pluginsAPI,
-  packages: packagesAPI
+  packages: packagesAPI,
+  issues: issuesAPI
 }
 
 export {
@@ -112,12 +114,26 @@ export {
   adminComplianceAPI,
   auditAPI,
   pluginsAPI,
-  packagesAPI
+  packagesAPI,
+  issuesAPI
 }
 
 export default adminAPI
 
 // Re-export types used by components
+export type {
+  DesktopIssue,
+  DesktopIssueAttachment,
+  DesktopIssueDetail,
+  DesktopIssueEvent,
+  DesktopIssueKind,
+  DesktopIssueListQuery,
+  DesktopIssueListResponse,
+  DesktopIssueManifestEntry,
+  DesktopIssueSeverity,
+  DesktopIssueStatus,
+  DesktopIssueStatusCounts
+} from './issues'
 export type { AuditLog, AuditLogQuery, AuditLogListResponse } from './audit'
 export type { BalanceHistoryItem } from './users'
 export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from './errorPassthrough'

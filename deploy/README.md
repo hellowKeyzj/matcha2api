@@ -31,6 +31,14 @@ This directory contains files for deploying Sub2API on Linux servers and Apple-s
 
 ---
 
+## Desktop Feedback Attachments
+
+Keep `$DATA_DIR/desktop-issue-attachments` (default `./data/desktop-issue-attachments`) on the persistent app volume. Back it up with PostgreSQL, and mount the same volume on every replica that serves feedback. This directory is private and does not move when package storage settings change.
+
+Desktop feedback accepts up to six screenshots or recordings, an optional diagnostics ZIP up to 50 MiB, and at most 250 MiB of attachment data per report. A proxy or ingress with a lower body limit will reject larger reports. If you override the default CSP, retain `media-src 'self' blob:` for in-browser recording playback.
+
+---
+
 ## Apple container Deployment
 
 Apple-silicon Macs running macOS 26 can run the complete Sub2API, PostgreSQL, and Redis stack with Apple `container` 1.1.0 or newer:

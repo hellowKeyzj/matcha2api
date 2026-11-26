@@ -791,6 +791,7 @@
   transform: none;
   transition: background-color 150ms, color 150ms;
 }
+.theme-dala .btn.btn-icon { padding-inline: 8px; }
 .theme-dala .btn-primary { background: var(--ui-action); color: var(--ui-action-ink); border-color: transparent; }
 .theme-dala .btn-primary:hover { background: var(--ui-action-hover); }
 .theme-dala .btn-secondary, .theme-dala .btn-ghost {

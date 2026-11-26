@@ -169,6 +169,7 @@ export default {
     batchImage: '批量生图',
     resourcePackages: '资源包',
     packageManagement: '资源包管理',
+    desktopIssues: '客户端反馈',
     usage: '使用记录',
     redeem: '兑换',
     affiliate: '邀请返利',

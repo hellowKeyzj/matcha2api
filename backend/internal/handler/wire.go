@@ -48,6 +48,7 @@ func ProvideAdminHandlers(
 	complianceHandler *admin.ComplianceHandler,
 	auditLogHandler *admin.AuditLogHandler,
 	packageHandler *admin.PackageHandler,
+	desktopIssueHandler *admin.DesktopIssueHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
 	opencodeGoUsage *service.OpenCodeGoUsageService,
@@ -95,6 +96,7 @@ func ProvideAdminHandlers(
 		Compliance:             complianceHandler,
 		AuditLog:               auditLogHandler,
 		Package:                packageHandler,
+		DesktopIssue:           desktopIssueHandler,
 	}
 }
 
@@ -196,6 +198,7 @@ func ProvideHandlers(
 	channelMonitorUserHandler *ChannelMonitorUserHandler,
 	channelMonitorV2Handler *ChannelMonitorV2Handler,
 	packageHandler *PackageRegistryHandler,
+	desktopIssueHandler *DesktopIssueHandler,
 	adminHandlers *AdminHandlers,
 	gatewayHandler *GatewayHandler,
 	openaiGatewayHandler *OpenAIGatewayHandler,
@@ -226,6 +229,7 @@ func ProvideHandlers(
 		ChannelMonitor:   channelMonitorUserHandler,
 		ChannelMonitorV2: channelMonitorV2Handler,
 		Package:          packageHandler,
+		DesktopIssue:     desktopIssueHandler,
 		Admin:            adminHandlers,
 		Gateway:          gatewayHandler,
 		OpenAIGateway:    openaiGatewayHandler,
@@ -257,6 +261,7 @@ var ProviderSet = wire.NewSet(
 	NewChannelMonitorUserHandler,
 	NewChannelMonitorV2Handler,
 	ProvidePackageRegistryHandler,
+	NewDesktopIssueHandler,
 	ProvideGatewayHandler,
 	ProvideOpenAIGatewayHandler,
 	NewTotpHandler,
@@ -306,6 +311,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewComplianceHandler,
 	admin.NewAuditLogHandler,
 	admin.NewPackageHandler,
+	admin.NewDesktopIssueHandler,
 
 	// AdminHandlers and Handlers constructors
 	ProvideAdminHandlers,

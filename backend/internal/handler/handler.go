@@ -44,6 +44,7 @@ type AdminHandlers struct {
 	Compliance             *admin.ComplianceHandler
 	AuditLog               *admin.AuditLogHandler
 	Package                *admin.PackageHandler
+	DesktopIssue           *admin.DesktopIssueHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -61,6 +62,7 @@ type Handlers struct {
 	ChannelMonitor   *ChannelMonitorUserHandler
 	ChannelMonitorV2 *ChannelMonitorV2Handler
 	Package          *PackageRegistryHandler
+	DesktopIssue     *DesktopIssueHandler
 	Admin            *AdminHandlers
 	Gateway          *GatewayHandler
 	OpenAIGateway    *OpenAIGatewayHandler

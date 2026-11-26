@@ -915,6 +915,7 @@ var ProviderSet = wire.NewSet(
 	ProvideMatchaPackageStorageSettingService,
 	ProvideMatchaPackageCloudKeyService,
 	ProvideMatchaPackageRegistryService,
+	NewDesktopIssueService,
 	ProvideBatchImageWorkerRuntime,
 	wire.Bind(new(AccountRuntimeBlocker), new(*OpenAIGatewayService)),
 	NewOAuthService,

@@ -111,6 +111,9 @@ func RegisterAdminRoutes(
 		// 资源包管理
 		registerPackageRoutes(admin, h, stepUpAuth)
 
+		// 客户端问题反馈（Issue 追溯）
+		registerDesktopIssueRoutes(admin, h)
+
 		// API Key 管理
 		registerAdminAPIKeyRoutes(admin, h)
 
@@ -818,6 +821,22 @@ func registerPackageRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAu
 		packages.POST("/:id/review", gin.HandlerFunc(stepUpAuth), h.Admin.Package.Review)
 		packages.POST("/:id/takedown", gin.HandlerFunc(stepUpAuth), h.Admin.Package.TakeDown)
 		packages.POST("/:id/download-audits", h.Admin.Package.RecordDownloadAudit)
+	}
+}
+
+func registerDesktopIssueRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.DesktopIssue == nil {
+		return
+	}
+	issues := admin.Group("/issues")
+	{
+		issues.GET("", h.Admin.DesktopIssue.List)
+		issues.POST("/batch-status", h.Admin.DesktopIssue.BatchUpdateStatus)
+		issues.GET("/:id", h.Admin.DesktopIssue.GetByID)
+		issues.PATCH("/:id", h.Admin.DesktopIssue.Update)
+		issues.POST("/:id/notes", h.Admin.DesktopIssue.AddNote)
+		issues.GET("/:id/attachments/:attachmentId", h.Admin.DesktopIssue.DownloadAttachment)
+		issues.GET("/:id/attachments/:attachmentId/manifest", h.Admin.DesktopIssue.GetDiagnosticsManifest)
 	}
 }
 
